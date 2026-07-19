@@ -1,0 +1,399 @@
+===============================================================================
+           NIHILPOINTZERO STUDIO — THE COMPLETE PLAIN-ENGLISH GUIDE
+     Everything you can do, how to do it, what's free, and what to expect.
+                        Written to be easy to understand.
+===============================================================================
+
+CONTENTS
+   1. What this is / first launch
+   2. The one rule + moving it to another PC (what travels, what you redo)
+   3. The tabs (what each is for) + Ctrl-K + autosave
+   4. Make a video — step by step
+   5. The build choices: Look, Format (shape), Resolution
+   6. Voice — 3 ways (yours is best)
+   7. Captions / subtitles
+   8. Music & the DJ studio (make music, background, remove/replace, separate, waveform)
+   9. Scene Studio (storyboard + put yourself in a scene + Beautify)
+  9b. Storyboard Director (direct it shot by shot)
+  9c. Timeline Editor (line clips up by hand)
+  9d. Live PSX Data & NCCPL Analysis (real numbers → video)
+  10. Thumbnails · Logo/brand · Publish to YouTube · Batch
+  11. Free vs Internet vs one-time Setup
+  12. FAQ (the dumb questions)
+  13. Troubleshooting
+  14. What's already set up for you
+  15. Pro tips — get the best results
+  16. Everything this studio can do (quick index)
+
+-------------------------------------------------------------------------------
+1. WHAT THIS IS / FIRST LAUNCH
+-------------------------------------------------------------------------------
+You type (or speak) an idea; the app writes a script, makes the visuals, adds a
+voice, music and captions, and gives you a finished video — or you record your own
+voice over it. Most of it is FREE and offline. The smart-AI bits use the internet
+(also free — keys are built in).
+
+TWO WAYS TO RUN IT:
+  PORTABLE (the classic way): double-click NIHILPOINTZERO-OS-portable.exe ONCE and
+  wait ~40-60s (no window shows while it unpacks — normal). This is the copy that
+  travels on a USB with your whole folder.
+  INSTALLED (recommended for daily use on THIS PC): run NIHILPOINTZERO-OS-setup.exe
+  once. From then on the app opens in ~2 seconds, taskbar pins are SAFE, and it uses
+  the SAME nihilpointzero-data folder — your videos/settings appear in both versions.
+If SmartScreen warns: More info -> Run anyway (it's safe, just unsigned). The
+"NIHILPOINTZERO-OS" Desktop shortcut points at the portable exe.
+
+WHICH BUILD AM I RUNNING? The sidebar shows a small gold badge under "OS", e.g.
+"v0.1.1 · 2026-07-19 15:59 · 4e5e704" — that's version · the exact date+time the
+build was made · a code id. It is stamped AUTOMATICALLY when the app is built, so it
+can never be wrong or forgotten; it is proof of which code is running.
+IMPORTANT (PORTABLE EXE ONLY): do NOT pin the portable app to the taskbar/Start
+WHILE it's open — Windows freezes that pin to a temporary unpacked copy and it will
+launch OLD code forever. Launch from the Desktop shortcut or the .exe in this folder.
+The INSTALLED version has no such trap — pin it freely. (The pin trap once made hours
+of updates look like "nothing changed".) See §13 if a build looks stale.
+
+-------------------------------------------------------------------------------
+2. THE ONE RULE + MOVING TO ANOTHER PC
+-------------------------------------------------------------------------------
+Your work lives inside the "nihilpointzero-data" folder next to the .exe. ALWAYS
+copy the WHOLE "NihilPointZeroStudio" folder — never just the .exe — or your work
+won't be found.
+
+Copy the folder to another PC and:
+  TRAVELS AUTOMATICALLY: all videos, scripts, Script Pad, library, settings, the
+     built-in free keys, and the Natural voice (if downloaded).
+  NEEDS INTERNET (no install): AI writing/images/visuals, put-me-in-a-scene, online
+     music removal.
+  YOU REDO ONCE (optional): offline Demucs music separation — it's a Python program
+     tied to a machine. On the new PC: install Python (python.org), then in a command
+     window run  python -m pip install demucs numpy , then Settings -> "Music
+     separation (local)" -> type  python -m demucs  -> Save. You do NOT need this if
+     you have internet (the Online button already removes music).
+
+-------------------------------------------------------------------------------
+3. THE TABS + CTRL-K + AUTOSAVE
+-------------------------------------------------------------------------------
+  Ideas & Trends  - brainstorm ideas with AI.
+  ✦ AI Command    - tell the studio what to do in plain words; it plans and does it.
+                    Also holds BATCH (many videos at once).
+  🎬 Scene Studio  - build a video scene-by-scene; watch each, pause, reorder, and
+                    put YOUR photo into a scene.
+  Script Writer   - generate a full script.
+  Script Pad      - a blank page to write/paste any script.
+  Video Studio    - the main workshop: turn a script into a video and, per video:
+                    Captions, Logo, 🎙 Voice studio, Trim, Music, Publish, Download.
+                    Sub-tabs: Build & Videos, Sound Studio (DJ), AI Director.
+  🎞 Storyboard Director - direct a video SHOT BY SHOT: each shot has its own length,
+                    its own image prompt, optional narration/caption, camera motion,
+                    a crossfade, and you can drop YOUR photo into a shot. (See §9b.)
+  ✂ Timeline Editor - a simple non-linear editor: line up video clips on a track, set
+                    crossfades, add text overlays and a separate audio track. (See §9c.)
+  Charts          - candlestick + SMA/RSI charts. Load LIVE PSX prices by symbol, or
+                    import your own CSV/Excel. Can turn a chart into a narration script.
+  📈 Live PSX Data - type a PSX symbol (LUCK, HUBC, ENGRO…) → real end-of-day data from
+                    the PSX portal → in-app analysis → download Excel → reasoned script
+                    → video. You choose language + what to focus on. (See §9d.)
+  🏦 NCCPL Analysis - download a FIPI/LIPI (or any) file from NCCPL yourself and UPLOAD it
+                    here → it's analysed → narration script in your language. (See §9d.)
+  Advisor         - a chat that knows your work.
+  Library         - everything you saved.
+  Activity Log    - history of actions.
+  Settings        - AI choice, keys, natural-voice download, music separation, your
+                    YouTube channel, phone access, and a "Setup health" panel (green
+                    dots = ready).
+
+  CTRL-K: press it anywhere, type a tab name, Enter — instant navigation.
+  AUTOSAVE: your work saves itself and comes back after you close/reopen. A
+     "Saving… / Saved ✓" note shows the status. Nothing is lost — the last few
+     seconds of edits are flushed even if you switch tabs or close mid-type.
+  ONLY YOU CAN DELETE: every delete (a video, a saved item, a shot, an advisor
+     message, or "Clear Tab") pops a confirm box first. The AI can create and edit,
+     but it can NEVER delete your work — that's yours alone.
+  🎤 MIC: every text box has a mic button — click and talk instead of typing (offline).
+  TOASTS: actions pop a little confirmation (or error) at the bottom so you always
+     know what happened.
+  🎬 PRODUCER: a floating AI panel on every screen. THREE modes — ADVISE (ask a
+     YouTube-growth question about your current draft), EDIT (tell it "tighten the hook",
+     "rewrite in Roman Urdu"; it proposes a rewrite you Apply), and DO IT (say what you
+     want made — "write a 1-min script on gold and build it in 1080p" — and it turns that
+     into a validated plan you approve with "Run it", then actually runs it: writing
+     scripts, building videos, thumbnails, images, music, ideas, PSX analysis, scenes).
+     It reads your current script/brief, and falls back to the free AI brain if your
+     provider is down. It only performs that safe set of actions — it never deletes.
+
+-------------------------------------------------------------------------------
+4. MAKE A VIDEO — STEP BY STEP
+-------------------------------------------------------------------------------
+Easiest: ✦ AI Command -> type/🎤 "Write a 1-minute script about the rupee and build
+it in 1080p with calm music" -> "Plan it" -> "▶ Run it". It appears in Video Studio.
+
+Hands-on: Video Studio -> "Build & Videos" -> choose/paste a script -> set Look,
+Format, Resolution, Voice, Music -> "🎬 Build Video". A live % and a preview image
+show progress; the finished video lands on the right with all its tools.
+
+-------------------------------------------------------------------------------
+5. THE BUILD CHOICES
+-------------------------------------------------------------------------------
+LOOK (template):
+   Clean     - plain and fast.
+   News      - crisp colour + sliding "lower-third" bars showing the section label.
+   Cinematic - colour-graded + vignette + film grain + black cinema bars (letterbox).
+   Bold      - punchy colours.
+   All add a smooth animated title, and section titles slide up as they appear.
+FORMAT (shape): 16:9 = YouTube · 9:16 = Shorts/Reels/TikTok · 1:1 = square.
+RESOLUTION: 1080p (fastest) · 1440p · 4K (sharp, slower) · 8K (very slow, huge).
+   4K is the sweet spot. For Shorts pick the 9:16 shape.
+
+-------------------------------------------------------------------------------
+6. VOICE — 3 WAYS (yours is best)
+-------------------------------------------------------------------------------
+  (A) YOUR OWN voice (recommended): build the video, then "🎙 Voice studio" under it:
+        Record with ⏸ Pause / ▶ Resume; after Stop, drag the slider to review;
+        "Redo from playhead" keeps the part before and re-records the rest;
+        finish with "Replace the narration" OR "Keep existing audio + add my voice".
+  (B) NATURAL voice (Piper): a nice computer voice. Already installed on this PC —
+        pick "Narration voice -> Natural" when building. (On a new PC: Settings ->
+        "Download natural voice", ~80 MB, one-time.)
+  (C) WINDOWS voice: basic/robotic, always free, good for a quick draft.
+
+-------------------------------------------------------------------------------
+7. CAPTIONS / SUBTITLES
+-------------------------------------------------------------------------------
+On any built video, the "📝 Captions" row:
+   "Get subtitles (.srt)" - a subtitle file; add it when uploading to YouTube.
+   "Burn into video"      - bakes the words on-screen (great for muted Shorts).
+It transcribes your narration automatically and offline.
+
+-------------------------------------------------------------------------------
+8. MUSIC & THE DJ STUDIO
+-------------------------------------------------------------------------------
+Video Studio -> "Sound Studio (DJ)":
+   - Library: generated music moods, sound effects, a bundled pack, your own files,
+     and "Find free music online" (legal, no-copyright search).
+   - Timeline: place sounds (start time, volume, use only a slice).
+   - "🎵 Create music only": render the timeline to an MP3 and SAVE it (no video).
+   - "Apply mix -> new video": lay your sounds over a video's narration.
+   - "📊 Show waveform": see the audio of the selected video (loud/quiet spots).
+
+Remove or swap the background music:
+   - Videos MADE IN THIS APP: the "🎵 Music" row -> Remove (keeps your voice) or
+     Replace with a mood. Replace AUTO-DUCKS: the music dips whenever you speak.
+     Exact and instant, no internet.
+   - OUTSIDE videos (music already mixed in): "Remove music (AI separate)":
+       Online = works out of the box (free, built in), needs internet.
+       Local  = offline, best quality (Demucs, installed on this PC).
+     Separation is an AI estimate — great for clear speech over music, not perfect.
+
+-------------------------------------------------------------------------------
+9. SCENE STUDIO (storyboard + put yourself in a scene)
+-------------------------------------------------------------------------------
+🎬 Scene Studio builds a video one scene at a time:
+   - "Plan scenes" turns your script into scene cards (each with an editable prompt).
+   - "Generate all" makes an image per scene — watch them appear. ⏸ Pause / ▶ Resume.
+   - STORYBOARD: reorder scenes (↑ ↓), remove (✕), or "＋ Add a scene". The order you
+     see is the order the video is built in.
+   - Rewrite any scene's prompt and "↻ Regenerate this scene".
+   - "📎 Put me in (photo)": attach your picture and describe the scene ("me as an
+     astronaut, spacesuit, on the moon"). Slider "Photo transform" — lower keeps more
+     of your real look. Free; uses internet; the queue can be slow (shows its place).
+     Exact face likeness isn't guaranteed on free AI.
+   - "🎬 Build video" stitches the approved scenes with narration, your Look, etc.
+   - BEAUTIFY: a slider retouches your uploaded photo (skin-smooth + brighten + sharpen)
+     on your REAL pixels — no invented face. This is a light retouch, not AI makeup.
+
+-------------------------------------------------------------------------------
+9b. STORYBOARD DIRECTOR (direct it shot by shot)
+-------------------------------------------------------------------------------
+🎞 Storyboard Director is for full creative control of the visuals, beat by beat.
+   - AUTO mode: paste a whole script (and a title) and the AI DECIDES everything —
+     topic, mood, genre, style, and the whole shot breakdown.
+   - GUIDED mode: you write the shots yourself, e.g. "0-15s I arrive in a Ferrari and
+     say '…'; then 20s a helicopter over the hills, slow fade; then 90s of me speaking".
+   Each SHOT has: a length in seconds, a SCENE description (what to show), optional
+   narration and an on-screen caption, a camera MOTION, a crossfade INTO it, and its own
+   SOUNDS (add a music bed, a sound effect, or your own audio file — each with gain,
+   fade-in/out and a start offset). You can reorder shots (↑↓) and delete them (with a
+   confirm).
+   SUBJECT per shot — who's on screen: (a) Scene only (AI/stock scene), (b) MY PHOTO —
+   your real photo is beautified, background-removed and composited INTO the AI scene
+   (your true face, not a fake), (c) MY CLIP — your own footage, (d) AI PERSON — a
+   generated character (described by you; not your real face).
+   BEAUTIFY: "Set my photo", then a slider — RIGHT smooths skin / brightens / evens tone,
+   LEFT makes it grittier & sharper. It edits YOUR real pixels (a retouch, not AI makeup).
+   Preview it before rendering.
+   Build makes each shot, holds it for the right length (narration decides the length, so
+   speech is never cut off or overlapped), crossfades between shots, lays narration +
+   captions + your sounds, and opens the finished film in the ✂ Timeline Editor so you can
+   fine-tune anything.
+   HONEST LIMITS (free): AI scenes are STILLS with Ken-Burns motion, not real moving
+   footage. Your real face is kept by compositing your ACTUAL photo/clip — the app never
+   fabricates a fake video of your face. The background cutout uses a small free model that
+   downloads once on first use; if it can't (offline), it falls back to your photo framed
+   in the scene, so a render never breaks.
+
+-------------------------------------------------------------------------------
+9c. TIMELINE EDITOR (line clips up by hand)
+-------------------------------------------------------------------------------
+✂ Timeline Editor is a real non-linear editor. Add video clips (or images) onto a
+   track, trim them, reorder them, set a crossfade between clips, add timed text overlays
+   (with fades), and place audio on a separate track with gain + fade-in/out — with a
+   LIVE WAVEFORM for each audio clip. The mix has a peak limiter so it never clips. It
+   renders to one MP4. A Storyboard build opens here automatically (all its shots, sounds
+   and captions), so you can add / edit / remove ANY sound or clip after the AI first pass.
+
+-------------------------------------------------------------------------------
+9d. LIVE PSX DATA & NCCPL ANALYSIS (real numbers → video)
+-------------------------------------------------------------------------------
+📈 Live PSX Data: type a PSX symbol (LUCK, HUBC, ENGRO…). The app pulls the stock's
+   REAL end-of-day history straight from the PSX data portal and computes — in-app,
+   with standard formulas — the latest price + move, 52-week range, 1-year change,
+   20/50/200-day moving averages, RSI(14), volume vs average, and a trend read.
+   Then: "⬇ Excel" saves an auditable workbook; the "what & how + Language" box +
+   "✍ Script" writes a reasoned narration (English / Roman Urdu / Urdu) using ONLY the
+   computed numbers (it won't invent figures); "🎬 Build" turns it into a video.
+   The maths is exact and tested; the fetch depends on the portal being reachable.
+
+🏦 NCCPL Analysis: NCCPL's portal blocks bots, so this is UPLOAD-based — download the
+   FIPI/LIPI (or any market) file from NCCPL yourself and upload it here. The app auto-
+   detects and analyses it (foreign vs local net flow, or price/fundamentals), then —
+   with the same what/how + Language box — writes a narration script and can build a
+   video. All figures come from YOUR file.
+
+Charts tab also does live PSX now: type a symbol → a close-price line + SMA/RSI, or
+   import your own OHLC file for full candlesticks; an optional prompt turns it into a
+   script too.
+
+-------------------------------------------------------------------------------
+10. THUMBNAILS · LOGO/BRAND · PUBLISH · BATCH
+-------------------------------------------------------------------------------
+THUMBNAILS: Script Writer makes a 1280x720 thumbnail from a headline+style; in ✦ AI
+   Command you can ask for a thumbnail with an AI-generated background.
+LOGO: "🏷 Logo" row on a video -> pick a logo image, pick a corner, Apply (a
+   transparent PNG looks best). INTRO/OUTRO: build short clips and use "Stitch" to
+   join intro + video + outro.
+PUBLISH: "▶ Publish to YouTube" writes an AI title/description/tags to your clipboard,
+   opens YOUR channel's upload page, and reveals the file — drag it in. Free, no
+   sign-in, no limits.
+BATCH: ✦ AI Command -> "📦 Batch" -> paste topics (one per line) -> "Make all" builds
+   a video for each (up to 25). One failure won't stop the rest.
+
+-------------------------------------------------------------------------------
+11. FREE vs INTERNET vs ONE-TIME SETUP
+-------------------------------------------------------------------------------
+FREE + OFFLINE (anywhere, forever): building/looks/shapes, your voice + Natural voice,
+   generated music & SFX, "create music only", captions, trim, watermark, stitch,
+   export to all formats, remove/replace music on videos you MADE here, autosave.
+FREE + INTERNET (keys built in, nothing to sign up for): AI writing/ideas/advisor/
+   AI Command, AI images/visuals, thumbnails-with-AI-background, put-me-in-a-scene,
+   online music removal.
+FREE + ONE-TIME SETUP (optional; both already done on this PC): Natural voice (Piper)
+   download; offline Demucs music separation (Python).
+
+-------------------------------------------------------------------------------
+12. FAQ
+-------------------------------------------------------------------------------
+Q: Do I need to install anything? A: No. Double-click the .exe. (Optional extras:
+   the natural voice download and offline Demucs — both already set up here.)
+Q: My videos vanished on a new PC. A: You copied only the .exe; copy the WHOLE folder.
+Q: The AI says it's busy / fails. A: Free services get busy — try again; the app also
+   auto-switches to a backup. Needs internet.
+Q: Why is the computer voice robotic? A: That's the Windows voice — use YOUR voice
+   (Voice studio) or the Natural voice.
+Q: Photo/AI image is slow. A: Free image services queue; it shows your place. It's free.
+Q: Can it auto-upload to YouTube? A: It prepares everything and opens your upload page
+   so you drop the file — reliable and free. (Full auto-upload would force videos
+   private until Google verifies the app.)
+Q: Is my stuff private? A: Everything is saved only on your PC. AI features send your
+   text/photo to the free online service to do the work. Offline features never leave.
+Q: How do I use my own keys? A: Settings has fields (AI Horde for photos, MVSEP for
+   online music removal, YouTube channel, paid Claude/OpenAI). All optional.
+
+-------------------------------------------------------------------------------
+13. TROUBLESHOOTING
+-------------------------------------------------------------------------------
+- Nothing on first double-click (portable exe): wait ~60s; don't double-click again.
+  (The installed version opens in ~2s — run NIHILPOINTZERO-OS-setup.exe once to get it.)
+- "My updates/changes didn't show up" / old look: check the BUILD BADGE in the sidebar
+  (under "OS"). If it's older than expected you launched a STALE copy — this happens when
+  you pinned the PORTABLE app to the taskbar/Start while it was running (Windows freezes
+  the pin to a temporary unpacked folder). Fix: launch the DESKTOP shortcut or the .exe in
+  the folder directly — or switch to the INSTALLED version, which can never go stale this
+  way. The exe on disk is always the newest — the pin was pointing at old unpacked code.
+- Live PSX Data with no internet / portal down: you'll see an amber banner and your last
+  SAVED data (clearly dated). That's deliberate — real numbers from your last fetch, never
+  invented ones. Fetch again when you're back online.
+- "file not found" after moving: fully close and reopen; keep the whole folder together.
+- An online feature errors: check internet, try again.
+- A build fails at a weird resolution: it auto-retries safely; if not, use 1080p/4K.
+- Writing stopped after changing provider: set it to "Free (online)" in Settings
+  (needs no key), or make sure Ollama / your paid key is set up.
+- Multiple copies open / won't launch: close all "NIHILPOINTZERO-OS" in Task Manager,
+  then open once.
+
+-------------------------------------------------------------------------------
+14. WHAT'S ALREADY SET UP FOR YOU
+-------------------------------------------------------------------------------
+- AI brain: FREE (online) — works immediately.
+- Photo-into-scene: free key built in.
+- Online music removal: free token built in.
+- Your YouTube channel saved for one-click Publish.
+- Natural voice (Piper): installed on this PC.
+- Offline music separation (Demucs): installed on this PC.
+
+-------------------------------------------------------------------------------
+15. PRO TIPS — GET THE BEST RESULTS
+-------------------------------------------------------------------------------
+- CONTROL YOUR SCENES/CARDS: put a heading in [SQUARE BRACKETS] on its own line in
+  the script (e.g. [THE BIG IDEA]). Each becomes an on-screen section and, in Scene
+  Studio, a scene. More brackets = more scene variety, less repetition.
+- THE VOICE READS EXACTLY WHAT YOU TYPE: keep sentences short and clean; write
+  numbers as words if you want them spoken clearly. Bracketed [HEADINGS] are NOT read
+  aloud — they only drive the visuals.
+- MOST PRO RESULT: record your OWN voice (🎙 Voice studio) over any build. Use "Redo
+  from playhead" to fix one line without redoing everything.
+- FOR SHORTS/REELS: Format 9:16 + a Bold or Cinematic Look + "Burn captions" — that
+  combo performs best on muted, phone-first feeds.
+- MUSIC: prefer "Replace" (it auto-ducks under your voice) over loud background music.
+  Keep music as a bed, let the words lead.
+- PUT-ME-IN-A-SCENE: lower the "Photo transform" slider to look more like yourself;
+  raise it to transform more. Free image queues can be slow — be patient or run big
+  jobs (Batch, many scenes) when you're away.
+- SPEED: 1080p builds fastest; 4K is the sharp sweet spot; 8K is slow + huge. The free
+  AI look uses the internet; the offline "Style presets/Look" builds are fastest.
+- OLDER VIDEOS: features like exact music-removal and captions work best on videos
+  built AFTER these upgrades — if an old one won't cooperate, rebuild it once.
+- MOVE FAST: Ctrl-K jumps to any tab. Your work autosaves ("Saved ✓") and returns
+  after a restart, so don't fear closing the app.
+- BE ONLINE for the AI parts (writing, images, put-me-in-scene, online music removal);
+  everything else works with no internet.
+
+-------------------------------------------------------------------------------
+16. EVERYTHING THIS STUDIO CAN DO (quick index)
+-------------------------------------------------------------------------------
+  WRITE:  AI ideas · AI scripts · your own Script Pad · dictate by voice (🎤) ·
+          🎬 Producer — advise · rewrite (any language) · "Do it" (plans + runs real actions from any tab)
+  DIRECT: ✦ AI Command (type a request, it does it) · 📦 Batch (many at once) ·
+          🎞 Storyboard Director (shot-by-shot: length/scene/narration/caption/motion/crossfade +
+          subject: AI scene / your photo composited / your clip / AI person + per-shot sounds)
+  VISUALS:Looks (Clean/News/Cinematic/Bold) · animated titles + lower-thirds ·
+          Ken-Burns of your images · free AI per-scene images · Scene Studio storyboard
+          (reorder/add/remove, pause, regenerate) · put YOUR photo in a scene · photo Beautify
+  SHAPES: 16:9 · 9:16 (Shorts) · 1:1 · resolutions up to 8K
+  VOICE:  your own recording (pause/redo/replace/add) · Natural (Piper) · Windows
+  AUDIO:  generated music + SFX · free online music search · DJ timeline · create
+          music-only MP3 · auto-ducking + peak limiter (no clipping) · waveform view ·
+          remove/replace music · separate music from outside videos (online or offline Demucs)
+  CAPTIONS: .srt export · burn-in
+  BRAND:  logo watermark · intro/outro via Stitch · real + AI thumbnails
+  EDIT:   Trim/cut · Stitch · AI Director (edit in plain English) · ✂ Timeline Editor (NLE)
+  DATA:   📈 LIVE PSX prices → analysis (SMA/RSI/returns) → Excel → script → video ·
+          🏦 NCCPL FIPI/LIPI file analysis → script · Charts (candlesticks/SMA/RSI, live or file)
+  PUBLISH:export to YouTube/MP4/H.265/MOV/WebM · one-click "Publish" (opens your
+          channel with title/desc/tags ready)
+  EXTRAS: autosave + version history · Ctrl-K command palette · Setup Health panel ·
+          toasts · Advisor chat · phone access over Wi-Fi · fully portable folder
+
+Keep the .exe and the nihilpointzero-data folder together, be online for the AI
+parts, and copy the whole folder to go anywhere. Enjoy.
+===============================================================================

@@ -1,0 +1,76 @@
+===============================================================================
+                     NIHILPOINTZERO STUDIO  —  START HERE
+===============================================================================
+
+Welcome. This folder is your whole video studio — nothing to install. This page is
+just orientation; the other files below go deeper (no need to read them cover-to-cover).
+
+WHAT'S IN THIS FOLDER
+   NIHILPOINTZERO-OS-portable.exe   -> the program (double-click to run)
+   NIHILPOINTZERO-OS-setup.exe      -> OPTIONAL one-click INSTALLER (recommended for
+                                        daily use on THIS PC: opens in ~2 seconds
+                                        instead of ~60-90, and taskbar pins are SAFE).
+                                        It finds and uses this same data folder — your
+                                        work shows up in both versions.
+   nihilpointzero-data\             -> ALL your work (videos, scripts, settings, the
+                                        natural voice). It travels with the .exe.
+   NIHILPOINTZERO-CHEATSHEET.txt    -> 1-page quick reference (fast lookups)
+   NIHILPOINTZERO-GUIDE.txt         -> the full plain-English manual (every feature,
+                                        step-by-step, FAQ, troubleshooting)
+   MEGA-DIAGNOSTIC-REPORT.md        -> honest status: what works, what needs internet,
+                                        what needs one-time setup, and what it can't do
+   HOW-TO-USE.txt                   -> this page
+
+FIRST TIME YOU RUN IT
+   1. Double-click NIHILPOINTZERO-OS-portable.exe — ONCE. (Or use the "NIHILPOINTZERO-OS"
+      shortcut on your Desktop — it points straight at this exe.)
+   2. The first launch takes ~60-90 seconds with no window showing (it's unpacking).
+      WAIT. Do not double-click again.
+   3. If Windows says "Windows protected your PC": More info -> Run anyway (it's safe,
+      just unsigned).
+
+HOW TO KNOW YOU'RE ON THE NEWEST BUILD  (READ THIS — it caused a lot of confusion)
+   • The sidebar shows a small gold badge under "OS", e.g.
+        v0.1.1 · 2026-07-19 15:59 · 4e5e704
+     That reads: version · the exact date+time the build was made · a code id.
+     The badge is now written AUTOMATICALLY at build time (it can never be forgotten),
+     and it IS your proof of which build is running. Older/missing badge = stale copy.
+   • PORTABLE EXE ONLY: do not pin it to the taskbar/Start while it's open — Windows
+     freezes that pin to a TEMPORARY unpacked copy and keeps launching OLD code forever.
+     Launch it from the Desktop shortcut or the .exe in this folder.
+   • INSTALLED VERSION (run NIHILPOINTZERO-OS-setup.exe once): pinning is completely
+     SAFE — it runs from a fixed location, so pins always launch the current code, and
+     it opens in seconds. This is the recommended way to use the studio on your own PC;
+     keep the portable exe for USB travel.
+
+THE ONE RULE
+   Keep the .exe and the "nihilpointzero-data" folder TOGETHER. To move the studio to
+   another PC, copy the WHOLE "NihilPointZeroStudio" folder (USB/drive) and run the .exe
+   there — your work travels with it. (Copy only the .exe and your work won't be found.)
+
+THREE WAYS TO MAKE A VIDEO — pick one, all explained in the GUIDE
+   • Fastest      : 🎬 Producer button (bottom-right) -> "Do it" -> type what you want ->
+                    Run. Or ✦ AI Command -> type a request -> Plan -> Run.
+   • Most control : 🎞 Storyboard Director -> direct it shot-by-shot (length, scene,
+                    narration, motion, your photo/clip per shot) -> ✂ Timeline Editor to
+                    fine-tune.
+   • Hands-on     : Video Studio -> paste a script, pick Look/Voice/Format/Resolution ->
+                    Build.
+
+GET AROUND FAST
+   Press Ctrl-K anywhere, type a tab name, Enter. Every text box has a 🎤 mic (talk
+   instead of type). Work autosaves ("Saved ✓") and comes back after you reopen.
+
+YOUR WORK IS SAFE
+   ONLY YOU can delete — every delete asks you to confirm first. The AI can create and
+   edit, but it can NEVER delete your videos, scripts or settings.
+
+WHERE TO LOOK NEXT
+   • Need a quick reminder of a button or choice?  ->  NIHILPOINTZERO-CHEATSHEET.txt
+   • Want to learn a feature properly?             ->  NIHILPOINTZERO-GUIDE.txt
+   • Wondering what's real / free / online-only?   ->  MEGA-DIAGNOSTIC-REPORT.md
+
+Everything core is FREE and works offline. The smart-AI parts (writing, images,
+"put me in a scene", online music removal) are also free but need internet — the keys
+are already built in, nothing to sign up for. Enjoy.
+===============================================================================

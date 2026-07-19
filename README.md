@@ -14,7 +14,7 @@ This opens the app with hot reload. First time, you'll need an API key:
 2. Open the app → **Settings** → paste the key → **Save Key**.
 3. Pick that provider as "Active provider".
 
-Keys are encrypted at rest via Windows DPAPI (Electron's `safeStorage`) and stored only in your local user data folder — never sent anywhere except directly to the provider you chose.
+Keys are stored only in your local user data folder and never sent anywhere except directly to the provider you chose. **Installed builds** encrypt them at rest via Windows DPAPI (Electron's `safeStorage`). **Portable mode is different by design**: DPAPI blobs can't move between PCs, so a portable copy stores keys base64-obfuscated (NOT encrypted) in `nihilpointzero-data\settings.json` next to the exe — anyone who can read that folder (shared USB, synced drive) can recover them. Only store keys on a portable copy you physically control.
 
 ## What it does
 

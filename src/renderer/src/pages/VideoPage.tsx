@@ -15,7 +15,7 @@ import type {
   VideoStyle,
   VideoTemplate
 } from '../../../shared/types'
-import { EXPORT_FORMATS, MOODS, VIDEO_ASPECTS, VIDEO_STYLES, VIDEO_TEMPLATES } from '../../../shared/types'
+import { EXPORT_FORMATS, MOODS, VIDEO_STYLES, VIDEO_TEMPLATES } from '../../../shared/types'
 import { useStudio } from '../store/StudioContext'
 import MicButton, { appendDictation } from '../components/MicButton'
 import VoiceRecorder from '../components/VoiceRecorder'
@@ -171,8 +171,6 @@ export default function VideoPage() {
   const [exportFormat, setExportFormat] = useState<ExportFormat>('youtube')
   const [exportingId, setExportingId] = useState<string | null>(null)
   const [enhanceBusyId, setEnhanceBusyId] = useState<string | null>(null)
-  const [recordingId, setRecordingId] = useState<string | null>(null)
-  const [attachingId, setAttachingId] = useState<string | null>(null)
   const [trimOpenId, setTrimOpenId] = useState<string | null>(null)
   const [trimMode, setTrimMode] = useState<TrimMode>('remove')
   const [trimStart, setTrimStart] = useState(0)
@@ -180,8 +178,6 @@ export default function VideoPage() {
   const [trimmingId, setTrimmingId] = useState<string | null>(null)
   const [stitchSel, setStitchSel] = useState<string[]>([])
   const [stitching, setStitching] = useState(false)
-  const recorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({})
 
   async function handleEnhance(job: VideoJob): Promise<void> {
@@ -504,7 +500,7 @@ export default function VideoPage() {
     setTrimOpenId(job.id)
   }
 
-  function useCurrentTime(job: VideoJob, which: 'start' | 'end'): void {
+  function applyCurrentTime(job: VideoJob, which: 'start' | 'end'): void {
     const el = videoRefs.current[job.id]
     if (!el) return
     const val = Math.round(el.currentTime * 100) / 100
@@ -564,41 +560,8 @@ export default function VideoPage() {
     }
   }
 
-  // Start/stop recording the user's own narration for a specific built video. On
-  // stop, the audio is muxed in via the main process and a new job is returned.
-  async function toggleRecordVoice(job: VideoJob): Promise<void> {
-    if (recordingId === job.id) {
-      recorderRef.current?.stop()
-      setRecordingId(null)
-      return
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
-      chunksRef.current = []
-      recorder.ondataavailable = (e) => e.data.size > 0 && chunksRef.current.push(e.data)
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop())
-        setAttachingId(job.id)
-        setError(null)
-        try {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-          const bytes = new Uint8Array(await blob.arrayBuffer())
-          await window.api.video.attachVoice(job.id, bytes)
-          await refreshJobs()
-        } catch (err) {
-          setError(err instanceof Error ? err.message : 'Attaching your voice failed')
-        } finally {
-          setAttachingId(null)
-        }
-      }
-      recorder.start()
-      recorderRef.current = recorder
-      setRecordingId(job.id)
-    } catch {
-      setError('Could not access the microphone. Check Windows mic permissions and try again.')
-    }
-  }
+  // (The old inline mic-recording flow lived here; it was superseded by the full
+  // 🎙 Voice studio (VoiceRecorder component) — pause/resume, scrub, redo-from-playhead.)
 
   const wordCount = body.trim() ? body.trim().split(/\s+/).length : 0
 
@@ -1311,7 +1274,7 @@ export default function VideoPage() {
                               className="w-24 rounded-md bg-ink-800 border border-ink-700 px-2 py-1 text-xs text-ink-100 outline-none focus:border-gold-500"
                             />
                             <button
-                              onClick={() => useCurrentTime(job, 'start')}
+                              onClick={() => applyCurrentTime(job,'start')}
                               className="ml-1 rounded border border-ink-600 hover:border-ink-400 text-ink-300 text-[10px] px-1.5 py-1"
                             >
                               Use current
@@ -1328,7 +1291,7 @@ export default function VideoPage() {
                               className="w-24 rounded-md bg-ink-800 border border-ink-700 px-2 py-1 text-xs text-ink-100 outline-none focus:border-gold-500"
                             />
                             <button
-                              onClick={() => useCurrentTime(job, 'end')}
+                              onClick={() => applyCurrentTime(job,'end')}
                               className="ml-1 rounded border border-ink-600 hover:border-ink-400 text-ink-300 text-[10px] px-1.5 py-1"
                             >
                               Use current
@@ -1356,11 +1319,6 @@ export default function VideoPage() {
                           </span>
                         </div>
                       </div>
-                    )}
-                    {recordingId === job.id && (
-                      <p className="text-[11px] text-red-300/90 mt-2">
-                        Recording… speak now, then click “Stop &amp; attach”.
-                      </p>
                     )}
                   </div>
                 ))}

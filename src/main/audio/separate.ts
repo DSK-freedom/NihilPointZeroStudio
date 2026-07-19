@@ -85,6 +85,24 @@ export async function separateOnline(
   throw new Error('Separation timed out — the free queue is busy. Try again later or use the local engine.')
 }
 
+/**
+ * Splits a user-configured command string into [executable, ...args] WITHOUT a shell,
+ * honouring double- and single-quoted segments ("python -m demucs",
+ * '"C:\Program Files\demucs\demucs.exe" -v'). Pure + unit-tested.
+ *
+ * Spawning without a shell means NO shell metacharacter interpretation — the
+ * user-configured value can never smuggle `&&`, `|`, `;` etc. into a shell, and
+ * paths with spaces are passed as clean single arguments instead of relying on
+ * quote-preservation through a shell re-parse.
+ */
+export function parseCommandLine(cmd: string): string[] {
+  const out: string[] = []
+  const re = /"([^"]*)"|'([^']*)'|(\S+)/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(cmd)) !== null) out.push(m[1] ?? m[2] ?? m[3])
+  return out
+}
+
 /** Local separation via a Demucs CLI install. Returns a path to the vocals-only file. */
 export function separateLocal(
   inputAudioPath: string,
@@ -97,12 +115,17 @@ export function separateLocal(
       reject(new Error('No local Demucs command set. Install Demucs and set its command in Settings → “Music separation (local)”.'))
       return
     }
+    const parts = parseCommandLine(demucsCmd)
+    if (parts.length === 0) {
+      reject(new Error('The Demucs command in Settings is empty or unreadable.'))
+      return
+    }
     onProgress?.({ message: 'Running local Demucs separation (this can take a while)…' })
     // demucs --two-stems=vocals -o <outDir> <input>  → writes <outDir>/<model>/<track>/vocals.wav
-    // shell:true re-parses the command line, so paths with spaces (e.g. "C:\Users\Shoaib Khan\…")
-    // MUST be quoted or they get split into multiple args (local separation then fails 100%).
-    // demucsCmd itself is passed verbatim because it may be a multi-word command ("python -m demucs").
-    const proc = spawn(`${demucsCmd} --two-stems=vocals -o "${outDir}" "${inputAudioPath}"`, { shell: true })
+    // Argument ARRAY + no shell: outDir/input paths with spaces arrive as single args,
+    // and nothing in the configured command is ever interpreted by a shell.
+    const [exe, ...baseArgs] = parts
+    const proc = spawn(exe, [...baseArgs, '--two-stems=vocals', '-o', outDir, inputAudioPath])
     let err = ''
     proc.stderr.on('data', (d) => (err += d.toString()))
     proc.on('error', (e) => reject(new Error(`Could not run Demucs ("${demucsCmd}"): ${e.message}. Check the command in Settings.`)))

@@ -97,7 +97,7 @@ export async function generateImage(prompt: string, outPath: string, opts: Image
       return outPath
     } catch (err) {
       lastErr = err
-      if (opts.signal?.aborted) throw new Error('Render cancelled by user.')
+      if (opts.signal?.aborted) throw new Error('Render cancelled by user.', { cause: err })
       // Exponential-ish backoff (1s, 2s, 4s) to let a busy free queue recover.
       if (i < attempts - 1) await sleep(1000 * 2 ** i)
     }

@@ -43,17 +43,17 @@ async function getMatter(): Promise<{ model: unknown; processor: unknown; RawIma
   if (!matterPromise) {
     matterPromise = (async () => {
       let tf: {
-        env: { allowRemoteModels: boolean; allowLocalModels: boolean; cacheDir?: string }
-        AutoModel: { from_pretrained: (id: string) => Promise<unknown> }
-        AutoProcessor: { from_pretrained: (id: string) => Promise<unknown> }
+        env: { allowRemoteModels: boolean; allowLocalModels: boolean; cacheDir?: string | null }
+        AutoModel: { from_pretrained: (id: string, opts?: Record<string, unknown>) => Promise<unknown> }
+        AutoProcessor: { from_pretrained: (id: string, opts?: Record<string, unknown>) => Promise<unknown> }
         RawImage: unknown
       }
       try {
-        tf = (await import('@xenova/transformers')) as never
+        tf = (await import('@huggingface/transformers')) as never
       } catch {
         return null
       }
-      // Enable network fetch for THIS model only, then restore — the @xenova env is a
+      // Enable network fetch for THIS model only, then restore — the transformers env is a
       // process-wide singleton shared with the offline Whisper model, so leaving
       // allowRemoteModels=true would silently drop that "never touch the network" guarantee.
       const prevRemote = tf.env.allowRemoteModels
@@ -64,7 +64,9 @@ async function getMatter(): Promise<{ model: unknown; processor: unknown; RawIma
         const cacheDir = join(app.getPath('userData'), 'models-cache')
         if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true })
         tf.env.cacheDir = cacheDir
-        const model = await tf.AutoModel.from_pretrained('briaai/RMBG-1.4')
+        // dtype 'q8' = the small (~44 MB) model_quantized.onnx — same file the previous
+        // library version fetched, and already cached on machines that used this feature.
+        const model = await tf.AutoModel.from_pretrained('briaai/RMBG-1.4', { dtype: 'q8' })
         const processor = await tf.AutoProcessor.from_pretrained('briaai/RMBG-1.4')
         return { model, processor, RawImage: tf.RawImage }
       } catch {

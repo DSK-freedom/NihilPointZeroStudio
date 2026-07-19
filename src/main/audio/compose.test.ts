@@ -5,8 +5,7 @@ import {
   buildSfxFilter,
   MOODS,
   noteToFreq,
-  SFX_KINDS,
-  type Mood
+  SFX_KINDS
 } from './compose'
 
 describe('noteToFreq', () => {

@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { app } from 'electron'
-import { env, pipeline } from '@xenova/transformers'
+import { env, pipeline } from '@huggingface/transformers'
 import { ffmpegPath } from '../video/ffmpeg'
 
 /**
@@ -19,10 +19,13 @@ env.localModelPath = app.isPackaged
 
 // Lazily load the pipeline once and reuse it — the first call warms it (~1-2s),
 // later calls are fast. Kept as a promise so concurrent calls share one load.
+// dtype 'q8' is REQUIRED: it maps to the bundled *_quantized.onnx files (verified
+// against DEFAULT_DTYPE_SUFFIX_MAPPING in the installed package); the v4 default
+// (fp32) would look for model.onnx, which is deliberately not shipped.
 let transcriberPromise: Promise<unknown> | null = null
 function getTranscriber(): Promise<unknown> {
   if (!transcriberPromise) {
-    transcriberPromise = pipeline('automatic-speech-recognition', 'Xenova/whisper-base')
+    transcriberPromise = pipeline('automatic-speech-recognition', 'Xenova/whisper-base', { dtype: 'q8' })
   }
   return transcriberPromise
 }

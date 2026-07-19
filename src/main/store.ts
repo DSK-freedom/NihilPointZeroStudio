@@ -27,6 +27,7 @@ interface PersistedSettings {
   hordeKeyEnc: string | null
   mvsepTokenEnc: string | null
   demucsCmd: string
+  faceAnimCmd: string
   youtubeChannelId: string
 }
 
@@ -44,6 +45,7 @@ const DEFAULT_SETTINGS: PersistedSettings = {
   hordeKeyEnc: null,
   mvsepTokenEnc: null,
   demucsCmd: '',
+  faceAnimCmd: '',
   youtubeChannelId: 'UCLJDgGkwHZgrIfeiAWAwe2Q'
 }
 
@@ -145,6 +147,7 @@ export function getSettings(): ProviderSettings {
     hasHordeKey: !!s.hordeKeyEnc,
     hasMvsepToken: !!s.mvsepTokenEnc,
     demucsCmd: s.demucsCmd || '',
+    faceAnimCmd: s.faceAnimCmd || '',
     youtubeChannelId: s.youtubeChannelId || ''
   }
 }
@@ -240,6 +243,17 @@ export function setDemucsCmd(cmd: string): ProviderSettings {
 
 export function getDemucsCmd(): string {
   return readSettings().demucsCmd || ''
+}
+
+export function setFaceAnimCmd(cmd: string): ProviderSettings {
+  const s = readSettings()
+  s.faceAnimCmd = cmd || ''
+  writeSettings(s)
+  return getSettings()
+}
+
+export function getFaceAnimCmd(): string {
+  return readSettings().faceAnimCmd || ''
 }
 
 export function setYouTubeChannelId(id: string): ProviderSettings {

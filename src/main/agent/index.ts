@@ -196,7 +196,7 @@ export function buildAgentPrompt(command: string, ctx: { hasScriptPad: boolean }
     '- write_scriptpad puts text into the Script Pad ("append":true adds to what is there instead of replacing).',
     '- generate_music makes a standalone music bed; plan_scenes previews the scene breakdown of the script.',
     '- You can NEVER delete anything, change settings, or publish/upload — those are the user\'s alone.',
-    `- source "scriptpad" uses the user\'s saved Script Pad${ctx.hasScriptPad ? ' (it currently has text)' : ' (currently EMPTY — do not use it)'}.`,
+    `- source "scriptpad" uses the user's saved Script Pad${ctx.hasScriptPad ? ' (it currently has text)' : ' (currently EMPTY — do not use it)'}.`,
     '- source "text" requires you to put the actual narration in the "body" field.',
     '- Only include fields the user implied; omit the rest (the app uses sensible defaults: 1080p, cinematic, no music).',
     '- Keep the plan minimal and ordered. Do not repeat steps.',

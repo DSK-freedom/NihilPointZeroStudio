@@ -10,7 +10,7 @@
  * Phases use absolute `t` (continuous) while note selection uses cycle-local time.
  */
 
-import { MOODS, SFX_KINDS, type Mood, type SfxKind } from '../../shared/types'
+import { type Mood, type SfxKind } from '../../shared/types'
 export { MOODS, SFX_KINDS, type Mood, type SfxKind } from '../../shared/types'
 
 /** Equal-temperament frequency (Hz) for a MIDI note number. A4 (69) = 440 Hz. */

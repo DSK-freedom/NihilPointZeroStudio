@@ -17,7 +17,7 @@ import { MOODS, SFX_KINDS, type AudioClip, type DirectorAction, type DirectorInt
  * Pure + unit-tested. Returns null when nothing parseable is found.
  */
 /**
- * Repairs the JSON slips small local models make constantly: smart quotes, // and /* *​/
+ * Repairs the JSON slips small local models make constantly: smart quotes, line + block
  * comments, and trailing commas. Applied ONLY after a strict parse fails, so it can only
  * turn a would-be failure into a success — never corrupt already-valid JSON.
  */

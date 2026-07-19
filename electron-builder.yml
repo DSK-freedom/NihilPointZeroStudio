@@ -12,12 +12,14 @@ files:
   - "!**/node_modules/ffprobe-static/bin/linux/**"
   - "!**/node_modules/ffprobe-static/bin/win32/ia32/**"
   # onnxruntime-node likewise ships every platform's native runtime — keep only win32/x64.
-  - "!**/node_modules/onnxruntime-node/bin/napi-v3/darwin/**"
-  - "!**/node_modules/onnxruntime-node/bin/napi-v3/linux/**"
-  - "!**/node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/**"
-  # onnxruntime-web must stay installed (statically imported by @xenova/transformers, and its
-  # main entry dist/ort-web.node.js is JS) — but its browser wasm payload and source maps are
-  # never used in the Electron main process. ~47 MB.
+  # (napi-v* wildcard: the folder name tracks the N-API version and moved v3 → v6 with
+  # onnxruntime 1.24; the wildcard survives future bumps.)
+  - "!**/node_modules/onnxruntime-node/bin/napi-v*/darwin/**"
+  - "!**/node_modules/onnxruntime-node/bin/napi-v*/linux/**"
+  - "!**/node_modules/onnxruntime-node/bin/napi-v*/win32/arm64/**"
+  # onnxruntime-web must stay installed (statically imported by @huggingface/transformers,
+  # via a JS entry) — but its browser wasm payload and source maps are never used in the
+  # Electron main process. ~100+ MB.
   - "!**/node_modules/onnxruntime-web/dist/*.wasm"
   - "!**/node_modules/onnxruntime-web/**/*.map"
 # Native/CLI binaries and pdfjs workers cannot be executed/loaded from inside the
@@ -42,6 +44,19 @@ extraResources:
   # DJ station is instantly full on first launch. Lands at <resources>/audio-pack.
   - from: resources/audio-pack
     to: audio-pack
+# ---- CODE SIGNING (currently OFF — activate to pass Smart App Control/SmartScreen) ----
+# The permanent fix for Windows trust: sign every build with Azure Trusted Signing
+# (~$10/month, individual identity validation). Once the Azure account + certificate
+# profile exist, uncomment the block below, fill in the four values, and set the
+# AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET environment variables before
+# `npm run dist:win`. Full walkthrough: docs/SIGNING.md.
+#
+# win:
+#   azureSignOptions:
+#     publisherName: <your name as validated by Azure>
+#     endpoint: https://weu.codesigning.azure.net   # your Trusted Signing region endpoint
+#     certificateProfileName: <profile name>
+#     codeSigningAccountName: <account name>
 win:
   # Two flavors from one build:
   #   portable — the classic single exe that travels on a USB with its data folder.

@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [hordeKey, setHordeKey] = useState('')
   const [mvsepToken, setMvsepToken] = useState('')
   const [demucsCmd, setDemucsCmd] = useState('')
+  const [faceAnimCmd, setFaceAnimCmd] = useState('')
   const [ytChannel, setYtChannel] = useState('')
   const [piperInstalled, setPiperInstalled] = useState(false)
   const [piperBusy, setPiperBusy] = useState(false)
@@ -37,6 +38,7 @@ export default function SettingsPage() {
     window.api.settings.get().then((s) => {
       setSettings(s)
       setDemucsCmd(s.demucsCmd || '')
+      setFaceAnimCmd(s.faceAnimCmd || '')
       setYtChannel(s.youtubeChannelId || '')
     })
     checkOllama()
@@ -157,6 +159,13 @@ export default function SettingsPage() {
   async function handleSaveDemucsCmd(): Promise<void> {
     await window.api.settings.setDemucsCmd(demucsCmd.trim())
     setStatus('Local Demucs command saved.')
+    await refresh()
+    setTimeout(() => setStatus(null), 2500)
+  }
+
+  async function handleSaveFaceAnimCmd(): Promise<void> {
+    await window.api.settings.setFaceAnimCmd(faceAnimCmd.trim())
+    setStatus('Face-animation command saved — the graft mode will use it first.')
     await refresh()
     setTimeout(() => setStatus(null), 2500)
   }
@@ -510,6 +519,37 @@ export default function SettingsPage() {
           />
           <button
             onClick={handleSaveDemucsCmd}
+            className="rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 font-medium px-4 py-2 text-sm transition-colors"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-ink-100 font-medium">Face animation — local (optional, for the ✨ Living Picture graft)</span>
+          <span className={`text-xs ${settings.faceAnimCmd ? 'text-emerald-400' : 'text-ink-500'}`}>
+            {settings.faceAnimCmd ? 'Command set' : 'Built-in graft in use'}
+          </span>
+        </div>
+        <p className="text-xs text-ink-500">
+          The Living Picture graft works out of the box with the built-in engine. For FULL-quality face
+          animation, install a free local tool (e.g. Wav2Lip or SadTalker — Python, one-time, needs a decent
+          GPU) and enter its command using <code>{'{photo}'}</code> <code>{'{video}'}</code> <code>{'{audio}'}</code>{' '}
+          <code>{'{out}'}</code> placeholders. Example:{' '}
+          <code>{'python inference.py --face {photo} --audio {audio} --outfile {out}'}</code>. If the tool fails,
+          the build automatically falls back to the built-in graft — a render never breaks.
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={faceAnimCmd}
+            onChange={(e) => setFaceAnimCmd(e.target.value)}
+            placeholder="python inference.py --face {photo} --audio {audio} --outfile {out}"
+            className="flex-1 rounded-md bg-ink-800 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
+          />
+          <button
+            onClick={handleSaveFaceAnimCmd}
             className="rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 font-medium px-4 py-2 text-sm transition-colors"
           >
             Save

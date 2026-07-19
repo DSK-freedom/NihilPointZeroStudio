@@ -23,6 +23,12 @@ export interface ProviderSettings {
   hasMvsepToken: boolean
   /** Optional local Demucs command/path for offline music separation. */
   demucsCmd: string
+  /**
+   * Optional local face-animation tool for the Presenter GRAFT mode (full-quality
+   * "living picture"). A command template with {photo} {video} {audio} {out}
+   * placeholders; when unset, the built-in ffmpeg graft is used.
+   */
+  faceAnimCmd: string
   /** The user's YouTube channel ID, used to deep-link the upload page. */
   youtubeChannelId: string
 }
@@ -480,6 +486,27 @@ export interface TimelineDoc {
 
 // ─────────────────────────── Storyboard Director ───────────────────────────
 /** Who/what is on screen for a beat. The user keeps their REAL face via 'photo'/'clip'. */
+/**
+ * GRAFT region — how the moving part of the user's video is composited onto their
+ * picture ("living picture"). All values normalized 0..1 of the respective frame.
+ */
+export interface GraftRegion {
+  /** Source rect in the VIDEO (top-left x/y + width/height). */
+  sx: number
+  sy: number
+  sw: number
+  sh: number
+  /** Destination on the PICTURE frame: top-left x/y + width (height follows the source aspect). */
+  dx: number
+  dy: number
+  dw: number
+  /** Edge feather as a fraction of the grafted part's width (0 = hard cut). */
+  featherFrac: number
+  /** Colour tweak so the part sits naturally on the picture. */
+  brightness: number
+  saturation: number
+}
+
 export type ShotSubjectKind = 'none' | 'photo' | 'clip' | 'ai-person'
 
 export interface ShotSubject {

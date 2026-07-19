@@ -34,10 +34,33 @@ export function getWebServerStatus(): WebServerStatus {
 function authed(req: IncomingMessage): boolean {
   try {
     const url = new URL(req.url ?? '', 'http://x')
+    // Query param opens the page (it's the link the user taps); the page's own API
+    // calls then send the token in the X-Token header instead of the URL.
     return url.searchParams.get('t') === token || req.headers['x-token'] === token
   } catch {
     return false
   }
+}
+
+/**
+ * Small per-IP sliding-window rate limit on the generation endpoints, so a LAN host
+ * that somehow obtained the URL can't burn the AI keys/quota in a loop. Generous for
+ * one human on a phone; tight for a script.
+ */
+const RATE_WINDOW_MS = 5 * 60_000
+const RATE_MAX = 30
+const rateHits = new Map<string, number[]>()
+function rateLimited(req: IncomingMessage): boolean {
+  const ip = req.socket.remoteAddress ?? 'unknown'
+  const now = Date.now()
+  const hits = (rateHits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS)
+  if (hits.length >= RATE_MAX) {
+    rateHits.set(ip, hits)
+    return true
+  }
+  hits.push(now)
+  rateHits.set(ip, hits)
+  return false
 }
 
 function readBody(req: IncomingMessage): Promise<unknown> {
@@ -84,13 +107,19 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '', 'http://x')
   const path = url.pathname
 
+  // EVERYTHING requires the token now — including the page itself, so a random LAN
+  // host hitting the bare IP:port learns nothing. The link the app shows carries ?t=.
+  if (!authed(req)) {
+    sendJson(res, 401, { error: 'Unauthorized — open the exact link shown in the app (it includes its key).' })
+    return
+  }
   if (path === '/' || path === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
     res.end(MOBILE_PAGE)
     return
   }
-  if (!authed(req)) {
-    sendJson(res, 401, { error: 'Unauthorized — open the link with its token.' })
+  if (path.startsWith('/api/') && rateLimited(req)) {
+    sendJson(res, 429, { error: 'Too many requests — wait a few minutes and try again.' })
     return
   }
   if (path === '/api/library' && req.method === 'GET') {
@@ -127,7 +156,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
 
 export async function startWebServer(): Promise<WebServerStatus> {
   if (server) return getWebServerStatus()
-  token = randomBytes(9).toString('base64url')
+  token = randomBytes(12).toString('base64url')
   server = createServer((req, res) => {
     route(req, res).catch((err) => {
       if (!res.headersSent) sendJson(res, 500, { error: err instanceof Error ? err.message : 'Server error' })
@@ -139,7 +168,9 @@ export async function startWebServer(): Promise<WebServerStatus> {
     server!.listen(0, '0.0.0.0', () => resolve())
   })
   boundPort = (server.address() as AddressInfo).port
-  logActivity('user', 'Started phone web-view server', getWebServerStatus().url ?? '')
+  // Log WITHOUT the token — the activity log is persistent, and a secret written to a
+  // log isn't a secret. The full tokenized link lives only in the Settings UI.
+  logActivity('user', 'Started phone web-view server', `http://${lanIp()}:${boundPort}`)
   return getWebServerStatus()
 }
 

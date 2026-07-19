@@ -128,7 +128,7 @@ export default function VoiceRecorder({ job, onDone }: { job: VideoJob; onDone: 
     void beginRecording()
   }
 
-  async function useTake(mode: 'replace' | 'add'): Promise<void> {
+  async function applyTake(mode: 'replace' | 'add'): Promise<void> {
     if (!take) return
     setBusy(true)
     setError(null)
@@ -188,10 +188,10 @@ export default function VoiceRecorder({ job, onDone }: { job: VideoJob; onDone: 
           <div className="rounded-md border border-ink-700 bg-ink-950 p-2">
             <div className="text-[11px] text-ink-400 mb-1">Use this voice-over:</div>
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => void useTake('replace')} disabled={busy} className="rounded-md bg-gold-500 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-gold-400 disabled:opacity-40">
+              <button onClick={() => void applyTake('replace')} disabled={busy} className="rounded-md bg-gold-500 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-gold-400 disabled:opacity-40">
                 Replace the video’s narration
               </button>
-              <button onClick={() => void useTake('add')} disabled={busy} className="rounded-md border border-gold-500/60 px-3 py-1.5 text-xs font-medium text-gold-300 hover:bg-gold-500/10 disabled:opacity-40">
+              <button onClick={() => void applyTake('add')} disabled={busy} className="rounded-md border border-gold-500/60 px-3 py-1.5 text-xs font-medium text-gold-300 hover:bg-gold-500/10 disabled:opacity-40">
                 Keep existing audio + add my voice
               </button>
             </div>

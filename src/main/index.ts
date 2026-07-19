@@ -66,7 +66,13 @@ function createWindow(): void {
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      // Set explicitly (not left to Electron's defaults) so the security posture can't
+      // silently change across framework upgrades. The renderer only ever loads our own
+      // local files, and the preload uses ONLY contextBridge + ipcRenderer (both fully
+      // sandbox-compatible), so the Chromium sandbox stays ON as defence in depth.
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false
     }
   })
 

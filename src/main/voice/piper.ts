@@ -55,12 +55,20 @@ async function downloadFile(url: string, dest: string, onFrac?: (frac: number) =
   await new Promise<void>((resolve) => ws.end(() => resolve()))
 }
 
+/** Doubles single quotes so a value is safe inside a PowerShell single-quoted string. */
+function psQuote(s: string): string {
+  return s.replace(/'/g, "''")
+}
+
 function extractZip(zipPath: string, destDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Paths are app-controlled (userData) today, but escape them anyway — same
+    // single-quote-doubling discipline as voiceover.ts, so this can never become an
+    // injection point if the inputs ever turn user-influenced.
     const p = spawn('powershell.exe', [
       '-NoProfile',
       '-Command',
-      `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${destDir}' -Force`
+      `Expand-Archive -LiteralPath '${psQuote(zipPath)}' -DestinationPath '${psQuote(destDir)}' -Force`
     ])
     let err = ''
     p.stderr.on('data', (d) => (err = (err + d.toString()).slice(-500)))

@@ -76,7 +76,10 @@ export const MOBILE_PAGE = `<!doctype html>
 </main>
 <script>
   var T = new URLSearchParams(location.search).get('t') || '';
-  function q(u){ return u + (u.indexOf('?')<0?'?':'&') + 't=' + encodeURIComponent(T); }
+  // The token travels in the X-Token HEADER for every API call (headers don't end up in
+  // proxies' URL logs or browser history the way query strings do). It stays in the page
+  // URL only as the entry key, so a refresh still works.
+  function hdrs(extra){ var h = { 'X-Token': T }; if (extra) for (var k in extra) h[k] = extra[k]; return h; }
   function tab(n){
     ['ideas','writer','advisor'].forEach(function(x){
       document.getElementById('s-'+x).classList.toggle('hidden', x!==n);
@@ -85,7 +88,7 @@ export const MOBILE_PAGE = `<!doctype html>
   }
   function esc(s){ return (s||'').replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
   async function post(path, body){
-    var r = await fetch(q(path), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    var r = await fetch(path, { method:'POST', headers:hdrs({'Content-Type':'application/json'}), body: JSON.stringify(body) });
     if(!r.ok) throw new Error((await r.json().catch(function(){return{}})).error || ('HTTP '+r.status));
     return r.json();
   }
@@ -120,7 +123,7 @@ export const MOBILE_PAGE = `<!doctype html>
     bubble.innerHTML = '<div class="muted">Advisor</div><pre></pre>'; log.appendChild(bubble);
     var pre = bubble.querySelector('pre'); var acc='';
     try {
-      var r = await fetch(q('/api/advisor'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ messages: convo }) });
+      var r = await fetch('/api/advisor', { method:'POST', headers:hdrs({'Content-Type':'application/json'}), body: JSON.stringify({ messages: convo }) });
       var reader = r.body.getReader(); var dec = new TextDecoder();
       while(true){ var x = await reader.read(); if(x.done) break; acc += dec.decode(x.value, {stream:true}); pre.textContent = acc; window.scrollTo(0, document.body.scrollHeight); }
       convo.push({role:'assistant', content:acc});

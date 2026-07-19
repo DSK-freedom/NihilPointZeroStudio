@@ -34,6 +34,8 @@ import { extractJson } from './director'
 import { buildStoryboardPrompt, sanitizeStoryboard } from './video/storyboard'
 import { renderStoryboard } from './video/storyboardRender'
 import { planPresenterStoryboard, type PresenterMode } from './video/presenter'
+import { renderGraftPreview, renderGraftVideo, runGraftTool, sanitizeGraftRegion } from './video/graft'
+import type { GraftRegion } from '../shared/types'
 import { buildEnhanceArgs } from './video/enhance'
 import { generateSceneImage, planScenes } from './scene'
 import { downloadPiper, isPiperInstalled } from './voice/piper'
@@ -87,10 +89,12 @@ import {
   getHordeApiKey,
   getModel,
   getMvsepToken,
+  getFaceAnimCmd,
   getScriptPad,
   getSettings,
   getYouTubeChannelId,
   setDemucsCmd,
+  setFaceAnimCmd,
   setDraft,
   setHordeApiKey,
   setMvsepToken,
@@ -468,7 +472,7 @@ export function registerIpcHandlers(): void {
     const flat = `${system}\n\n${messages
       .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
       .join('\n\n')}\n\nASSISTANT:`
-    let reply = ''
+    let reply: string
     if (settings.activeProvider === 'ollama') {
       const turns: ChatTurn[] = [{ role: 'system', content: system }, ...messages]
       try {
@@ -521,7 +525,7 @@ export function registerIpcHandlers(): void {
       `Timeline editor. Keep replies tight unless asked for depth.`
     const msgs = Array.isArray(messages) ? messages : []
     const flat = `${system}\n\n${msgs.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')}\n\nASSISTANT:`
-    let reply = ''
+    let reply: string
     try {
       if (settings.activeProvider === 'ollama') {
         const turns: ChatTurn[] = [{ role: 'system', content: system }, ...msgs]
@@ -1079,6 +1083,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.settingsSetHordeKey, (_e, key: string) => setHordeApiKey(key))
   ipcMain.handle(IPC.settingsSetMvsepToken, (_e, key: string) => setMvsepToken(key))
   ipcMain.handle(IPC.settingsSetDemucsCmd, (_e, cmd: string) => setDemucsCmd(cmd))
+  ipcMain.handle(IPC.settingsSetFaceAnimCmd, (_e, cmd: string) => setFaceAnimCmd(cmd))
 
   // OUTSIDE videos: remove the background music by AI-separating the audio and keeping
   // only the vocals/narration. engine 'online' (MVSEP, free token) or 'local' (Demucs).
@@ -1465,13 +1470,24 @@ export function registerIpcHandlers(): void {
     IPC.presenterBuild,
     async (
       e,
-      params: { title: string; body: string; mode: PresenterMode; presenterPath?: string; style?: VideoStyle; everyN?: number; windowsVoice?: boolean }
+      params: {
+        title: string
+        body: string
+        mode: PresenterMode
+        presenterPath?: string
+        graftPhotoPath?: string
+        graftRegion?: GraftRegion
+        style?: VideoStyle
+        everyN?: number
+        windowsVoice?: boolean
+      }
     ) => {
       if (!params.body?.trim()) return { ok: false, error: 'Paste your script first.' }
       const mode = params.mode
       const realVoice = mode === 'video' || mode === 'graft'
       if (realVoice && !params.presenterPath) return { ok: false, error: 'Upload your narration video first (or use the Photo presenter).' }
       if (mode === 'photo' && !params.presenterPath) return { ok: false, error: 'Choose your photo first (or use the Video presenter).' }
+      if (mode === 'graft' && !params.graftPhotoPath) return { ok: false, error: 'Choose the picture to graft onto (the one where you look your best).' }
       const id = randomUUID()
       const assetDir = join(videosDir(), 'presenter', id)
       mkdirSync(assetDir, { recursive: true })
@@ -1492,6 +1508,42 @@ export function registerIpcHandlers(): void {
         } else {
           photoPath = params.presenterPath
         }
+        // GRAFT: turn (your video + your best picture) into a "living picture" ONCE, then
+        // the rest of the pipeline consumes it exactly like normal presenter footage. The
+        // voice was already extracted from the ORIGINAL video above, so nothing about the
+        // master audio changes. Engine order: optional local AI tool → built-in ffmpeg
+        // graft → (on total failure) your raw clip, so a build never breaks.
+        if (mode === 'graft' && presenterSrc) {
+          const graftPhoto = join(assetDir, `graft-photo${extname(params.graftPhotoPath as string) || '.jpg'}`)
+          copyFileSync(params.graftPhotoPath as string, graftPhoto)
+          const region = sanitizeGraftRegion(params.graftRegion)
+          const grafted = join(assetDir, 'living-picture.mp4')
+          let done = false
+          const toolCmd = getFaceAnimCmd()
+          if (toolCmd) {
+            emit('Running your local face-animation tool (full-quality graft)…')
+            done = await runGraftTool(toolCmd, { photo: graftPhoto, video: presenterSrc, audio: masterAudioSrc, out: grafted }, emit)
+          }
+          if (!done) {
+            emit('Grafting the moving part of your video onto your picture…')
+            try {
+              await renderGraftVideo({
+                photoPath: graftPhoto,
+                videoPath: presenterSrc,
+                region,
+                width: 1920,
+                height: 1080,
+                fps: 25,
+                outPath: grafted,
+                onProgress: emit
+              })
+              done = existsSync(grafted)
+            } catch (err) {
+              emit(`Graft failed (${err instanceof Error ? err.message : 'error'}) — using your raw footage instead.`)
+            }
+          }
+          if (done) presenterSrc = grafted
+        }
         const doc = planPresenterStoryboard({
           title: params.title, body: params.body, mode, style: params.style, everyN: params.everyN,
           presenterSrc, voiceTrackSeconds, masterAudioSrc, width: 1920, height: 1080, fps: 25
@@ -1509,6 +1561,30 @@ export function registerIpcHandlers(): void {
         return { ok: true, video: job, timeline }
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : 'Presenter build failed.' }
+      }
+    }
+  )
+
+  // GRAFT: one composited "living picture" frame so the region sliders give instant,
+  // honest feedback (this exact pixel result is what the full render produces).
+  ipcMain.handle(
+    IPC.graftPreview,
+    async (_e, params: { photoPath: string; videoPath: string; region?: GraftRegion; atSec?: number }) => {
+      if (!params?.photoPath || !params?.videoPath) return { ok: false, error: 'Pick both the picture and the video first.' }
+      try {
+        const outPng = join(tmpdir(), `npz-graft-preview-${Date.now().toString(36)}.png`)
+        await renderGraftPreview({
+          photoPath: params.photoPath,
+          videoPath: params.videoPath,
+          region: sanitizeGraftRegion(params.region),
+          width: 1280,
+          height: 720,
+          atSec: Math.max(0, params.atSec ?? 1),
+          outPng
+        })
+        return { ok: true, path: outPng }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'Preview failed.' }
       }
     }
   )

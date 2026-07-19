@@ -15,7 +15,6 @@ import { attachVoiceover, computeLayout, renderVideo, type VideoResolution } fro
 import { buildStockBackground } from './stockBackground'
 import { buildExportArgs, type ExportFormat } from './export'
 import { buildTrimArgs, clampRange, type TrimMode } from './trim'
-import { renderThumbnail } from './thumbnail'
 import { buildStitchArgs } from './stitch'
 import { buildSetMusicArgs, type MusicMode } from './music'
 import { buildTimelineArgs, videoTrackDuration } from './timeline'

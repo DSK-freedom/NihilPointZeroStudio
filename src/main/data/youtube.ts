@@ -24,16 +24,19 @@ export async function searchYouTubeSignals(query: string, maxResults = 8): Promi
   if (!apiKey || !query.trim()) return []
 
   try {
-    const searchUrl = `${BASE_URL}/search?part=snippet&type=video&order=relevance&maxResults=${maxResults}&q=${encodeURIComponent(query)}&key=${apiKey}`
-    const searchRes = await fetch(searchUrl, { signal: AbortSignal.timeout(20_000) })
+    // Key travels in the X-Goog-Api-Key HEADER, not the URL — URLs get logged by
+    // proxies/intermediaries; headers don't.
+    const keyHeader = { 'X-Goog-Api-Key': apiKey }
+    const searchUrl = `${BASE_URL}/search?part=snippet&type=video&order=relevance&maxResults=${maxResults}&q=${encodeURIComponent(query)}`
+    const searchRes = await fetch(searchUrl, { headers: keyHeader, signal: AbortSignal.timeout(20_000) })
     if (!searchRes.ok) return []
     const searchData = await searchRes.json()
     const items: YouTubeSearchItem[] = Array.isArray(searchData.items) ? searchData.items : []
     const ids = items.map((it) => it.id?.videoId).filter((id): id is string => !!id)
     if (!ids.length) return []
 
-    const statsUrl = `${BASE_URL}/videos?part=statistics&id=${ids.join(',')}&key=${apiKey}`
-    const statsRes = await fetch(statsUrl, { signal: AbortSignal.timeout(20_000) })
+    const statsUrl = `${BASE_URL}/videos?part=statistics&id=${ids.join(',')}`
+    const statsRes = await fetch(statsUrl, { headers: keyHeader, signal: AbortSignal.timeout(20_000) })
     const statsData = statsRes.ok ? await statsRes.json() : { items: [] }
     const viewsById = new Map<string, number>()
     for (const it of (statsData.items ?? []) as YouTubeVideoStatsItem[]) {

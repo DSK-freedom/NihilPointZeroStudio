@@ -20,6 +20,7 @@ const api = {
     setHordeKey: (key: string) => ipcRenderer.invoke(IPC.settingsSetHordeKey, key),
     setMvsepToken: (key: string) => ipcRenderer.invoke(IPC.settingsSetMvsepToken, key),
     setDemucsCmd: (cmd: string) => ipcRenderer.invoke(IPC.settingsSetDemucsCmd, cmd),
+    setFaceAnimCmd: (cmd: string) => ipcRenderer.invoke(IPC.settingsSetFaceAnimCmd, cmd),
     ollamaStatus: () => ipcRenderer.invoke(IPC.ollamaStatus)
   },
   ideas: {
@@ -94,11 +95,23 @@ const api = {
       body: string
       mode: 'video' | 'photo' | 'graft'
       presenterPath?: string
+      /** GRAFT mode: the picture the video's moving part is composited onto. */
+      graftPhotoPath?: string
+      /** GRAFT mode: where the moving part is taken from and where it lands. */
+      graftRegion?: import('../shared/types').GraftRegion
       style?: import('../shared/types').VideoStyle
       everyN?: number
       windowsVoice?: boolean
     }): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; error?: string }> =>
-      ipcRenderer.invoke(IPC.presenterBuild, params)
+      ipcRenderer.invoke(IPC.presenterBuild, params),
+    // One composited "living picture" frame for the graft region controls (instant feedback).
+    graftPreview: (params: {
+      photoPath: string
+      videoPath: string
+      region: import('../shared/types').GraftRegion
+      atSec?: number
+    }): Promise<{ ok: boolean; path?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.graftPreview, params)
   },
   // In-app Recorder: list screen/window sources (screen capture) + save a recording to Video Studio.
   recorder: {

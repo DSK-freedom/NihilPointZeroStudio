@@ -1,0 +1,118 @@
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import type { GeneratedScript, LanguageMix, ScriptLength, ScriptStyle, VideoIdea } from '../../../shared/types'
+import type { SaveStatus } from '../hooks/useAutosave'
+
+/**
+ * App-level state that must survive tab navigation. The provider lives above the
+ * router in App, so switching pages does not unmount it — inputs and last results
+ * persist. Nothing here is ever reset automatically: the only resets are the
+ * explicit user-triggered clearIdeas()/clearWriter() functions, wired solely to
+ * the per-tab "Clear" buttons.
+ */
+
+export interface IdeasState {
+  focusArea: string
+  audienceNote: string
+  count: number
+  ideas: VideoIdea[]
+}
+
+export interface WriterState {
+  topic: string
+  ideaContext: string
+  audienceNote: string
+  verifiedData: string
+  length: ScriptLength
+  languageMix: LanguageMix
+  styles: ScriptStyle[]
+  script: GeneratedScript | null
+  body: string
+  thumbnailBrief: string | null
+}
+
+const DEFAULT_IDEAS: IdeasState = {
+  focusArea: 'Pakistan economy & personal finance',
+  audienceNote: '',
+  count: 5,
+  ideas: []
+}
+
+const DEFAULT_WRITER: WriterState = {
+  topic: '',
+  ideaContext: '',
+  audienceNote: '',
+  verifiedData: '',
+  length: 'long',
+  languageMix: 'balanced',
+  styles: ['standard'],
+  script: null,
+  body: '',
+  thumbnailBrief: null
+}
+
+interface StudioContextValue {
+  ideas: IdeasState
+  setIdeas: (patch: Partial<IdeasState>) => void
+  clearIdeas: () => void
+  writer: WriterState
+  setWriter: (patch: Partial<WriterState>) => void
+  clearWriter: () => void
+  /** Autosave status for a "Saving…/Saved ✓" indicator. */
+  saveStatus: SaveStatus
+}
+
+const StudioContext = createContext<StudioContextValue | null>(null)
+const DRAFT_KEY = 'studio'
+
+export function StudioProvider({ children }: { children: ReactNode }) {
+  const [ideas, setIdeasState] = useState<IdeasState>(DEFAULT_IDEAS)
+  const [writer, setWriterState] = useState<WriterState>(DEFAULT_WRITER)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const loaded = useRef(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Restore the last session once on startup — so Ideas & Writer survive close/restart.
+  useEffect(() => {
+    void (async () => {
+      try {
+        const d = await window.api.drafts.get(DRAFT_KEY)
+        const cur = d?.current as { ideas?: IdeasState; writer?: WriterState } | undefined
+        if (cur?.ideas) setIdeasState((p) => ({ ...p, ...cur.ideas }))
+        if (cur?.writer) setWriterState((p) => ({ ...p, ...cur.writer }))
+      } finally {
+        loaded.current = true
+      }
+    })()
+  }, [])
+
+  // Autosave (debounced) whenever Ideas/Writer change.
+  useEffect(() => {
+    if (!loaded.current) return
+    setSaveStatus('saving')
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      void window.api.drafts.set(DRAFT_KEY, { ideas, writer }).then(() => setSaveStatus('saved'))
+    }, 600)
+    return () => {
+      if (timer.current) clearTimeout(timer.current)
+    }
+  }, [ideas, writer])
+
+  const value: StudioContextValue = {
+    ideas,
+    setIdeas: (patch) => setIdeasState((prev) => ({ ...prev, ...patch })),
+    clearIdeas: () => setIdeasState(DEFAULT_IDEAS),
+    writer,
+    setWriter: (patch) => setWriterState((prev) => ({ ...prev, ...patch })),
+    clearWriter: () => setWriterState(DEFAULT_WRITER),
+    saveStatus
+  }
+
+  return <StudioContext.Provider value={value}>{children}</StudioContext.Provider>
+}
+
+export function useStudio(): StudioContextValue {
+  const ctx = useContext(StudioContext)
+  if (!ctx) throw new Error('useStudio must be used within StudioProvider')
+  return ctx
+}

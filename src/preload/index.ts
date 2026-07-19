@@ -1,0 +1,408 @@
+import { contextBridge, ipcRenderer } from 'electron'
+import { IPC } from '../shared/ipc-channels'
+import type {
+  AdvisorRequest,
+  IdeaGenRequest,
+  LLMProviderId,
+  LibraryEntry,
+  ScriptGenRequest,
+  VideoBuildRequest
+} from '../shared/types'
+
+const api = {
+  settings: {
+    get: () => ipcRenderer.invoke(IPC.settingsGet),
+    setProvider: (provider: LLMProviderId) => ipcRenderer.invoke(IPC.settingsSetProvider, provider),
+    setModel: (provider: LLMProviderId, model: string) => ipcRenderer.invoke(IPC.settingsSetModel, provider, model),
+    setApiKey: (provider: LLMProviderId, key: string) => ipcRenderer.invoke(IPC.settingsSetApiKey, provider, key),
+    setYouTubeKey: (key: string) => ipcRenderer.invoke(IPC.settingsSetYouTubeKey, key),
+    setYouTubeChannel: (id: string) => ipcRenderer.invoke(IPC.settingsSetYouTubeChannel, id),
+    setHordeKey: (key: string) => ipcRenderer.invoke(IPC.settingsSetHordeKey, key),
+    setMvsepToken: (key: string) => ipcRenderer.invoke(IPC.settingsSetMvsepToken, key),
+    setDemucsCmd: (cmd: string) => ipcRenderer.invoke(IPC.settingsSetDemucsCmd, cmd),
+    ollamaStatus: () => ipcRenderer.invoke(IPC.ollamaStatus)
+  },
+  ideas: {
+    generate: (req: IdeaGenRequest) => ipcRenderer.invoke(IPC.ideasGenerate, req)
+  },
+  script: {
+    generate: (req: ScriptGenRequest) => ipcRenderer.invoke(IPC.scriptGenerate, req),
+    generateVoiceover: (text: string, suggestedName: string) =>
+      ipcRenderer.invoke(IPC.voiceoverGenerate, text, suggestedName),
+    generateThumbnail: (topic: string, title: string) =>
+      ipcRenderer.invoke(IPC.thumbnailGenerate, topic, title),
+    // Renders an actual thumbnail PNG from a headline + style; returns its file path.
+    renderThumbnail: (
+      headline: string,
+      style: import('../shared/types').VideoStyle,
+      bgImage?: string
+    ): Promise<string> => ipcRenderer.invoke(IPC.thumbnailRender, headline, style, bgImage),
+    saveThumbnail: (srcPath: string): Promise<{ saved: boolean; path?: string }> =>
+      ipcRenderer.invoke(IPC.thumbnailSave, srcPath),
+    // Subscribe to feature-length chaptering progress. Returns an unsubscribe fn —
+    // the caller must call it when generation ends to avoid piling up listeners.
+    onProgress: (cb: (stage: string) => void) => {
+      const listener = (_e: unknown, stage: string): void => cb(stage)
+      ipcRenderer.on(IPC.scriptProgress, listener)
+      return () => ipcRenderer.removeListener(IPC.scriptProgress, listener)
+    }
+  },
+  library: {
+    list: () => ipcRenderer.invoke(IPC.libraryList),
+    save: (entry: Omit<LibraryEntry, 'id' | 'savedAt'>) => ipcRenderer.invoke(IPC.librarySave, entry),
+    remove: (id: string) => ipcRenderer.invoke(IPC.libraryDelete, id)
+  },
+  exportText: (suggestedName: string, content: string) => ipcRenderer.invoke(IPC.exportText, suggestedName, content),
+  data: {
+    importFile: () => ipcRenderer.invoke(IPC.dataImportFile),
+    chartPriceFile: (): Promise<{ canceled: boolean; series?: import('../shared/types').PriceSeries; name?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.chartPriceFile),
+    fetchPsxDocument: (url: string) => ipcRenderer.invoke(IPC.dataFetchPsxDocument, url),
+    correlateFlowPrice: () => ipcRenderer.invoke(IPC.dataCorrelateFlowPrice)
+  },
+  // LIVE PSX data portal (dps.psx.com.pk) — fetch real EOD history, analyse it in-app
+  // with the tested math, export Excel, and generate a reasoned narration script.
+  psx: {
+    analyze: (symbol: string): Promise<{ ok: boolean; analysis?: import('../shared/types').PsxLiveAnalysis; summary?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.psxLiveAnalyze, symbol),
+    excel: (symbol: string): Promise<{ saved: boolean; path?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.psxLiveExcel, symbol),
+    script: (
+      symbol: string,
+      directives?: { instruction?: string; language?: string; style?: string }
+    ): Promise<{ ok: boolean; title?: string; script?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.psxLiveScript, symbol, directives),
+    series: (symbol: string): Promise<{ ok: boolean; series?: import('../shared/types').PriceSeries; name?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.psxLiveSeries, symbol)
+  },
+  // Generic: turn already-computed figures (e.g. an uploaded NCCPL FIPI/LIPI analysis) into a
+  // narration script, in the requested language/instruction. Used by the NCCPL tab.
+  analysis: {
+    script: (
+      kind: 'technical' | 'financial' | 'flow',
+      subject: string,
+      figures: string,
+      directives?: { instruction?: string; language?: string; style?: string }
+    ): Promise<{ ok: boolean; title?: string; script?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.analysisScript, kind, subject, figures, directives)
+  },
+  // Presenter: put YOU in the video (your real footage or photo) + theme b-roll + AI scenes.
+  presenter: {
+    pickVideo: (): Promise<string | null> => ipcRenderer.invoke(IPC.presenterPickVideo),
+    build: (params: {
+      title: string
+      body: string
+      mode: 'video' | 'photo' | 'graft'
+      presenterPath?: string
+      style?: import('../shared/types').VideoStyle
+      everyN?: number
+      windowsVoice?: boolean
+    }): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; error?: string }> =>
+      ipcRenderer.invoke(IPC.presenterBuild, params)
+  },
+  // In-app Recorder: list screen/window sources (screen capture) + save a recording to Video Studio.
+  recorder: {
+    screenSources: (): Promise<{ id: string; name: string; thumbnail: string }[]> =>
+      ipcRenderer.invoke(IPC.recorderScreenSources),
+    save: (bytes: Uint8Array, kind: string, enhance?: boolean): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; error?: string }> =>
+      ipcRenderer.invoke(IPC.recorderSave, bytes, kind, enhance)
+  },
+  activity: {
+    list: () => ipcRenderer.invoke(IPC.activityList),
+    clear: () => ipcRenderer.invoke(IPC.activityClear)
+  },
+  advisor: {
+    send: (req: AdvisorRequest) => ipcRenderer.invoke(IPC.advisorSend, req),
+    history: () => ipcRenderer.invoke(IPC.advisorHistory),
+    remove: (id: string) => ipcRenderer.invoke(IPC.advisorDelete, id),
+    clear: () => ipcRenderer.invoke(IPC.advisorClear),
+    // Live token stream during a send(); returns an unsubscribe fn (mirrors script.onProgress).
+    onStream: (cb: (delta: string) => void) => {
+      const listener = (_e: unknown, delta: string): void => cb(delta)
+      ipcRenderer.on(IPC.advisorStream, listener)
+      return () => ipcRenderer.removeListener(IPC.advisorStream, listener)
+    }
+  },
+  video: {
+    build: (req: VideoBuildRequest) => ipcRenderer.invoke(IPC.videoBuild, req),
+    // Replace the video's audio with the recorded voice.
+    attachVoice: (videoId: string, audioBytes: Uint8Array) =>
+      ipcRenderer.invoke(IPC.videoAttachVoice, videoId, audioBytes),
+    // Keep the video's existing audio AND add the recorded voice on top.
+    addVoice: (videoId: string, audioBytes: Uint8Array): Promise<import('../shared/types').VideoJob> =>
+      ipcRenderer.invoke(IPC.videoAddVoice, videoId, audioBytes),
+    // Assemble recorded segments (with optional trims) into one WAV; returns the bytes.
+    assembleVoice: (segments: { bytes: Uint8Array; startSec?: number; endSec?: number }[]): Promise<Uint8Array> =>
+      ipcRenderer.invoke(IPC.voiceAssemble, segments),
+    list: () => ipcRenderer.invoke(IPC.videoList),
+    remove: (id: string) => ipcRenderer.invoke(IPC.videoDelete, id),
+    reveal: (path: string) => ipcRenderer.invoke(IPC.videoReveal, path),
+    // Voice cleanup + video polish → a new enhanced VideoJob (original kept).
+    enhance: (
+      videoId: string,
+      opts?: { audio?: boolean; video?: boolean }
+    ): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; error?: string }> =>
+      ipcRenderer.invoke(IPC.videoEnhance, videoId, opts),
+    pickMusic: (): Promise<string | null> => ipcRenderer.invoke(IPC.videoPickMusic),
+    saveAs: (srcPath: string, suggestedName: string): Promise<{ saved: boolean; path?: string }> =>
+      ipcRenderer.invoke(IPC.videoSaveAs, srcPath, suggestedName),
+    // Opens a file picker and returns the extracted script text (or a cancel/error).
+    importScript: (): Promise<import('../shared/types').ScriptImportResult> =>
+      ipcRenderer.invoke(IPC.videoImportScript),
+    // Transcodes a built video into a chosen format and saves it where the user picks.
+    export: (
+      videoId: string,
+      format: import('../shared/types').ExportFormat
+    ): Promise<{ saved: boolean; path?: string }> => ipcRenderer.invoke(IPC.videoExport, videoId, format),
+    // Cuts a built video (keep or remove a range); returns the new VideoJob.
+    trim: (
+      videoId: string,
+      mode: import('../shared/types').TrimMode,
+      start: number,
+      end: number
+    ): Promise<import('../shared/types').VideoJob> => ipcRenderer.invoke(IPC.videoTrim, videoId, mode, start, end),
+    // Stitches several built videos into one; returns the new VideoJob.
+    stitch: (videoIds: string[]): Promise<import('../shared/types').VideoJob> =>
+      ipcRenderer.invoke(IPC.videoStitch, videoIds),
+    // Remove or replace the background music while keeping narration; returns the new VideoJob.
+    setMusic: (
+      videoId: string,
+      mode: 'remove' | 'replace',
+      mood?: import('../shared/types').Mood
+    ): Promise<import('../shared/types').VideoJob> => ipcRenderer.invoke(IPC.videoSetMusic, videoId, mode, mood),
+    // Remove music from an OUTSIDE video by AI separation (engine: 'online' MVSEP or 'local' Demucs).
+    separateMusic: (videoId: string, engine: 'online' | 'local'): Promise<import('../shared/types').VideoJob> =>
+      ipcRenderer.invoke(IPC.videoSeparateMusic, videoId, engine),
+    // Auto-caption: transcribe narration → .srt; if burn=true also make a subtitled video.
+    captions: (videoId: string, burn: boolean): Promise<{ srtPath: string; job?: import('../shared/types').VideoJob }> =>
+      ipcRenderer.invoke(IPC.videoCaptions, videoId, burn),
+    // Overlay a logo watermark in a corner; returns the new VideoJob.
+    watermark: (
+      videoId: string,
+      logoPath: string,
+      position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+    ): Promise<import('../shared/types').VideoJob> => ipcRenderer.invoke(IPC.videoWatermark, videoId, logoPath, position),
+    // AI-plans the video (hook, sections+keywords, thumbnail idea, CTR tips).
+    plan: (title: string, body: string): Promise<{ hook: string; sections: { title: string; keyword: string; seconds: number }[]; thumbnailIdea: string; ctrTips: string[] }> =>
+      ipcRenderer.invoke(IPC.videoPlan, title, body),
+    // Opens a multi-select image picker for the Ken-Burns background; returns paths.
+    pickImages: (): Promise<string[]> => ipcRenderer.invoke(IPC.videoPickImages),
+    // Stops any in-progress render/export/trim.
+    cancel: (): Promise<{ stopped: number }> => ipcRenderer.invoke(IPC.videoCancel),
+    onProgress: (cb: (stage: string) => void) => {
+      const listener = (_e: unknown, stage: string): void => cb(stage)
+      ipcRenderer.on(IPC.videoProgress, listener)
+      return () => ipcRenderer.removeListener(IPC.videoProgress, listener)
+    },
+    // Fires once with a small opening-frame preview PNG during a build. Returns an unsubscribe fn.
+    onPreview: (cb: (pngPath: string) => void) => {
+      const listener = (_e: unknown, pngPath: string): void => cb(pngPath)
+      ipcRenderer.on(IPC.videoPreview, listener)
+      return () => ipcRenderer.removeListener(IPC.videoPreview, listener)
+    }
+  },
+  timeline: {
+    pickClips: (): Promise<string[]> => ipcRenderer.invoke(IPC.timelinePickClips),
+    probe: (src: string): Promise<{ ok: boolean; duration?: number; error?: string }> =>
+      ipcRenderer.invoke(IPC.timelineProbe, src),
+    render: (
+      doc: import('../shared/types').TimelineDoc,
+      title?: string
+    ): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; error?: string }> =>
+      ipcRenderer.invoke(IPC.timelineRender, doc, title)
+    // Progress reuses video.onProgress (same 'video:progress' channel).
+  },
+  storyboard: {
+    pickPhoto: (): Promise<string | null> => ipcRenderer.invoke(IPC.storyboardPickPhoto),
+    plan: (params: {
+      mode: 'auto' | 'guided'
+      title: string
+      brief: string
+      totalSeconds?: number
+      language?: string
+      width?: number
+      height?: number
+      fps?: number
+    }): Promise<{ ok: boolean; storyboard?: import('../shared/types').StoryboardDoc; error?: string }> =>
+      ipcRenderer.invoke(IPC.storyboardPlan, params),
+    render: (
+      doc: import('../shared/types').StoryboardDoc,
+      opts?: { photoPath?: string; beautifyStrength?: number; windowsVoice?: boolean }
+    ): Promise<{
+      ok: boolean
+      video?: import('../shared/types').VideoJob
+      timeline?: import('../shared/types').TimelineDoc
+      error?: string
+    }> => ipcRenderer.invoke(IPC.storyboardRender, doc, opts),
+    // Beautify (strength>0) or roughen (strength<0) a photo; returns a preview file path.
+    beautify: (src: string, strength: number): Promise<{ ok: boolean; path?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.photoBeautify, src, strength)
+    // Progress reuses video.onProgress.
+  },
+  drafts: {
+    // Autosave: get/set any tab's working state. get returns {current, history} or null.
+    get: (key: string): Promise<{ current: unknown; history: { at: string; value: unknown }[] } | null> =>
+      ipcRenderer.invoke(IPC.draftGet, key),
+    set: (key: string, value: unknown): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.draftSet, key, value)
+  },
+  scriptpad: {
+    get: (): Promise<import('../shared/types').ScriptPad> => ipcRenderer.invoke(IPC.scriptpadGet),
+    save: (title: string, body: string): Promise<import('../shared/types').ScriptPad> =>
+      ipcRenderer.invoke(IPC.scriptpadSave, title, body)
+  },
+  audio: {
+    // Generate a music bed / SFX; returns an absolute path playable via file://.
+    generateMusic: (mood: import('../shared/types').Mood, durationSec: number, seed: number): Promise<string> =>
+      ipcRenderer.invoke(IPC.audioGenerateMusic, mood, durationSec, seed),
+    generateSfx: (kind: import('../shared/types').SfxKind): Promise<string> =>
+      ipcRenderer.invoke(IPC.audioGenerateSfx, kind),
+    pickFile: (): Promise<string | null> => ipcRenderer.invoke(IPC.audioPickFile),
+    listPack: (): Promise<Array<{ id: string; kind: 'music' | 'sfx'; label: string; file: string }>> =>
+      ipcRenderer.invoke(IPC.audioListPack),
+    // Re-mix a built video with timeline clips; returns the new VideoJob.
+    remix: (
+      videoId: string,
+      clips: import('../shared/types').AudioClip[]
+    ): Promise<import('../shared/types').VideoJob> => ipcRenderer.invoke(IPC.audioRemix, videoId, clips),
+    // Render the DJ timeline to a standalone MP3 (create music only). Returns its path.
+    renderMix: (clips: import('../shared/types').AudioClip[], durationSec: number): Promise<string> =>
+      ipcRenderer.invoke(IPC.audioRenderMix, clips, durationSec),
+    // Save/download a generated audio file wherever the user picks.
+    saveFile: (srcPath: string, suggestedName: string): Promise<{ saved: boolean; path?: string }> =>
+      ipcRenderer.invoke(IPC.audioSaveFile, srcPath, suggestedName),
+    // Render a waveform image (PNG path) of a built video's audio.
+    waveform: (videoId: string): Promise<string> => ipcRenderer.invoke(IPC.audioWaveform, videoId)
+  },
+  dj: {
+    listPlans: (): Promise<import('../shared/types').AudioPlan[]> => ipcRenderer.invoke(IPC.djPlansList),
+    savePlan: (plan: import('../shared/types').AudioPlan): Promise<import('../shared/types').AudioPlan[]> =>
+      ipcRenderer.invoke(IPC.djPlanSave, plan),
+    deletePlan: (id: string): Promise<import('../shared/types').AudioPlan[]> =>
+      ipcRenderer.invoke(IPC.djPlanDelete, id)
+  },
+  music: {
+    // Online free (CC) music search; returns { online:false } when offline.
+    search: (query: string): Promise<import('../shared/types').MusicSearchResult> =>
+      ipcRenderer.invoke(IPC.musicSearch, query),
+    // Downloads a track locally; returns its file path.
+    download: (audioUrl: string, suggestedName: string): Promise<string> =>
+      ipcRenderer.invoke(IPC.musicDownload, audioUrl, suggestedName)
+  },
+  director: {
+    // Interpret a plain-English instruction into a validated edit plan (no changes yet).
+    interpret: (videoId: string, instruction: string): Promise<import('../shared/types').DirectorInterpretation> =>
+      ipcRenderer.invoke(IPC.directorInterpret, videoId, instruction),
+    // Execute the confirmed edit plan; returns the new VideoJob.
+    execute: (
+      videoId: string,
+      actions: import('../shared/types').DirectorAction[]
+    ): Promise<import('../shared/types').VideoJob> => ipcRenderer.invoke(IPC.directorExecute, videoId, actions)
+  },
+  agent: {
+    // Turn a plain-English command into a validated plan of steps (no changes yet).
+    interpret: (command: string): Promise<import('../shared/types').AgentPlan> =>
+      ipcRenderer.invoke(IPC.agentInterpret, command),
+    // Execute a confirmed plan end-to-end; returns each step's outcome.
+    execute: (
+      plan: import('../shared/types').AgentPlan
+    ): Promise<import('../shared/types').AgentRunResult> => ipcRenderer.invoke(IPC.agentExecute, plan),
+    // Batch: one video per topic. Returns each topic's outcome; streams via onProgress.
+    batch: (
+      topics: string[],
+      style?: import('../shared/types').VideoStyle,
+      resolution?: import('../shared/types').VideoResolution,
+      aiVisuals?: boolean
+    ): Promise<{ results: { topic: string; ok: boolean; video?: import('../shared/types').VideoJob; error?: string }[] }> =>
+      ipcRenderer.invoke(IPC.agentBatch, topics, style, resolution, aiVisuals),
+    // Live per-step progress during execute()/batch(); returns an unsubscribe fn.
+    onProgress: (cb: (stage: string) => void) => {
+      const listener = (_e: unknown, stage: string): void => cb(stage)
+      ipcRenderer.on(IPC.agentProgress, listener)
+      return () => ipcRenderer.removeListener(IPC.agentProgress, listener)
+    }
+  },
+  scene: {
+    // Plan editable scenes from a script (no network).
+    plan: (
+      title: string,
+      body: string,
+      style: import('../shared/types').VideoStyle,
+      direction: string
+    ): Promise<{ index: number; label: string; prompt: string }[]> =>
+      ipcRenderer.invoke(IPC.scenePlan, title, body, style, direction),
+    // Generate one scene image from a prompt (free, keyless). Returns its file path.
+    generate: (prompt: string, seed: number, fast: boolean): Promise<string> =>
+      ipcRenderer.invoke(IPC.sceneGenerate, prompt, seed, fast),
+    // Put the user in the scene from an attached photo (free img2img). Returns a path;
+    // streams queue progress via onProgress. strength 0..1 (higher = transform more).
+    generateFromPhoto: (index: number, prompt: string, sourceImagePath: string, strength: number): Promise<string> =>
+      ipcRenderer.invoke(IPC.sceneGenerateFromPhoto, index, prompt, sourceImagePath, strength),
+    onProgress: (cb: (p: { index: number; message: string; queuePosition?: number; waitSeconds?: number }) => void) => {
+      const listener = (_e: unknown, p: { index: number; message: string; queuePosition?: number; waitSeconds?: number }): void => cb(p)
+      ipcRenderer.on(IPC.sceneProgress, listener)
+      return () => ipcRenderer.removeListener(IPC.sceneProgress, listener)
+    }
+  },
+  ai: {
+    engineStatus: (): Promise<import('../shared/types').AiEngineStatus> => ipcRenderer.invoke(IPC.aiEngineStatus),
+    getConfig: (): Promise<{ cloudEndpoint: string; cloudModel: string; localEndpoint: string; hasCloudKey: boolean }> =>
+      ipcRenderer.invoke(IPC.aiGetConfig),
+    setConfig: (partial: import('../shared/types').AiVideoConfig): Promise<{ ok: boolean }> =>
+      ipcRenderer.invoke(IPC.aiSetConfig, partial)
+  },
+  stock: {
+    getConfig: (): Promise<{ hasPixabay: boolean; hasPexels: boolean }> => ipcRenderer.invoke(IPC.stockGetConfig),
+    setKey: (provider: 'pixabay' | 'pexels', key: string): Promise<{ hasPixabay: boolean; hasPexels: boolean }> =>
+      ipcRenderer.invoke(IPC.stockSetKey, provider, key)
+  },
+  assistant: {
+    // Page-aware streaming chat, available everywhere. Not persisted.
+    ask: (messages: { role: 'user' | 'assistant'; content: string }[], context: string): Promise<string> =>
+      ipcRenderer.invoke(IPC.assistantAsk, messages, context),
+    onStream: (cb: (delta: string) => void) => {
+      const listener = (_e: unknown, delta: string): void => cb(delta)
+      ipcRenderer.on(IPC.assistantStream, listener)
+      return () => ipcRenderer.removeListener(IPC.assistantStream, listener)
+    }
+  },
+  producer: {
+    // Ask the YouTube Producer to critique/rewrite the current field. Returns a short
+    // reasoning `reply` and, when a rewrite is warranted, the full `edited` text to apply.
+    edit: (params: {
+      instruction: string
+      text: string
+      kind: string
+      pageName?: string
+    }): Promise<{ ok: boolean; reply?: string; edited?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.producerEdit, params)
+  },
+  webServer: {
+    status: () => ipcRenderer.invoke(IPC.webServerStatus),
+    start: () => ipcRenderer.invoke(IPC.webServerStart),
+    stop: () => ipcRenderer.invoke(IPC.webServerStop)
+  },
+  speech: {
+    // Offline dictation: send a recorded audio clip, get transcribed text back.
+    transcribe: (audioBytes: Uint8Array): Promise<string> =>
+      ipcRenderer.invoke(IPC.speechTranscribe, audioBytes)
+  },
+  youtube: {
+    // Assisted publish: prepare metadata (→ clipboard), open the upload page, reveal the file.
+    publish: (videoId: string): Promise<{ title: string; description: string; tags: string[]; uploadUrl: string }> =>
+      ipcRenderer.invoke(IPC.youtubePublish, videoId)
+  },
+  voice: {
+    // Natural narration voice (Piper) — optional one-time download into the data folder.
+    piperStatus: (): Promise<{ installed: boolean }> => ipcRenderer.invoke(IPC.voicePiperStatus),
+    piperDownload: (): Promise<{ installed: boolean }> => ipcRenderer.invoke(IPC.voicePiperDownload),
+    onPiperProgress: (cb: (stage: string) => void) => {
+      const listener = (_e: unknown, stage: string): void => cb(stage)
+      ipcRenderer.on(IPC.voicePiperProgress, listener)
+      return () => ipcRenderer.removeListener(IPC.voicePiperProgress, listener)
+    }
+  }
+}
+
+contextBridge.exposeInMainWorld('api', api)
+
+export type FinScriptApi = typeof api

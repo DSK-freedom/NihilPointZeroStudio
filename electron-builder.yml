@@ -1,0 +1,39 @@
+appId: com.nihilpointzero.os
+productName: NIHILPOINTZERO-OS
+directories:
+  buildResources: resources
+  output: release
+files:
+  - out/**
+  - package.json
+# Native/CLI binaries and pdfjs workers cannot be executed/loaded from inside the
+# asar archive, so unpack them to app.asar.unpacked (video/ffmpeg.ts rewrites the
+# path accordingly, and pdf-parse loads pdfjs from the unpacked copy).
+asarUnpack:
+  - "**/node_modules/ffmpeg-static/**"
+  - "**/node_modules/ffprobe-static/**"
+  - "**/node_modules/pdf-parse/**"
+  - "**/node_modules/pdfjs-dist/**"
+  # onnxruntime-node ships a native .node addon + platform DLLs that cannot be
+  # loaded from inside the asar archive, so unpack it (used by the offline
+  # speech-to-text Whisper model via @xenova/transformers).
+  - "**/node_modules/onnxruntime-node/**"
+# The Whisper speech-to-text model (bundled so dictation works fully offline,
+# with no download on any machine). Lands at <resources>/models, which the main
+# process reads via process.resourcesPath.
+extraResources:
+  - from: resources/models
+    to: models
+  # Bundled royalty-free starter pack (procedurally authored music beds + SFX) so the
+  # DJ station is instantly full on first launch. Lands at <resources>/audio-pack.
+  - from: resources/audio-pack
+    to: audio-pack
+win:
+  target: portable
+  icon: resources/icon.ico
+portable:
+  artifactName: NIHILPOINTZERO-OS-portable.exe
+  # No fixed unpackDirName: electron-builder then extracts each BUILD to its own
+  # temp dir (keyed to the exe), so a new version never reuses a previous version's
+  # stale extraction. (A fixed name caused old code + a missing ffmpeg / ENOENT.)
+  requestExecutionLevel: user

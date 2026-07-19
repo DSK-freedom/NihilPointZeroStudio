@@ -1,0 +1,80 @@
+[
+  {
+    "id": "music-calm",
+    "kind": "music",
+    "label": "calm bed",
+    "file": "music-calm.mp3"
+  },
+  {
+    "id": "music-uplifting",
+    "kind": "music",
+    "label": "uplifting bed",
+    "file": "music-uplifting.mp3"
+  },
+  {
+    "id": "music-tense",
+    "kind": "music",
+    "label": "tense bed",
+    "file": "music-tense.mp3"
+  },
+  {
+    "id": "music-lofi",
+    "kind": "music",
+    "label": "lofi bed",
+    "file": "music-lofi.mp3"
+  },
+  {
+    "id": "music-corporate",
+    "kind": "music",
+    "label": "corporate bed",
+    "file": "music-corporate.mp3"
+  },
+  {
+    "id": "music-cinematic",
+    "kind": "music",
+    "label": "cinematic bed",
+    "file": "music-cinematic.mp3"
+  },
+  {
+    "id": "sfx-whoosh",
+    "kind": "sfx",
+    "label": "whoosh",
+    "file": "sfx-whoosh.mp3"
+  },
+  {
+    "id": "sfx-riser",
+    "kind": "sfx",
+    "label": "riser",
+    "file": "sfx-riser.mp3"
+  },
+  {
+    "id": "sfx-impact",
+    "kind": "sfx",
+    "label": "impact",
+    "file": "sfx-impact.mp3"
+  },
+  {
+    "id": "sfx-click",
+    "kind": "sfx",
+    "label": "click",
+    "file": "sfx-click.mp3"
+  },
+  {
+    "id": "sfx-pop",
+    "kind": "sfx",
+    "label": "pop",
+    "file": "sfx-pop.mp3"
+  },
+  {
+    "id": "sfx-swell",
+    "kind": "sfx",
+    "label": "swell",
+    "file": "sfx-swell.mp3"
+  },
+  {
+    "id": "sfx-subdrop",
+    "kind": "sfx",
+    "label": "subdrop",
+    "file": "sfx-subdrop.mp3"
+  }
+]

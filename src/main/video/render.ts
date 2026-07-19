@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { runFfmpeg } from './ffmpeg'
+import { makeFfmpegProgressLogger, runFfmpeg } from './ffmpeg'
 import { chooseEncoderForJob, encoderLabel, isHardware, runEncodeWithFallback } from './encoder'
 import { finishingChain, templateFor, titleAlphaExpr, type VideoTemplate } from './templates'
 import type { VideoStyle } from '../../shared/types'
@@ -349,12 +349,6 @@ export interface RenderOptions {
   onPreview?: (pngPath: string) => void
 }
 
-/** MM:SS from seconds, for readable progress. */
-function clock(sec: number): string {
-  const s = Math.max(0, Math.floor(sec))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-}
-
 /**
  * Renders a single small PNG of the opening frame of the chosen background, so the UI
  * can show what the video looks like right away. Cheap even at 8K (one downscaled
@@ -628,20 +622,8 @@ export async function renderVideo(opts: RenderOptions): Promise<void> {
         videoEncoderArgs
       })
     // Parse ffmpeg's live "time=" so the UI shows a real percentage every second,
-    // instead of a single "Rendering…" line until the very end.
-    let lastPct = -1
-    const handleLog = (line: string): void => {
-      opts.onLog?.(line)
-      const m = /time=(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(line)
-      if (m) {
-        const sec = Number(m[1]) * 3600 + Number(m[2]) * 60 + parseFloat(m[3])
-        const pct = Math.max(0, Math.min(99, Math.round((sec / dur) * 100)))
-        if (pct !== lastPct) {
-          lastPct = pct
-          opts.onProgress?.(`Rendering ${pct}% (${clock(sec)} / ${clock(dur)})`)
-        }
-      }
-    }
+    // instead of a single "Rendering…" line until the very end (shared helper).
+    const handleLog = makeFfmpegProgressLogger(dur, opts.onProgress, opts.onLog)
     await runEncodeWithFallback(encoder, buildArgs, { onLog: handleLog, onNotice: opts.onProgress })
   } finally {
     rmSync(scratch, { recursive: true, force: true })

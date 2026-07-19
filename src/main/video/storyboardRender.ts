@@ -20,7 +20,7 @@ import { stripStageDirections, synthesizeSpeechToFile } from '../voiceover'
 import { isPiperInstalled, synthesizeWithPiper } from '../voice/piper'
 import { makeSlideshow, type Layout } from './render'
 import { beautifyImage, compositeImage, ffprobeDuration, renderTimeline } from '.'
-import { beginRenderSession, throwIfCancelled } from './ffmpeg'
+import { beginRenderSession, renderSessionSignal, throwIfCancelled } from './ffmpeg'
 import { compileStoryboardToTimeline, type ResolvedBeatAsset, type ResolvedBeatSound } from './storyboard'
 import { videosDir } from '../store'
 import type { Mood, SfxKind, StoryboardDoc, TimelineDoc } from '../../shared/types'
@@ -167,7 +167,13 @@ export async function renderStoryboard(
         const bg = join(assetDir, `beat-${i}-bg.jpg`)
         let haveBg = false
         try {
-          await generateImage(sceneImagePrompt(doc.style, beat.visual, doc.title), bg, { width: gen.width, height: gen.height, seed: i + 1 })
+          // signal: Stop aborts this in-flight generation immediately (no retry-cycle wait).
+          await generateImage(sceneImagePrompt(doc.style, beat.visual, doc.title), bg, {
+            width: gen.width,
+            height: gen.height,
+            seed: i + 1,
+            signal: renderSessionSignal()
+          })
           haveBg = existsSync(bg)
         } catch {
           /* handled by fallback below */
@@ -189,12 +195,22 @@ export async function renderStoryboard(
         const prompt = sceneImagePrompt(doc.style, `${beat.visual}${subjectNote}`, doc.title)
         const imgPath = join(assetDir, `beat-${i}.jpg`)
         try {
-          await generateImage(prompt, imgPath, { width: gen.width, height: gen.height, seed: i + 1 })
+          await generateImage(prompt, imgPath, {
+            width: gen.width,
+            height: gen.height,
+            seed: i + 1,
+            signal: renderSessionSignal()
+          })
           image = imgPath
         } catch (err) {
           onProgress?.(`${tag}: image generation failed (${err instanceof Error ? err.message : 'error'}) — using a plain scene.`)
           const slate = join(assetDir, `beat-${i}-slate.jpg`)
-          await generateImage('a simple dark cinematic backdrop', slate, { width: gen.width, height: gen.height, seed: i + 1 }).catch(() => {})
+          await generateImage('a simple dark cinematic backdrop', slate, {
+            width: gen.width,
+            height: gen.height,
+            seed: i + 1,
+            signal: renderSessionSignal()
+          }).catch(() => {})
           image = existsSync(slate) ? slate : imgPath
         }
       }
@@ -209,7 +225,12 @@ export async function renderStoryboard(
         onProgress?.(`${tag}: shot render failed (${err instanceof Error ? err.message : 'error'}) — using a plain slate.`)
         const slate = join(assetDir, `beat-${i}-slate.jpg`)
         try {
-          await generateImage('a simple dark cinematic backdrop', slate, { width: gen.width, height: gen.height, seed: i + 1 })
+          await generateImage('a simple dark cinematic backdrop', slate, {
+            width: gen.width,
+            height: gen.height,
+            seed: i + 1,
+            signal: renderSessionSignal()
+          })
           await makeSlideshow([slate], layout, dur, clipPath)
         } catch {
           // Even the slate failed — skip this beat (compile drops a beat with no clip).

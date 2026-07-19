@@ -66,7 +66,9 @@ import {
   analyzePsxBars,
   buildPsxWorkbook,
   fetchPsxEod,
+  fetchPsxEodDetailed,
   normalizeSymbol,
+  setPsxCacheDir,
   summarizePsxAnalysis
 } from './data/psxLive'
 import { buildAnalysisScriptPrompt, type AnalysisKind, type ScriptDirectives } from './data/analysisScript'
@@ -110,6 +112,10 @@ import {
 } from './store'
 
 export function registerIpcHandlers(): void {
+  // Last-good PSX data cache lives with the rest of the user's data (travels with the
+  // portable folder). psxLive.ts takes the dir by injection so it stays Electron-free.
+  setPsxCacheDir(join(app.getPath('userData'), 'psx-cache'))
+
   ipcMain.handle(IPC.settingsGet, () => getSettings())
 
   ipcMain.handle(IPC.settingsSetProvider, (_e, provider: LLMProviderId) => {
@@ -343,10 +349,12 @@ export function registerIpcHandlers(): void {
   // LIVE PSX: fetch a symbol's real EOD history from dps.psx.com.pk and analyse it in-app.
   ipcMain.handle(IPC.psxLiveAnalyze, async (_e, symbol: string) => {
     try {
-      const bars = await fetchPsxEod(symbol)
+      const { bars, staleAsOf } = await fetchPsxEodDetailed(symbol)
       const analysis = analyzePsxBars(symbol, bars)
       logActivity('user', 'Fetched live PSX data', `${analysis.symbol} (${analysis.points} days)`)
-      return { ok: true, analysis, summary: summarizePsxAnalysis(analysis) }
+      // staleAsOf ≠ null → the portal was unreachable and this is the last SAVED data;
+      // the page shows that plainly so nobody mistakes it for a live quote.
+      return { ok: true, analysis, summary: summarizePsxAnalysis(analysis), staleAsOf }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'Could not fetch PSX data.' }
     }
@@ -422,10 +430,11 @@ export function registerIpcHandlers(): void {
   // line + SMA20/50 + RSI14), for the Charts tab.
   ipcMain.handle(IPC.psxLiveSeries, async (_e, symbol: string) => {
     try {
-      const bars = await fetchPsxEod(symbol)
+      const { bars, staleAsOf } = await fetchPsxEodDetailed(symbol)
       const series = buildPriceSeriesFromBars(bars.map((b) => ({ date: b.date, close: b.close, volume: b.volume })))
       logActivity('user', 'Charted live PSX data', normalizeSymbol(symbol))
-      return { ok: true, series, name: `${normalizeSymbol(symbol)} · PSX live (EOD close)` }
+      const name = `${normalizeSymbol(symbol)} · PSX ${staleAsOf ? `SAVED data (offline — last fetched ${staleAsOf})` : 'live (EOD close)'}`
+      return { ok: true, series, name, staleAsOf }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'Could not fetch PSX data.' }
     }

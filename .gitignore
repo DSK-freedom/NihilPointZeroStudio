@@ -5,3 +5,4 @@ dist-electron
 release
 *.log
 .DS_Store
+*.tsbuildinfo

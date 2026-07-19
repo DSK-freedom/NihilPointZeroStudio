@@ -6,6 +6,20 @@ directories:
 files:
   - out/**
   - package.json
+  # ---- Package diet (this is a Windows x64 app; none of the below can ever run here) ----
+  # ffprobe-static ships mac/linux/32-bit binaries (~275 MB) — only win32/x64 is used.
+  - "!**/node_modules/ffprobe-static/bin/darwin/**"
+  - "!**/node_modules/ffprobe-static/bin/linux/**"
+  - "!**/node_modules/ffprobe-static/bin/win32/ia32/**"
+  # onnxruntime-node likewise ships every platform's native runtime — keep only win32/x64.
+  - "!**/node_modules/onnxruntime-node/bin/napi-v3/darwin/**"
+  - "!**/node_modules/onnxruntime-node/bin/napi-v3/linux/**"
+  - "!**/node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/**"
+  # onnxruntime-web must stay installed (statically imported by @xenova/transformers, and its
+  # main entry dist/ort-web.node.js is JS) — but its browser wasm payload and source maps are
+  # never used in the Electron main process. ~47 MB.
+  - "!**/node_modules/onnxruntime-web/dist/*.wasm"
+  - "!**/node_modules/onnxruntime-web/**/*.map"
 # Native/CLI binaries and pdfjs workers cannot be executed/loaded from inside the
 # asar archive, so unpack them to app.asar.unpacked (video/ffmpeg.ts rewrites the
 # path accordingly, and pdf-parse loads pdfjs from the unpacked copy).
@@ -29,7 +43,14 @@ extraResources:
   - from: resources/audio-pack
     to: audio-pack
 win:
-  target: portable
+  # Two flavors from one build:
+  #   portable — the classic single exe that travels on a USB with its data folder.
+  #   nsis     — per-user installed app: launches in seconds from a FIXED path (no
+  #              ~1 GB re-extraction on every start) and taskbar pins stay valid
+  #              across updates (the fix for the stale-pin/old-code trap).
+  target:
+    - portable
+    - nsis
   icon: resources/icon.ico
 portable:
   artifactName: NIHILPOINTZERO-OS-portable.exe
@@ -37,3 +58,10 @@ portable:
   # temp dir (keyed to the exe), so a new version never reuses a previous version's
   # stale extraction. (A fixed name caused old code + a missing ffmpeg / ENOENT.)
   requestExecutionLevel: user
+nsis:
+  artifactName: NIHILPOINTZERO-OS-setup.exe
+  # One-click per-user install (no admin prompt), Start-menu + desktop shortcut.
+  # Uninstall keeps user data.
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: false

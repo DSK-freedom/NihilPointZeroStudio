@@ -24,7 +24,7 @@ export function goldPkrPerTola(usdXau: number, usdPkr: number): number {
 export async function getMarketSnapshotNote(): Promise<string | null> {
   for (const urlFn of [PRIMARY_URL, FALLBACK_URL]) {
     try {
-      const res = await fetch(urlFn('latest'))
+      const res = await fetch(urlFn('latest'), { signal: AbortSignal.timeout(15_000) })
       if (!res.ok) continue
       const data = await res.json()
       const usd = data?.usd

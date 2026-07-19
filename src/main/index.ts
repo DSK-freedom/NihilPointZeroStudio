@@ -37,6 +37,22 @@ if (portableDir) {
   if (writable || hasPriorData) {
     app.setPath('userData', candidate)
   }
+} else {
+  // Installed (non-portable) build: if the classic studio folder on the Desktop already
+  // holds the user's data, ADOPT it instead of starting fresh in %APPDATA%. The installed
+  // app and the portable exe then share ONE data home — videos, scripts and settings made
+  // in either flavor appear in both, and the folder still travels on a USB as before.
+  // (Only the canonical documented location is probed; no disk scanning.)
+  try {
+    const desktopData = join(app.getPath('desktop'), 'NihilPointZeroStudio', 'nihilpointzero-data')
+    const hasDesktopData =
+      existsSync(join(desktopData, 'settings.json')) || existsSync(join(desktopData, 'videos.json'))
+    if (hasDesktopData) {
+      app.setPath('userData', desktopData)
+    }
+  } catch {
+    /* Desktop path unavailable (rare) — keep the default per-user dir. */
+  }
 }
 
 function createWindow(): void {

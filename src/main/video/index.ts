@@ -3,7 +3,14 @@ import { tmpdir } from 'os'
 import { dirname, join } from 'path'
 import { stripStageDirections, synthesizeSpeechToFile } from '../voiceover'
 import { isPiperInstalled, synthesizeWithPiper } from '../voice/piper'
-import { beginRenderSession, ffprobeDuration, runFfmpeg, throwIfCancelled } from './ffmpeg'
+import {
+  beginRenderSession,
+  ffprobeDuration,
+  makeFfmpegProgressLogger,
+  renderSessionSignal,
+  runFfmpeg,
+  throwIfCancelled
+} from './ffmpeg'
 import { attachVoiceover, computeLayout, renderVideo, type VideoResolution } from './render'
 import { buildStockBackground } from './stockBackground'
 import { buildExportArgs, type ExportFormat } from './export'
@@ -134,7 +141,14 @@ export async function buildVideoFromScript(
         onProgress?.(`Generating AI visual ${i + 1}/${scenes.length} (free)…`)
         try {
           const imgPath = join(scratch, `ai-scene-${i}.jpg`)
-          await generateImage(sceneImagePrompt(style, scenes[i], title), imgPath, { width: 1280, height: 720, seed: i + 1 })
+          // signal: a Stop aborts the in-flight generation/download immediately instead of
+          // letting the full retry/backoff/timeout cycle run before the next cancel poll.
+          await generateImage(sceneImagePrompt(style, scenes[i], title), imgPath, {
+            width: 1280,
+            height: 720,
+            seed: i + 1,
+            signal: renderSessionSignal()
+          })
           made.push(imgPath)
           if (made.length === 1) options.onPreview?.(imgPath) // show the first one right away
         } catch (err) {
@@ -251,7 +265,8 @@ export async function stitchVideos(
   await runEncodeWithFallback(
     encoder,
     (encoderArgs) => buildStitchArgs({ inputs, width, height, encoderArgs, outPath }),
-    { onLog, onNotice: onLog }
+    // Real percentage while stitching (total = summed input durations).
+    { onLog: makeFfmpegProgressLogger(total, onLog, undefined, 'Stitching'), onNotice: onLog }
   )
 }
 
@@ -286,8 +301,9 @@ export async function renderTimeline(
   if (!doc.video.length) throw new Error('Add at least one video clip to the timeline before rendering.')
   const total = videoTrackDuration(doc)
   const encoder = await chooseEncoderForJob(doc.width, doc.height, total)
+  // Show a real percentage during the encode instead of raw ffmpeg stderr spam.
   await runEncodeWithFallback(encoder, (encoderArgs) => buildTimelineArgs(doc, encoderArgs, outPath), {
-    onLog,
+    onLog: makeFfmpegProgressLogger(total, onLog),
     onNotice: onLog
   })
 }

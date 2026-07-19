@@ -30,7 +30,10 @@ export class PollinationsProvider implements LLMProvider {
           // Keep generations out of the public feed and identify the app politely.
           private: true,
           referrer: 'nihilpointzero-studio'
-        })
+        }),
+        // A stalled socket must not hang the request forever — long scripts are fine
+        // within this, and the resilient chain moves to the next provider on timeout.
+        signal: AbortSignal.timeout(120_000)
       })
       if (!res.ok) {
         throw new LLMRequestError(

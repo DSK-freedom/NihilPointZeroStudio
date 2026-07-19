@@ -16,7 +16,7 @@ function extractItemTitles(xml: string): string[] {
 
 async function fetchTitlesFromFeed(url: string): Promise<string[]> {
   try {
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) })
     if (!res.ok) return []
     return extractItemTitles(await res.text())
   } catch {

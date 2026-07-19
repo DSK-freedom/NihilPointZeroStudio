@@ -11,7 +11,8 @@
  *  - EOD `close` is the portal's ADJUSTED close (correct input for indicators). We never
  *    fabricate OHLC we don't have.
  */
-import { writeFileSync } from 'fs'
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
+import { join } from 'path'
 import * as XLSX from 'xlsx'
 import { growthPct, rsiWilder, sma } from '../analysis/math'
 import type { PsxLiveAnalysis } from '../../shared/types'
@@ -38,19 +39,108 @@ export function normalizeSymbol(symbol: string): string {
   return (symbol || '').trim().toUpperCase().replace(/[^A-Z0-9.]/g, '')
 }
 
-/** Fetches a symbol's real end-of-day history from the PSX portal, oldest→newest. */
-export async function fetchPsxEod(symbol: string): Promise<PsxBar[]> {
+/**
+ * Where last-good EOD payloads are cached. Set once at startup by the main process
+ * (ipc.ts) — deliberately injected rather than derived here so this module stays free
+ * of any Electron import and unit-testable. Unset (tests) → caching is simply off.
+ */
+let psxCacheDir: string | null = null
+export function setPsxCacheDir(dir: string): void {
+  psxCacheDir = dir
+}
+
+interface PsxCacheEntry {
+  fetchedAt: string // ISO timestamp of the successful fetch
+  json: { status?: number; message?: string; data?: unknown }
+}
+
+function cachePathFor(sym: string): string | null {
+  return psxCacheDir ? join(psxCacheDir, `eod-${sym}.json`) : null
+}
+
+/** Best-effort atomic cache write (temp + rename) — a failure never breaks a fetch. */
+function writePsxCache(sym: string, json: PsxCacheEntry['json']): void {
+  const p = cachePathFor(sym)
+  if (!p || !psxCacheDir) return
+  try {
+    mkdirSync(psxCacheDir, { recursive: true })
+    const entry: PsxCacheEntry = { fetchedAt: new Date().toISOString(), json }
+    const tmp = `${p}.tmp`
+    writeFileSync(tmp, JSON.stringify(entry), 'utf-8')
+    renameSync(tmp, p)
+  } catch {
+    /* cache is best-effort */
+  }
+}
+
+function readPsxCache(sym: string): PsxCacheEntry | null {
+  const p = cachePathFor(sym)
+  if (!p) return null
+  try {
+    const entry = JSON.parse(readFileSync(p, 'utf-8')) as PsxCacheEntry
+    return entry && typeof entry.fetchedAt === 'string' && entry.json ? entry : null
+  } catch {
+    return null
+  }
+}
+
+export interface PsxEodResult {
+  bars: PsxBar[]
+  /** null = live data. Otherwise the YYYY-MM-DD the shown (cached) data was last fetched. */
+  staleAsOf: string | null
+}
+
+/**
+ * Fetches a symbol's real EOD history with a hard timeout, one retry, and a last-good
+ * cache: every successful fetch is saved, and if the portal is unreachable the saved
+ * data is served instead — marked stale via `staleAsOf` so the UI can say so plainly
+ * (graceful degradation instead of a blank tab when dps.psx.com.pk is down).
+ */
+export async function fetchPsxEodDetailed(symbol: string): Promise<PsxEodResult> {
   const sym = normalizeSymbol(symbol)
   if (!sym) throw new Error('Enter a PSX symbol, e.g. LUCK, HUBC or ENGRO.')
-  let res: Response
-  try {
-    res = await fetch(`${DPS}/timeseries/eod/${sym}`, { headers: UA })
-  } catch (err) {
-    throw new Error(`Could not reach the PSX data portal (check your internet): ${err instanceof Error ? err.message : 'network error'}`)
+  let lastErr: Error | null = null
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1500)) // brief pause, then retry once
+    try {
+      const res = await fetch(`${DPS}/timeseries/eod/${sym}`, {
+        headers: UA,
+        // A stalled socket must not hang the tab forever (the cancel flag can't reach a fetch).
+        signal: AbortSignal.timeout(15_000)
+      })
+      if (!res.ok) {
+        lastErr = new Error(`PSX portal returned HTTP ${res.status} for "${sym}". Check the symbol.`)
+        // 4xx (bad symbol) won't improve on retry — and must NOT be masked by stale cache.
+        if (res.status >= 400 && res.status < 500) throw lastErr
+        continue
+      }
+      const json = (await res.json()) as PsxCacheEntry['json']
+      const bars = parsePsxEod(json, sym) // throws if the payload is unusable
+      writePsxCache(sym, json)
+      return { bars, staleAsOf: null }
+    } catch (err) {
+      if (err === lastErr) throw err // the 4xx case above — a real answer, not an outage
+      lastErr = new Error(
+        `Could not reach the PSX data portal (check your internet): ${err instanceof Error ? err.message : 'network error'}`
+      )
+    }
   }
-  if (!res.ok) throw new Error(`PSX portal returned HTTP ${res.status} for "${sym}". Check the symbol.`)
-  const json = (await res.json()) as { status?: number; message?: string; data?: unknown }
-  return parsePsxEod(json, sym)
+  // Portal unreachable — serve the last-good data if we have it, clearly marked stale.
+  const cached = readPsxCache(sym)
+  if (cached) {
+    try {
+      const bars = parsePsxEod(cached.json, sym)
+      return { bars, staleAsOf: cached.fetchedAt.slice(0, 10) }
+    } catch {
+      /* corrupt cache — fall through to the real error */
+    }
+  }
+  throw lastErr ?? new Error(`Could not fetch PSX data for "${sym}".`)
+}
+
+/** Fetches a symbol's real end-of-day history from the PSX portal, oldest→newest. */
+export async function fetchPsxEod(symbol: string): Promise<PsxBar[]> {
+  return (await fetchPsxEodDetailed(symbol)).bars
 }
 
 /**

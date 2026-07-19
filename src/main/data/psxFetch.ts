@@ -42,7 +42,7 @@ export async function fetchPsxDocument(rawUrl: string): Promise<{ buffer: Buffer
   }
   let res: Response
   try {
-    res = await fetch(rawUrl)
+    res = await fetch(rawUrl, { signal: AbortSignal.timeout(30_000) })
   } catch (err) {
     throw new PsxFetchError(err instanceof Error ? `Could not reach that URL: ${err.message}` : 'Could not reach that URL')
   }

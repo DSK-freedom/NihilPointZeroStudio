@@ -16,6 +16,9 @@ export default function PsxPage(): React.JSX.Element {
   const [script, setScript] = useState('')
   const [title, setTitle] = useState('')
   const [note, setNote] = useState<string | null>(null)
+  // Set when the PSX portal was unreachable and the shown numbers are the last SAVED
+  // fetch (YYYY-MM-DD) — displayed as a clear banner so it's never mistaken for live data.
+  const [staleAsOf, setStaleAsOf] = useState<string | null>(null)
   const [progress, setProgress] = useState<string | null>(null)
   const [instruction, setInstruction] = useState('')
   const [language, setLanguage] = useState('English')
@@ -46,12 +49,13 @@ export default function PsxPage(): React.JSX.Element {
 
   async function analyze(): Promise<void> {
     setBusy('Fetching live data from the PSX portal…')
-    setError(null); setNote(null); setScript(''); setAnalysis(null)
+    setError(null); setNote(null); setScript(''); setAnalysis(null); setStaleAsOf(null)
     try {
       const res = await window.api.psx.analyze(sym)
       if (!res.ok) { setError(res.error ?? 'Could not fetch PSX data.'); return }
       setAnalysis(res.analysis ?? null)
       setSummary(res.summary ?? '')
+      setStaleAsOf(res.staleAsOf ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fetch failed.')
     } finally {
@@ -144,6 +148,12 @@ export default function PsxPage(): React.JSX.Element {
       {busy && <div className="mt-3 text-sm text-gold-300">{busy}{progress ? ` — ${progress}` : ''}</div>}
       {error && <div className="mt-3 rounded-md border border-red-800 bg-red-950/40 px-3 py-2 text-sm text-red-300">{error}</div>}
       {note && <div className="mt-3 rounded-md border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-300">{note}</div>}
+      {staleAsOf && (
+        <div className="mt-3 rounded-md border border-amber-800 bg-amber-950/40 px-3 py-2 text-sm text-amber-300">
+          ⚠ The PSX portal is unreachable right now — showing the last SAVED data (fetched {staleAsOf}). These
+          are not live prices. Try again once you&apos;re back online.
+        </div>
+      )}
 
       {analysis && (
         <div className="mt-5">

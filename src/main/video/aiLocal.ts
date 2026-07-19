@@ -25,7 +25,7 @@ function endpoint(): string {
 /** Pings the local server's /health; returns false on any error (not detected). */
 export async function detectLocal(): Promise<boolean> {
   try {
-    const res = await fetch(`${endpoint()}/health`, { method: 'GET' })
+    const res = await fetch(`${endpoint()}/health`, { method: 'GET', signal: AbortSignal.timeout(5_000) })
     return res.ok
   } catch {
     return false
@@ -54,6 +54,8 @@ export async function generateLocalFootage(req: AiFootageRequest): Promise<strin
   const [w, h] = RES_WH[req.resolution ?? '1080p']
   const res = await fetch(`${endpoint()}/generate`, {
     method: 'POST',
+    // Local text-to-video generation is legitimately slow — generous, but never infinite.
+    signal: AbortSignal.timeout(15 * 60_000),
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: buildFootagePrompt(req), seconds: Math.max(1, Math.round(req.durationSec)), width: w, height: h })
   })
@@ -64,7 +66,7 @@ export async function generateLocalFootage(req: AiFootageRequest): Promise<strin
     const data = (await res.json()) as { videoUrl?: string; url?: string }
     const url = data.videoUrl || data.url
     if (!url) throw new Error('Local AI server did not return video data.')
-    const dl = await fetch(url)
+    const dl = await fetch(url, { signal: AbortSignal.timeout(300_000) })
     if (!dl.ok) throw new Error(`Could not download local footage (HTTP ${dl.status}).`)
     writeFileSync(out, Buffer.from(await dl.arrayBuffer()))
   } else {

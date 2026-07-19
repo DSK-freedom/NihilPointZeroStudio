@@ -35,7 +35,9 @@ export function isPiperInstalled(): boolean {
 }
 
 async function downloadFile(url: string, dest: string, onFrac?: (frac: number) => void): Promise<void> {
-  const res = await fetch(url)
+  // One-time ~80 MB voice download: generous cap so slow connections still finish,
+  // but a stalled socket can no longer hang the "Download natural voice" button forever.
+  const res = await fetch(url, { signal: AbortSignal.timeout(30 * 60_000) })
   if (!res.ok || !res.body) throw new Error(`Download failed (${res.status}) for ${url}`)
   const total = Number(res.headers.get('content-length') || 0)
   const ws = createWriteStream(dest)

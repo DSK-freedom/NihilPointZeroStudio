@@ -33,12 +33,30 @@ let cancelRequested = false
 export const CANCELLED_MESSAGE = 'Render cancelled by user.'
 
 /**
+ * Abort controller for the CURRENT render session. Aborted the instant the user presses
+ * Stop, so in-flight network work (AI image generation, downloads) is interrupted
+ * mid-request instead of running out its full retry/backoff/timeout cycle before the
+ * next `throwIfCancelled()` poll gets a chance to fire.
+ */
+let sessionAbort = new AbortController()
+
+/**
  * Call at the very start of a top-level build/export so a Stop from a PREVIOUS run
- * doesn't immediately abort this fresh one. Clears the sticky cancel flag.
+ * doesn't immediately abort this fresh one. Clears the sticky cancel flag and arms a
+ * fresh abort signal for the new session.
  */
 export function beginRenderSession(): void {
   cancelRequested = false
   lastCancelAt = 0
+  sessionAbort = new AbortController()
+}
+
+/**
+ * AbortSignal tied to the current render session — pass it into long network
+ * operations (e.g. generateImage) so Stop bites immediately, mid-flight.
+ */
+export function renderSessionSignal(): AbortSignal {
+  return sessionAbort.signal
 }
 
 /** Throws CANCELLED_MESSAGE if the user has pressed Stop. Cheap; poll it between stages. */
@@ -61,6 +79,11 @@ export function isCancelRequested(): boolean {
 export function cancelActiveFfmpeg(): number {
   cancelRequested = true
   lastCancelAt = Date.now()
+  try {
+    sessionAbort.abort(new Error(CANCELLED_MESSAGE))
+  } catch {
+    /* already aborted */
+  }
   let n = 0
   for (const proc of activeFfmpeg) {
     try {
@@ -72,6 +95,40 @@ export function cancelActiveFfmpeg(): number {
   }
   activeFfmpeg.clear()
   return n
+}
+
+/** MM:SS from seconds, for readable progress. */
+function clockTime(sec: number): string {
+  const s = Math.max(0, Math.floor(sec))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+/**
+ * Builds an onLog wrapper that turns ffmpeg's live `time=` stderr spam into a clean
+ * "Rendering 42% (0:34 / 1:20)" line (deduped per percent) sent to `onProgress`,
+ * while optionally still forwarding every raw line to `rawLog` for diagnostics.
+ * `totalSec` is the expected OUTPUT duration; pass the value the caller already
+ * knows (plan duration, probed duration) — with 0/unknown, nothing is emitted.
+ * Capped at 99% — completion is announced by the caller's own "done" message.
+ */
+export function makeFfmpegProgressLogger(
+  totalSec: number,
+  onProgress?: (msg: string) => void,
+  rawLog?: (line: string) => void,
+  label = 'Rendering'
+): (line: string) => void {
+  let lastPct = -1
+  return (line: string): void => {
+    rawLog?.(line)
+    const m = /time=(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(line)
+    if (!m || !(totalSec > 0)) return
+    const sec = Number(m[1]) * 3600 + Number(m[2]) * 60 + parseFloat(m[3])
+    const pct = Math.max(0, Math.min(99, Math.round((sec / totalSec) * 100)))
+    if (pct !== lastPct) {
+      lastPct = pct
+      onProgress?.(`${label} ${pct}% (${clockTime(sec)} / ${clockTime(totalSec)})`)
+    }
+  }
 }
 
 /** Runs ffmpeg with the given args; streams stderr to onLog. Rejects on non-zero exit. */

@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom'
 
-// Visible build stamp — bump on every deploy so you can CONFIRM you're running the newest
-// code (not a stale taskbar-pinned temp extraction). Read this back to verify a deploy landed.
-const BUILD_TAG = 'v0.1.1 · build 2026-07-19-C'
+// Visible build stamp — injected automatically at build time (electron.vite.config.ts:
+// package.json version + build timestamp + git hash) so it can never go stale. Read it
+// back in the sidebar to CONFIRM a deploy landed (not a stale taskbar-pinned extraction).
+const BUILD_TAG = __BUILD_TAG__
 
 const links = [
   { to: '/', label: 'Ideas & Trends', end: true },

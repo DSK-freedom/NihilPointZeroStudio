@@ -63,7 +63,7 @@ const api = {
   // LIVE PSX data portal (dps.psx.com.pk) — fetch real EOD history, analyse it in-app
   // with the tested math, export Excel, and generate a reasoned narration script.
   psx: {
-    analyze: (symbol: string): Promise<{ ok: boolean; analysis?: import('../shared/types').PsxLiveAnalysis; summary?: string; error?: string }> =>
+    analyze: (symbol: string): Promise<{ ok: boolean; analysis?: import('../shared/types').PsxLiveAnalysis; summary?: string; error?: string; staleAsOf?: string | null }> =>
       ipcRenderer.invoke(IPC.psxLiveAnalyze, symbol),
     excel: (symbol: string): Promise<{ saved: boolean; path?: string; error?: string }> =>
       ipcRenderer.invoke(IPC.psxLiveExcel, symbol),

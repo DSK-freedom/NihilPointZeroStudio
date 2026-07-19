@@ -71,7 +71,10 @@ export async function searchMusic(query: string): Promise<MusicSearchResult> {
     `${ENDPOINT}?q=${encodeURIComponent(query)}&page_size=20` +
     `&license_type=commercial,modification`
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'NIHILPOINTZERO-OS/1.0 (studio app)' } })
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'NIHILPOINTZERO-OS/1.0 (studio app)' },
+      signal: AbortSignal.timeout(20_000)
+    })
     if (!res.ok) return { tracks: [], online: true, error: `Search failed (HTTP ${res.status}).` }
     const data = (await res.json()) as { results?: OpenverseResult[] }
     const tracks: FreeTrack[] = (data.results ?? []).map((r) => ({
@@ -93,7 +96,10 @@ export async function searchMusic(query: string): Promise<MusicSearchResult> {
 
 /** Downloads a track's audio to `outPath`. Throws on failure (caller handles). */
 export async function downloadTrack(audioUrl: string, outPath: string): Promise<void> {
-  const res = await fetch(audioUrl, { headers: { 'User-Agent': 'NIHILPOINTZERO-OS/1.0 (studio app)' } })
+  const res = await fetch(audioUrl, {
+    headers: { 'User-Agent': 'NIHILPOINTZERO-OS/1.0 (studio app)' },
+    signal: AbortSignal.timeout(180_000) // generous for a big track, but never infinite
+  })
   if (!res.ok) throw new Error(`Download failed (HTTP ${res.status}).`)
   const buf = Buffer.from(await res.arrayBuffer())
   if (!buf.length) throw new Error('Downloaded file was empty.')

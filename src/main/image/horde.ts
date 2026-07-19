@@ -52,6 +52,7 @@ export async function generateFromPhoto(opts: {
 
   const submit = await fetch(`${API}/generate/async`, {
     method: 'POST',
+    signal: AbortSignal.timeout(60_000), // submit carries the photo payload — bounded, not infinite
     headers: { 'Content-Type': 'application/json', apikey, 'Client-Agent': CLIENT_AGENT },
     body: JSON.stringify({
       prompt: `${prompt}. high detail, no text, no watermark`,
@@ -79,7 +80,10 @@ export async function generateFromPhoto(opts: {
   const started = Date.now()
   while (Date.now() - started < maxWaitMs) {
     await sleep(6000)
-    const chkRes = await fetch(`${API}/generate/check/${id}`, { headers: { 'Client-Agent': CLIENT_AGENT } })
+    const chkRes = await fetch(`${API}/generate/check/${id}`, {
+      headers: { 'Client-Agent': CLIENT_AGENT },
+      signal: AbortSignal.timeout(20_000) // one stuck poll must not stall the whole queue wait
+    })
     if (!chkRes.ok) continue
     const st = (await chkRes.json()) as {
       done: boolean
@@ -95,13 +99,16 @@ export async function generateFromPhoto(opts: {
       waitSeconds: st.wait_time
     })
     if (st.done) {
-      const res = await fetch(`${API}/generate/status/${id}`, { headers: { 'Client-Agent': CLIENT_AGENT } })
+      const res = await fetch(`${API}/generate/status/${id}`, {
+        headers: { 'Client-Agent': CLIENT_AGENT },
+        signal: AbortSignal.timeout(30_000)
+      })
       const data = (await res.json()) as { generations?: { img?: string }[] }
       const img = data.generations?.[0]?.img
       if (!img) throw new Error('No image came back from the queue. Try again.')
       const raw = join(thumbnailsDir(), `photo-src-${id.slice(0, 8)}`)
       if (img.startsWith('http')) {
-        const dl = await fetch(img)
+        const dl = await fetch(img, { signal: AbortSignal.timeout(180_000) })
         writeFileSync(raw, Buffer.from(await dl.arrayBuffer()))
       } else {
         writeFileSync(raw, Buffer.from(img, 'base64'))

@@ -15,7 +15,8 @@ const SOCKET_IDLE_TIMEOUT_MS = 20 * 60 * 1000
 
 export async function getOllamaStatus(): Promise<OllamaStatus> {
   try {
-    const res = await fetch(`${OLLAMA_BASE_URL}/api/tags`)
+    // Local server — either it answers instantly or it isn't running.
+    const res = await fetch(`${OLLAMA_BASE_URL}/api/tags`, { signal: AbortSignal.timeout(5_000) })
     if (!res.ok) return { connected: false, models: [] }
     const data = await res.json()
     const models = Array.isArray(data?.models) ? data.models.map((m: { name: string }) => m.name) : []

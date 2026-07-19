@@ -42,7 +42,11 @@ export async function separateOnline(
   form.append('output_format', '1') // wav
   form.append('audiofile', new Blob([readFileSync(inputAudioPath) as unknown as BlobPart]), 'audio.wav')
 
-  const createRes = await fetch(`${MVSEP_API}/separation/create`, { method: 'POST', body: form })
+  const createRes = await fetch(`${MVSEP_API}/separation/create`, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(300_000) // uploads the whole audio file — generous, never infinite
+  })
   const createJson = (await createRes.json().catch(() => ({}))) as {
     success?: boolean
     data?: { hash?: string; message?: string }
@@ -60,7 +64,7 @@ export async function separateOnline(
   const started = Date.now()
   while (Date.now() - started < maxWaitMs) {
     await sleep(6000)
-    const st = (await (await fetch(`${MVSEP_API}/separation/get?hash=${hash}`)).json().catch(() => ({}))) as {
+    const st = (await (await fetch(`${MVSEP_API}/separation/get?hash=${hash}`, { signal: AbortSignal.timeout(20_000) })).json().catch(() => ({}))) as {
       status?: string
       data?: { files?: { url?: string; download?: string; type?: string }[] }
     }
@@ -71,7 +75,7 @@ export async function separateOnline(
         files.find((f) => /vocal/i.test(`${f.type ?? ''} ${f.url ?? ''}`)) ?? files[0]
       const url = vocals?.download || vocals?.url
       if (!url) throw new Error('Separation finished but no vocals track was returned.')
-      const dl = await fetch(url)
+      const dl = await fetch(url, { signal: AbortSignal.timeout(300_000) })
       const outPath = join(outDir, 'vocals-online.wav')
       writeFileSync(outPath, Buffer.from(await dl.arrayBuffer()))
       return outPath

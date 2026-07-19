@@ -61,7 +61,10 @@ export async function searchStockVideos(query: string, key: string, targetWidth 
   if (!key || !q) return []
   const url = `https://pixabay.com/api/videos/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&per_page=${Math.max(3, count)}&safesearch=true`
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'NIHILPOINTZERO-OS/1.0', Accept: 'application/json' } })
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'NIHILPOINTZERO-OS/1.0', Accept: 'application/json' },
+      signal: AbortSignal.timeout(20_000)
+    })
     if (!res.ok) return []
     const data = (await res.json()) as { hits?: PixabayHit[] }
     const clips: StockClip[] = []
@@ -77,7 +80,10 @@ export async function searchStockVideos(query: string, key: string, targetWidth 
 
 /** Downloads a stock clip to `outPath`. Throws on failure (caller handles). */
 export async function downloadStockClip(url: string, outPath: string): Promise<void> {
-  const res = await fetch(url, { headers: { 'User-Agent': 'NIHILPOINTZERO-OS/1.0' } })
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'NIHILPOINTZERO-OS/1.0' },
+    signal: AbortSignal.timeout(300_000) // video files are large — generous, never infinite
+  })
   if (!res.ok) throw new Error(`Stock clip download failed (HTTP ${res.status}).`)
   const buf = Buffer.from(await res.arrayBuffer())
   if (!buf.length) throw new Error('Downloaded stock clip was empty.')

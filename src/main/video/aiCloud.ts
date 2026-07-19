@@ -63,6 +63,8 @@ export async function generateCloudFootage(req: AiFootageRequest): Promise<strin
   const [w, h] = RES_WH[req.resolution ?? '1080p']
   const res = await fetch(cfg.cloudEndpoint, {
     method: 'POST',
+    // Cloud text-to-video generation is legitimately slow — generous, but never infinite.
+    signal: AbortSignal.timeout(15 * 60_000),
     headers: { Authorization: `Bearer ${cfg.cloudApiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       prompt: buildFootagePrompt(req),
@@ -77,7 +79,7 @@ export async function generateCloudFootage(req: AiFootageRequest): Promise<strin
   const videoUrl = data.videoUrl || data.url || data.output
   if (!videoUrl) throw new Error('Cloud AI provider did not return a video URL in the response.')
 
-  const dl = await fetch(videoUrl)
+  const dl = await fetch(videoUrl, { signal: AbortSignal.timeout(300_000) })
   if (!dl.ok) throw new Error(`Could not download the generated footage (HTTP ${dl.status}).`)
   const buf = Buffer.from(await dl.arrayBuffer())
   const out = join(mkdtempSync(join(tmpdir(), 'ai-cloud-')), 'footage.mp4')

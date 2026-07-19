@@ -25,7 +25,7 @@ export async function searchYouTubeSignals(query: string, maxResults = 8): Promi
 
   try {
     const searchUrl = `${BASE_URL}/search?part=snippet&type=video&order=relevance&maxResults=${maxResults}&q=${encodeURIComponent(query)}&key=${apiKey}`
-    const searchRes = await fetch(searchUrl)
+    const searchRes = await fetch(searchUrl, { signal: AbortSignal.timeout(20_000) })
     if (!searchRes.ok) return []
     const searchData = await searchRes.json()
     const items: YouTubeSearchItem[] = Array.isArray(searchData.items) ? searchData.items : []
@@ -33,7 +33,7 @@ export async function searchYouTubeSignals(query: string, maxResults = 8): Promi
     if (!ids.length) return []
 
     const statsUrl = `${BASE_URL}/videos?part=statistics&id=${ids.join(',')}&key=${apiKey}`
-    const statsRes = await fetch(statsUrl)
+    const statsRes = await fetch(statsUrl, { signal: AbortSignal.timeout(20_000) })
     const statsData = statsRes.ok ? await statsRes.json() : { items: [] }
     const viewsById = new Map<string, number>()
     for (const it of (statsData.items ?? []) as YouTubeVideoStatsItem[]) {

@@ -18,6 +18,19 @@ function Step([string]$name, [scriptblock]$block) {
 
 Step 'Tests' { npm run test }
 
+Step 'Clear previous build artifacts' {
+    # NSIS fails with "Can't open output file" if an old exe is momentarily
+    # locked (e.g. antivirus scan). Deleting first surfaces the lock early,
+    # with a retry to ride out a scan in progress.
+    foreach ($exe in 'NIHILPOINTZERO-OS-portable.exe', 'NIHILPOINTZERO-OS-setup.exe') {
+        $p = Join-Path $repo "release\$exe"
+        if (Test-Path $p) {
+            try { Remove-Item $p -Force -ErrorAction Stop }
+            catch { Start-Sleep -Seconds 5; Remove-Item $p -Force -ErrorAction Stop }
+        }
+    }
+}
+
 Step 'Build (portable + installer)' { npm run dist:win }
 
 Step 'Deploy exes to Desktop studio' {

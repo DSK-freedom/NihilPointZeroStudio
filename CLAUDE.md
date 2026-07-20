@@ -16,11 +16,23 @@ npm run dev        # run the app in dev mode (electron-vite)
 npm run test       # vitest (tests are colocated: src/**/*.test.ts)
 npm run lint       # eslint src
 npm run dist:win   # full build -> release\ (portable exe + NSIS installer)
+npm run ship       # test -> build -> copy exes+docs to Desktop studio -> git push
 ```
 
 Builds land in `release\` as `NIHILPOINTZERO-OS-portable.exe` and
-`NIHILPOINTZERO-OS-setup.exe`, then get copied into the user's studio folder
-together with the docs from `docs\`.
+`NIHILPOINTZERO-OS-setup.exe`. The live studio the user actually runs is
+`%USERPROFILE%\Desktop\NihilPointZeroStudio\` (exes + the 4 docs +
+`nihilpointzero-data`, which is user work — never write into or delete it).
+
+## Shipping rule (MANDATORY)
+
+Whenever a completed change touches app code, docs, or resources, finish the
+job by running `npm run ship` (scripts/ship.ps1). Work is NOT done until the
+Desktop studio folder and GitHub both match the source. Ship once per
+completed change/fix/upgrade — not after every individual file edit. If the
+build or push cannot be run for any reason, explicitly tell the user their
+change is NOT yet shipped and the Desktop exe is stale. After shipping, remind
+the user to run NIHILPOINTZERO-OS-setup.exe once to refresh the INSTALLED app.
 
 ## Architecture
 

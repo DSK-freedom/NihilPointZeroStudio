@@ -10,7 +10,8 @@
     "start": "electron-vite preview",
     "test": "vitest run",
     "lint": "eslint src",
-    "dist:win": "electron-vite build && electron-builder --win"
+    "dist:win": "electron-vite build && electron-builder --win",
+    "ship": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ship.ps1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

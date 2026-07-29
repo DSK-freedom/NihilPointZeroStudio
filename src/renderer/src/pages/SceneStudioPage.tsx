@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { VideoAspect, VideoJob, VideoResolution, VideoStyle, VideoTemplate } from '../../../shared/types'
 import { VIDEO_STYLES, VIDEO_TEMPLATES } from '../../../shared/types'
 import MicButton, { appendDictation } from '../components/MicButton'
@@ -7,6 +8,11 @@ import { toast } from '../components/Toast'
 
 function fileUrl(p: string): string {
   return `file:///${p.replace(/\\/g, '/').replace(/^\/+/, '')}`
+}
+
+/** Undoes fileUrl(): strips the file:/// wrapper + cache-buster back to a disk path. */
+function plainPath(img: string): string {
+  return decodeURI(img.replace(/^file:\/\/\//, '').split('?')[0])
 }
 
 type SceneStatus = 'idle' | 'generating' | 'done' | 'error'
@@ -36,6 +42,7 @@ function parsePct(stage: string | null): number | null {
  * happens and steer it" workspace.
  */
 export default function SceneStudioPage(): React.JSX.Element {
+  const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [style, setStyle] = useState<VideoStyle>('cinematic')
@@ -209,6 +216,26 @@ export default function SceneStudioPage(): React.JSX.Element {
     if (paths[0]) patchScene(index, { photo: paths[0] })
   }
 
+  /** Save ONE generated scene image wherever the user chooses. */
+  async function saveOne(s: Scene, arrIdx: number): Promise<void> {
+    if (!s.img) return
+    const res = await window.api.scene.saveImage(plainPath(s.img), `scene-${String(arrIdx + 1).padStart(2, '0')}.jpg`)
+    if (res.saved) toast(`Saved to ${res.path}`, 'success')
+    else if (res.error) toast(`Save failed: ${res.error}`, 'error')
+  }
+
+  /** Save every generated scene image, numbered in storyboard order, into one folder. */
+  async function saveAll(): Promise<void> {
+    const paths = scenes.filter((s) => s.status === 'done' && s.img).map((s) => plainPath(s.img as string))
+    if (!paths.length) {
+      toast('Generate at least one scene first.', 'error')
+      return
+    }
+    const res = await window.api.scene.saveAllImages(paths)
+    if (res.saved) toast(`Saved ${res.count} images to ${res.path}`, 'success')
+    else if (res.error) toast(`Save failed: ${res.error}`, 'error')
+  }
+
   async function build(): Promise<void> {
     const ready = scenes.filter((s) => s.status === 'done' && s.img)
     if (!ready.length) {
@@ -380,6 +407,9 @@ export default function SceneStudioPage(): React.JSX.Element {
                 <div className="h-full bg-gold-500 transition-all" style={{ width: `${genPct}%` }} />
               </div>
             </div>
+            <button onClick={saveAll} disabled={doneCount === 0} title="Save every generated image, numbered in order, into a folder you pick" className="rounded-md border border-ink-600 px-4 py-2 text-sm text-ink-200 hover:border-gold-500 disabled:opacity-40">
+              ⬇ Save all images
+            </button>
             <button onClick={build} disabled={building || generating || doneCount === 0} className="rounded-md bg-gold-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-gold-400 disabled:opacity-40">
               {building ? 'Building…' : '🎬 Build video'}
             </button>
@@ -429,6 +459,11 @@ export default function SceneStudioPage(): React.JSX.Element {
                   <button onClick={() => regenerate(s.index)} disabled={s.status === 'generating'} className="rounded border border-ink-700 px-2 py-1 text-[11px] text-ink-300 hover:border-gold-500 disabled:opacity-40">
                     ↻ Regenerate this scene
                   </button>
+                  {s.img && s.status === 'done' && (
+                    <button onClick={() => void saveOne(s, arrIdx)} title="Save this image to your computer" className="rounded border border-ink-700 px-2 py-1 text-[11px] text-ink-300 hover:border-gold-500">
+                      ⬇ Save
+                    </button>
+                  )}
                   <MicButton onText={(t) => patchScene(s.index, { prompt: appendDictation(s.prompt, t) })} />
                 </div>
               </div>
@@ -460,9 +495,15 @@ export default function SceneStudioPage(): React.JSX.Element {
         <div className="mt-6 rounded-lg border border-ink-800 bg-ink-900 p-4">
           <div className="text-sm text-ink-100 mb-2">✓ Built “{built.title}” — also saved in Video Studio.</div>
           <video src={fileUrl(built.path)} controls className="w-full max-w-2xl rounded bg-black" />
-          <div className="mt-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             <button onClick={() => void window.api.video.reveal(built.path)} className="rounded bg-ink-800 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-700">
               Show file
+            </button>
+            <button onClick={() => navigate('/video')} title="Voice options, music, captions, export and everything else live here" className="rounded bg-ink-800 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-700">
+              🎥 Open in Video Studio
+            </button>
+            <button onClick={() => navigate('/timeline')} title="Cut, trim and rearrange this video in the Timeline Editor" className="rounded bg-ink-800 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-700">
+              ✂ Edit in Timeline
             </button>
           </div>
         </div>

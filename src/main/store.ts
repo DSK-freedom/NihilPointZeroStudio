@@ -294,8 +294,37 @@ export function saveToLibrary(entry: LibraryEntry): LibraryEntry[] {
   return listLibrary()
 }
 
+/**
+ * Trash Can semantics: "delete" in the UI only MOVES an entry to the Trash (reversible).
+ * Nothing is removed from disk until the user explicitly deletes forever / empties the
+ * Trash — the same only-the-user-can-destroy rule the activity log follows.
+ */
+export function trashLibraryEntry(id: string): LibraryEntry[] {
+  const entries = readLibrary()
+  const hit = entries.find((e) => e.id === id)
+  if (hit) hit.trashedAt = new Date().toISOString()
+  writeLibrary(entries)
+  return listLibrary()
+}
+
+export function restoreLibraryEntry(id: string): LibraryEntry[] {
+  const entries = readLibrary()
+  const hit = entries.find((e) => e.id === id)
+  if (hit) delete hit.trashedAt
+  writeLibrary(entries)
+  return listLibrary()
+}
+
+/** Permanent removal — only ever called from the explicit user-initiated IPC handlers. */
 export function deleteFromLibrary(id: string): LibraryEntry[] {
   const entries = readLibrary().filter((e) => e.id !== id)
+  writeLibrary(entries)
+  return listLibrary()
+}
+
+/** Permanently removes every trashed entry — only from the user's "Empty Trash" click. */
+export function emptyLibraryTrash(): LibraryEntry[] {
+  const entries = readLibrary().filter((e) => !e.trashedAt)
   writeLibrary(entries)
   return listLibrary()
 }

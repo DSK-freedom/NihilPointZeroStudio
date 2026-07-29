@@ -84,6 +84,7 @@ import {
   deleteDjPlan,
   deleteFromLibrary,
   deleteVideo,
+  emptyLibraryTrash,
   getDemucsCmd,
   getDraft,
   getHordeApiKey,
@@ -105,9 +106,11 @@ import {
   listLibrary,
   listVideos,
   logActivity,
+  restoreLibraryEntry,
   saveDjPlan,
   saveScriptPad,
   saveToLibrary,
+  trashLibraryEntry,
   setActiveProvider,
   setApiKey,
   setModel,
@@ -167,6 +170,12 @@ export function registerIpcHandlers(): void {
     const outPath = join(thumbnailsDir(), `thumb-${randomUUID().slice(0, 8)}.png`)
     await renderThumbnail(headline, style, outPath, bgImage)
     logActivity('user', 'Generated a thumbnail image', headline)
+    saveToLibrary({
+      id: randomUUID(),
+      kind: 'image',
+      data: { title: headline.slice(0, 80) || 'Thumbnail', path: outPath, source: 'Thumbnail' },
+      savedAt: new Date().toISOString()
+    })
     return outPath
   })
 
@@ -194,9 +203,27 @@ export function registerIpcHandlers(): void {
     return saveToLibrary({ ...entry, id: randomUUID(), savedAt: new Date().toISOString() })
   })
 
+  // "Delete" is now reversible: it only moves the entry to the Trash Can. Permanent
+  // removal happens ONLY via the two explicit user actions below — nothing else in the
+  // app (AI included) can destroy a library item.
   ipcMain.handle(IPC.libraryDelete, (_e, id: string) => {
-    logActivity('user', 'Deleted item from library', id)
+    logActivity('user', 'Moved library item to Trash', id)
+    return trashLibraryEntry(id)
+  })
+
+  ipcMain.handle(IPC.libraryRestore, (_e, id: string) => {
+    logActivity('user', 'Restored library item from Trash', id)
+    return restoreLibraryEntry(id)
+  })
+
+  ipcMain.handle(IPC.libraryDeleteForever, (_e, id: string) => {
+    logActivity('user', 'Permanently deleted library item', id)
     return deleteFromLibrary(id)
+  })
+
+  ipcMain.handle(IPC.libraryEmptyTrash, () => {
+    logActivity('user', 'Emptied the Library Trash')
+    return emptyLibraryTrash()
   })
 
   ipcMain.handle(IPC.exportText, async (e, suggestedName: string, content: string) => {
@@ -989,19 +1016,72 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.scenePlan, (_e, title: string, body: string, style: VideoStyle, direction: string) => {
     return planScenes(title || '', body || '', style, direction || '')
   })
-  ipcMain.handle(IPC.sceneGenerate, (_e, prompt: string, seed: number, fast: boolean) => {
+  ipcMain.handle(IPC.sceneGenerate, async (_e, prompt: string, seed: number, fast: boolean) => {
     if (!prompt || !prompt.trim()) throw new Error('Empty scene prompt.')
-    return generateSceneImage(prompt.trim(), Math.max(1, Math.round(seed) || 1), !!fast)
+    const imgPath = await generateSceneImage(prompt.trim(), Math.max(1, Math.round(seed) || 1), !!fast)
+    // Every generated picture lands in the Library automatically (nothing generated is
+    // losable); Trash-Can rules apply, so only the user can ever remove it.
+    saveToLibrary({
+      id: randomUUID(),
+      kind: 'image',
+      data: { title: prompt.trim().slice(0, 80), path: imgPath, source: 'Scene Studio' },
+      savedAt: new Date().toISOString()
+    })
+    return imgPath
+  })
+
+  // Save ONE generated scene image wherever the user chooses.
+  ipcMain.handle(IPC.sceneSaveImage, async (_e, srcPath: string, suggestedName: string) => {
+    const res = await dialog.showSaveDialog({
+      title: 'Save scene image',
+      defaultPath: suggestedName || 'scene.jpg',
+      filters: [{ name: 'JPEG Image', extensions: ['jpg', 'jpeg'] }]
+    })
+    if (res.canceled || !res.filePath) return { saved: false }
+    try {
+      copyFileSync(srcPath, res.filePath)
+    } catch (err) {
+      return { saved: false, error: err instanceof Error ? err.message : 'Could not save the file.' }
+    }
+    logActivity('user', 'Saved a scene image', res.filePath)
+    return { saved: true, path: res.filePath }
+  })
+
+  // Save ALL generated scene images into a folder the user picks, numbered in order.
+  ipcMain.handle(IPC.sceneSaveAllImages, async (_e, srcPaths: string[]) => {
+    if (!Array.isArray(srcPaths) || srcPaths.length === 0) {
+      return { saved: false, error: 'No generated images to save yet.' }
+    }
+    const res = await dialog.showOpenDialog({
+      title: 'Choose a folder for the scene images',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (res.canceled || !res.filePaths[0]) return { saved: false }
+    const dir = res.filePaths[0]
+    let count = 0
+    try {
+      for (const src of srcPaths) {
+        copyFileSync(src, join(dir, `scene-${String(count + 1).padStart(2, '0')}.jpg`))
+        count++
+      }
+    } catch (err) {
+      return {
+        saved: false,
+        error: err instanceof Error ? err.message : `Failed after saving ${count} image(s).`
+      }
+    }
+    logActivity('user', `Saved ${count} scene images to a folder`, dir)
+    return { saved: true, path: dir, count }
   })
 
   // Put the user IN a scene: image-to-image from their attached photo (free, AI Horde).
   // Streams queue progress on scene:progress so the slow free queue never looks frozen.
   ipcMain.handle(
     IPC.sceneGenerateFromPhoto,
-    (e, index: number, prompt: string, sourceImagePath: string, strength: number) => {
+    async (e, index: number, prompt: string, sourceImagePath: string, strength: number) => {
       if (!prompt || !prompt.trim()) throw new Error('Empty scene prompt.')
       if (!sourceImagePath) throw new Error('No photo attached.')
-      return generateFromPhoto({
+      const imgPath = await generateFromPhoto({
         prompt: prompt.trim(),
         sourceImagePath,
         apikey: getHordeApiKey() ?? undefined,
@@ -1010,6 +1090,13 @@ export function registerIpcHandlers(): void {
           if (!e.sender.isDestroyed()) e.sender.send(IPC.sceneProgress, { index, ...p })
         }
       })
+      saveToLibrary({
+        id: randomUUID(),
+        kind: 'image',
+        data: { title: prompt.trim().slice(0, 80), path: imgPath, source: 'Scene Studio (photo)' },
+        savedAt: new Date().toISOString()
+      })
+      return imgPath
     }
   )
 

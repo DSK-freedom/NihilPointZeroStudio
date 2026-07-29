@@ -3,13 +3,24 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-29 13:31 · 13b642a
+## Build: v0.1.1 · 2026-07-29 16:09 · 77dafb4
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
 ## New in this build (2026-07-29)
+- **Scene Studio images are now downloadable.** Every generated scene has a "⬇ Save"
+  button, and "⬇ Save all images" copies the whole storyboard, numbered in order, into a
+  folder you pick — so you can use the pictures outside the studio too.
+- **After building a scene video, two new buttons take you onward:** "🎥 Open in Video
+  Studio" (voice, music, captions, export) and "✂ Edit in Timeline" (cut/trim/rearrange).
+- **The Library now keeps EVERY generated picture automatically** (scene images and
+  thumbnails), with new filter tabs: All · Ideas · Scripts · Images · Trash.
+- **Deleting from the Library is no longer permanent.** "Delete" now moves items to a
+  Trash Can; only YOU can restore or permanently remove them ("Delete forever" / "Empty
+  Trash" ask for confirmation). Nothing in the app — the AI included — can destroy a
+  library item.
 - **The app now TELLS you when the free backup AI answered.** Before, if your chosen AI
   (Anthropic/OpenAI/Ollama) failed for any reason — wrong key, no credits, a typo in the
   model name — the app silently asked a free public AI instead and showed that answer as

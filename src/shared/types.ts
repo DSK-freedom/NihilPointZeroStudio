@@ -105,11 +105,23 @@ export interface GeneratedScript {
   createdAt: string
 }
 
+/** A generated picture saved in the Library (scene images, thumbnails). */
+export interface SavedImage {
+  title: string
+  /** Absolute path of the image file on disk. */
+  path: string
+  /** Where it came from, e.g. "Scene Studio" or "Thumbnail". */
+  source: string
+}
+
 export interface LibraryEntry {
   id: string
-  kind: 'idea' | 'script'
-  data: VideoIdea | GeneratedScript
+  kind: 'idea' | 'script' | 'image'
+  data: VideoIdea | GeneratedScript | SavedImage
   savedAt: string
+  /** Set when the user moves the entry to the Trash Can. Only the user can empty the
+   *  Trash — nothing in the app deletes library items outright. */
+  trashedAt?: string
 }
 
 export interface TrendTopic {

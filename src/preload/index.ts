@@ -51,7 +51,12 @@ const api = {
   library: {
     list: () => ipcRenderer.invoke(IPC.libraryList),
     save: (entry: Omit<LibraryEntry, 'id' | 'savedAt'>) => ipcRenderer.invoke(IPC.librarySave, entry),
-    remove: (id: string) => ipcRenderer.invoke(IPC.libraryDelete, id)
+    // "remove" only moves the entry to the Trash Can (reversible). The two permanent
+    // actions below run ONLY from explicit user clicks in the Library's Trash view.
+    remove: (id: string) => ipcRenderer.invoke(IPC.libraryDelete, id),
+    restore: (id: string) => ipcRenderer.invoke(IPC.libraryRestore, id),
+    removeForever: (id: string) => ipcRenderer.invoke(IPC.libraryDeleteForever, id),
+    emptyTrash: () => ipcRenderer.invoke(IPC.libraryEmptyTrash)
   },
   exportText: (suggestedName: string, content: string) => ipcRenderer.invoke(IPC.exportText, suggestedName, content),
   data: {
@@ -354,7 +359,12 @@ const api = {
       const listener = (_e: unknown, p: { index: number; message: string; queuePosition?: number; waitSeconds?: number }): void => cb(p)
       ipcRenderer.on(IPC.sceneProgress, listener)
       return () => ipcRenderer.removeListener(IPC.sceneProgress, listener)
-    }
+    },
+    // Save one generated scene image (save dialog), or all of them into a chosen folder.
+    saveImage: (srcPath: string, suggestedName: string): Promise<{ saved: boolean; path?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.sceneSaveImage, srcPath, suggestedName),
+    saveAllImages: (srcPaths: string[]): Promise<{ saved: boolean; path?: string; count?: number; error?: string }> =>
+      ipcRenderer.invoke(IPC.sceneSaveAllImages, srcPaths)
   },
   ai: {
     engineStatus: (): Promise<import('../shared/types').AiEngineStatus> => ipcRenderer.invoke(IPC.aiEngineStatus),

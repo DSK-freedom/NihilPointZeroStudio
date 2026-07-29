@@ -102,31 +102,34 @@ Step 'Update GitHub release downloads' {
 If Windows shows "Windows protected your PC": click **More info -> Run anyway** (the app is not code-signed yet).
 "@
 
-    # JSON bodies must be sent as UTF-8 BYTES: with a plain string, PowerShell 5.1 encodes
-    # non-ASCII (the build tag's middle-dot) as ISO-8859-1, which GitHub rejects with
-    # "Problems parsing JSON".
-    function To-JsonBytes([hashtable]$h) { [Text.Encoding]::UTF8.GetBytes(($h | ConvertTo-Json)) }
+    # JSON bodies must be sent as UTF-8 BYTES, built INLINE at each call site: a plain
+    # string body gets encoded as ISO-8859-1 (breaks on the build tag's middle-dot), and
+    # a helper FUNCTION returning byte[] gets pipeline-unrolled into loose numbers —
+    # GitHub then sees "123" (the byte for '{') instead of JSON. Inline expressions
+    # avoid both traps.
 
     # Get or create the single rolling release.
     try {
         $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$gh/releases/tags/$tag" -Headers $hdr
     } catch {
-        $new = To-JsonBytes @{ tag_name = $tag; name = 'Download NIHILPOINTZERO-OS (always the newest version)'
-                               body = $body; draft = $false; prerelease = $false }
-        $rel = Invoke-RestMethod -Method Post -Uri "https://api.github.com/repos/$gh/releases" -Headers $hdr -Body $new -ContentType 'application/json; charset=utf-8'
+        $newJson = @{ tag_name = $tag; name = 'Download NIHILPOINTZERO-OS (always the newest version)'
+                      body = $body; draft = $false; prerelease = $false } | ConvertTo-Json
+        $rel = Invoke-RestMethod -Method Post -Uri "https://api.github.com/repos/$gh/releases" -Headers $hdr `
+            -Body ([Text.Encoding]::UTF8.GetBytes($newJson)) -ContentType 'application/json; charset=utf-8'
     }
 
     # Keep the 'latest' tag on the commit we just pushed (cosmetic but honest).
     $sha = (git rev-parse HEAD).Trim()
     try {
         Invoke-RestMethod -Method Patch -Uri "https://api.github.com/repos/$gh/git/refs/tags/$tag" -Headers $hdr `
-            -Body (To-JsonBytes @{ sha = $sha; force = $true }) -ContentType 'application/json; charset=utf-8' | Out-Null
+            -Body ([Text.Encoding]::UTF8.GetBytes((@{ sha = $sha; force = $true } | ConvertTo-Json))) `
+            -ContentType 'application/json; charset=utf-8' | Out-Null
     } catch { Write-Host '  (tag pointer not moved - harmless)' -ForegroundColor DarkGray }
 
     # Refresh release title/body with the new version stamp.
+    $patchJson = @{ name = 'Download NIHILPOINTZERO-OS (always the newest version)'; body = $body } | ConvertTo-Json
     Invoke-RestMethod -Method Patch -Uri "https://api.github.com/repos/$gh/releases/$($rel.id)" -Headers $hdr `
-        -Body (To-JsonBytes @{ name = 'Download NIHILPOINTZERO-OS (always the newest version)'; body = $body }) `
-        -ContentType 'application/json; charset=utf-8' | Out-Null
+        -Body ([Text.Encoding]::UTF8.GetBytes($patchJson)) -ContentType 'application/json; charset=utf-8' | Out-Null
 
     # Replace assets: the two exes + the four plain-English docs.
     $assets = @(

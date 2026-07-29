@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { checkForUpdate } from './updateCheck'
+import { runAutoBackupIfDue } from './autoBackup'
 import { join } from 'path'
 import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs'
 import { registerIpcHandlers } from './ipc'
@@ -115,6 +116,12 @@ if (!gotLock) {
     setTimeout(() => {
       void checkForUpdate()
     }, 8000)
+
+    // Weekly copy-only backup of the user's work (at most once every 7 days).
+    // Delayed well past first paint so it never competes with app startup.
+    setTimeout(() => {
+      void runAutoBackupIfDue()
+    }, 30_000)
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

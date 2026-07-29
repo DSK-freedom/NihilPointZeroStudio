@@ -8,6 +8,7 @@ import type {
   LibraryEntry,
   LookEngine,
   Mood,
+  PostMetadata,
   TrimMode,
   VideoAspect,
   VideoJob,
@@ -146,6 +147,8 @@ export default function VideoPage() {
   const [captionBusyId, setCaptionBusyId] = useState<string | null>(null)
   const [shortsBusyId, setShortsBusyId] = useState<string | null>(null)
   const [shortsCount, setShortsCount] = useState(3)
+  const [metaBusyId, setMetaBusyId] = useState<string | null>(null)
+  const [postMeta, setPostMeta] = useState<{ id: string; meta: PostMetadata } | null>(null)
   const [watermarkLogo, setWatermarkLogo] = useState<string | null>(null)
   const [watermarkPos, setWatermarkPos] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('bottom-right')
   const [watermarkBusyId, setWatermarkBusyId] = useState<string | null>(null)
@@ -405,6 +408,23 @@ export default function VideoPage() {
    * Everything is local and free: offline transcript → best moments → 9:16 crop + burned
    * captions. Each clip appears in this same list.
    */
+  /** Ready-to-paste title/description/hashtags for one finished clip. */
+  async function handlePostMeta(job: VideoJob, platform: 'youtube' | 'tiktok'): Promise<void> {
+    setMetaBusyId(job.id)
+    setError(null)
+    try {
+      // A 9:16 clip is a short — the title carries the marker set when it was cut.
+      const vertical = /short/i.test(job.title)
+      const meta = await window.api.shorts.postMeta(job.id, platform, vertical)
+      setPostMeta({ id: job.id, meta })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not write posting text')
+      toast(err instanceof Error ? err.message : 'Could not write posting text', 'error')
+    } finally {
+      setMetaBusyId(null)
+    }
+  }
+
   async function handleMakeShorts(job: VideoJob, count: number): Promise<void> {
     setShortsBusyId(job.id)
     setError(null)
@@ -1240,6 +1260,64 @@ export default function VideoPage() {
                         Listens to this video offline, picks the strongest moments (hooks, numbers, questions), and
                         makes 9:16 clips with big burned-in captions — ready for YouTube Shorts, TikTok and Reels.
                         They appear in this list. Free, no internet needed.
+                      </span>
+                    </div>
+                    {/* Ready-to-paste posting text so uploading is copy-paste, not writing. */}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900/60 p-2">
+                      <span className="text-[11px] text-ink-400">🏷 Posting text</span>
+                      <button
+                        onClick={() => handlePostMeta(job, 'youtube')}
+                        disabled={metaBusyId === job.id}
+                        className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors disabled:opacity-50"
+                      >
+                        YouTube
+                      </button>
+                      <button
+                        onClick={() => handlePostMeta(job, 'tiktok')}
+                        disabled={metaBusyId === job.id}
+                        className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors disabled:opacity-50"
+                      >
+                        TikTok
+                      </button>
+                      {metaBusyId === job.id && <span className="text-[10px] text-gold-300">writing…</span>}
+                      {postMeta && postMeta.id === job.id && (
+                        <div className="w-full mt-1 space-y-1.5">
+                          {(
+                            [
+                              ['Title', postMeta.meta.title],
+                              ['Description', postMeta.meta.description],
+                              ['Hashtags', postMeta.meta.hashtags.map((h) => `#${h}`).join(' ')]
+                            ] as [string, string][]
+                          ).map(([label, value]) => (
+                            <div key={label} className="rounded border border-ink-800 bg-ink-950 p-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-ink-500">{label}</span>
+                                <button
+                                  onClick={() => {
+                                    // Match the app's existing guarded pattern, but never
+                                    // claim success if the clipboard isn't available.
+                                    if (navigator.clipboard?.writeText) {
+                                      void navigator.clipboard
+                                        .writeText(value)
+                                        .then(() => toast(`${label} copied ✓`, 'success'))
+                                        .catch(() => toast('Could not copy — select the text and press Ctrl+C', 'error'))
+                                    } else {
+                                      toast('Could not copy — select the text and press Ctrl+C', 'error')
+                                    }
+                                  }}
+                                  className="ml-auto text-[10px] text-gold-300 hover:text-gold-200"
+                                >
+                                  Copy
+                                </button>
+                              </div>
+                              <div className="whitespace-pre-wrap text-[11px] text-ink-200">{value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <span className="w-full text-[10px] text-ink-600">
+                        Writes a click-worthy title, a short description and hashtags for this clip — then Copy each
+                        one straight into YouTube/TikTok.
                       </span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900/60 p-2">

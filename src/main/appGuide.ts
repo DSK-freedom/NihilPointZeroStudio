@@ -7,7 +7,7 @@
 export const APP_GUIDE = `
 NIHILPOINTZERO STUDIO — TAB-BY-TAB MANUAL (what each tab does and how to use it)
 
-SIDEBAR (left edge, top to bottom): Ideas & Trends · ✦ AI Command · 🎬 Scene Studio ·
+SIDEBAR (left edge, top to bottom): 🏠 Today · Ideas & Trends · ✦ AI Command · 🎬 Scene Studio ·
 Script Writer · Script Pad · Video Studio · 🎞 Storyboard Director · 🎥 Presenter Studio ·
 ⏺ Recorder · ✂ Timeline Editor · Charts · 📈 Live PSX Data · 🏦 NCCPL Analysis · Advisor ·
 Library · Activity Log · Settings. The gold badge under "OS" shows the build version.
@@ -25,11 +25,19 @@ TWO HELPERS FLOAT ON EVERY TAB:
   jumps straight to that tab.
 
 OTHER GLOBAL FEATURES: on startup the app quietly checks for a newer published version and
-shows a small blue notice with a "Show me the file" button (opens the studio folder with
-NIHILPOINTZERO-OS-setup.exe selected; one double-click updates). BACKUP-NOW.cmd in the
-Desktop studio folder copies ALL user work to Documents\\NihilPointZero-Backups (copy-only,
-never deletes) — recommend it weekly.
+shows a small blue notice with a "Get the update" button (opens the studio folder with
+NIHILPOINTZERO-OS-setup.exe selected, or the download page if that copy is old). BACKUP-NOW.cmd
+in the Desktop studio folder copies ALL user work to Documents\\NihilPointZero-Backups
+(copy-only, never deletes) — AND the app now does that same backup automatically at most once
+every 7 days, logging it in the Activity Log.
 
+POSTING TEXT: in Video Studio, every video has "🏷 Posting text · YouTube / TikTok" — one click
+writes a click-worthy title, a short description and hashtags for THAT clip, each with a Copy
+button. Best used right after "📱 Cut into vertical shorts" so uploading is copy-paste.
+
+• 🏠 TODAY — the landing screen (first item in the sidebar). Shows your latest videos, what
+  happened recently, and one-click cards to start the usual jobs. Read-only: everything on
+  it is a link, so it can't change anything.
 • IDEAS & TRENDS — generate video ideas with trend/YouTube signals. Each idea has a hook,
   angle, and view-potential score. Save good ones to the Library.
 • ✦ AI COMMAND — type what you want in plain words ("write a 1-minute script about gold
@@ -86,7 +94,10 @@ never deletes) — recommend it weekly.
   FAILED and why, and — important — whether an answer came from your chosen AI or the
   FREE backup AI (if answers feel weak, check here first).
 • SETTINGS — pick the AI brain: free (default, keyless), Ollama (local), Anthropic or
-  OpenAI (paid keys). Model names are cleaned of stray spaces automatically. Also:
+  OpenAI (paid keys). "🩺 Run full check" (top of the page) LIVE-tests everything —
+  internet, the free AI, the free image service, Ollama + whether your chosen model is
+  installed, and whether a saved Anthropic/OpenAI key is actually ACCEPTED (a wrong key
+  shows RED here; this is the first thing to try when answers feel weak). Model names are cleaned of stray spaces automatically. Also:
   YouTube API key, AI Horde key (faster photo scenes), demucs/faceAnim commands, and the
   Photo Beautify tool.
 

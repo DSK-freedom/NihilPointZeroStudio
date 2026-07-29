@@ -20,7 +20,8 @@ interface Msg {
 }
 
 const PAGE_NAMES: Record<string, string> = {
-  '/': 'Ideas & Trends',
+  '/': 'Today',
+  '/ideas': 'Ideas & Trends',
   '/agent': 'AI Command',
   '/scenes': 'Scene Studio',
   '/writer': 'Script Writer',

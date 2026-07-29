@@ -374,7 +374,14 @@ const api = {
     ): Promise<{
       jobs: import('../shared/types').VideoJob[]
       moments: { title: string; reason: string; startSec: number; endSec: number }[]
-    }> => ipcRenderer.invoke(IPC.videoMakeShorts, videoId, count)
+    }> => ipcRenderer.invoke(IPC.videoMakeShorts, videoId, count),
+    // Ready-to-paste posting text (title + description + hashtags) for one clip.
+    postMeta: (
+      videoId: string,
+      platform: 'youtube' | 'tiktok',
+      vertical?: boolean
+    ): Promise<import('../shared/types').PostMetadata> =>
+      ipcRenderer.invoke(IPC.videoPostMeta, videoId, platform, vertical)
   },
   ai: {
     engineStatus: (): Promise<import('../shared/types').AiEngineStatus> => ipcRenderer.invoke(IPC.aiEngineStatus),
@@ -403,6 +410,10 @@ const api = {
     // new as the advertised build; otherwise opens the download page.
     revealSetup: (remoteTag?: string): Promise<{ ok: boolean; opened: string }> =>
       ipcRenderer.invoke(IPC.updateRevealSetup, remoteTag)
+  },
+  health: {
+    // Live self-test of every dependency (validates saved keys with a cheap request).
+    run: (): Promise<import('../shared/types').HealthReport> => ipcRenderer.invoke(IPC.healthRun)
   },
   stock: {
     getConfig: (): Promise<{ hasPixabay: boolean; hasPexels: boolean }> => ipcRenderer.invoke(IPC.stockGetConfig),

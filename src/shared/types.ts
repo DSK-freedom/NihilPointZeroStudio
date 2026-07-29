@@ -613,6 +613,27 @@ export interface AgentRunResult {
   results: AgentStepResult[]
 }
 
+/** Ready-to-paste posting text for a finished clip (YouTube/TikTok/Reels). */
+export interface PostMetadata {
+  title: string
+  description: string
+  hashtags: string[]
+}
+
+export type HealthStatus = 'ok' | 'warn' | 'fail'
+export interface HealthCheck {
+  name: string
+  status: HealthStatus
+  /** Plain-English verdict — never contains key material. */
+  detail: string
+}
+export interface HealthReport {
+  checkedAt: string
+  checks: HealthCheck[]
+  failCount: number
+  warnCount: number
+}
+
 export type ActivityActor = 'ai' | 'user'
 
 export interface ActivityLogEntry {

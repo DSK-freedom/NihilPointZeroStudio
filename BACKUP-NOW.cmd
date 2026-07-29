@@ -21,10 +21,17 @@ if not exist "%SRC%" (
 echo Backing up your studio work...
 echo   from: %SRC%
 echo   to:   %DST%
-robocopy "%SRC%" "%DST%" /E /R:2 /W:5 /NP
+rem /XF and /XD deliberately EXCLUDE your API keys (settings.json, stock.json) and the
+rem app's browser-profile data. Documents may be cloud-synced, and in the portable copy
+rem the saved keys are reversible - they must not leave the studio folder.
+robocopy "%SRC%" "%DST%" /E /R:2 /W:5 /NP ^
+  /XF settings.json stock.json "Local State" Preferences ^
+  /XD "Local Storage" "Session Storage" Network Cache "Code Cache" GPUCache ^
+     DawnGraphiteCache DawnWebGPUCache blob_storage "Shared Dictionary" SharedStorage DIPS piper
 if %ERRORLEVEL% LEQ 7 (
   echo.
   echo  BACKUP OK - your work is copied to %DST%
+  echo  (API keys and browser data are intentionally NOT copied, for safety.)
 ) else (
   echo.
   echo  BACKUP HAD ERRORS - scroll up for details.

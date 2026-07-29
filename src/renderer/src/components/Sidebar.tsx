@@ -6,7 +6,8 @@ import { NavLink } from 'react-router-dom'
 const BUILD_TAG = __BUILD_TAG__
 
 const links = [
-  { to: '/', label: 'Ideas & Trends', end: true },
+  { to: '/', label: '🏠 Today', end: true },
+  { to: '/ideas', label: 'Ideas & Trends', end: false },
   { to: '/agent', label: '✦ AI Command', end: false },
   { to: '/scenes', label: '🎬 Scene Studio', end: false },
   { to: '/writer', label: 'Script Writer', end: false },

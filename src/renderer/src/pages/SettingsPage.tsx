@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { LLMProviderId, OllamaStatus, ProviderSettings } from '../../../shared/types'
+import type { HealthReport, LLMProviderId, OllamaStatus, ProviderSettings } from '../../../shared/types'
 
 const providerLabel: Record<LLMProviderId, string> = {
   free: 'Free (online)',
@@ -24,6 +24,8 @@ export default function SettingsPage() {
   const [status, setStatus] = useState<string | null>(null)
   const [ollamaStatus, setOllamaStatus] = useState<OllamaStatus | null>(null)
   const [checkingOllama, setCheckingOllama] = useState(false)
+  const [health, setHealth] = useState<HealthReport | null>(null)
+  const [healthBusy, setHealthBusy] = useState(false)
   const [webUrl, setWebUrl] = useState<string | null>(null)
   const [webBusy, setWebBusy] = useState(false)
   const [aiCloudEndpoint, setAiCloudEndpoint] = useState('')
@@ -110,6 +112,16 @@ export default function SettingsPage() {
     setCheckingOllama(false)
   }
 
+  /** Live test of every dependency — including whether saved keys are ACCEPTED. */
+  async function runLiveHealth(): Promise<void> {
+    setHealthBusy(true)
+    try {
+      setHealth(await window.api.health.run())
+    } finally {
+      setHealthBusy(false)
+    }
+  }
+
   async function refresh(): Promise<void> {
     setSettings(await window.api.settings.get())
   }
@@ -182,13 +194,49 @@ export default function SettingsPage() {
 
       {/* Setup health — at-a-glance readiness of every subsystem. */}
       <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4">
-        <div className="text-sm text-ink-100 font-medium mb-2">Setup health</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm text-ink-100 font-medium">Setup health</div>
+          <button
+            onClick={() => void runLiveHealth()}
+            disabled={healthBusy}
+            className="rounded-md bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-ink-950 text-xs font-medium px-3 py-1.5 transition-colors"
+            title="Actually tests every service live — including whether your saved API keys are ACCEPTED, not just saved"
+          >
+            {healthBusy ? 'Testing…' : '🩺 Run full check'}
+          </button>
+        </div>
+        {health && (
+          <div className="mb-3 rounded-md border border-ink-800 bg-ink-950 p-3">
+            <div className="text-[11px] text-ink-400 mb-1.5">
+              Live test · {new Date(health.checkedAt).toLocaleTimeString()} ·{' '}
+              {health.failCount === 0 && health.warnCount === 0
+                ? 'everything working ✓'
+                : `${health.failCount} problem${health.failCount === 1 ? '' : 's'}, ${health.warnCount} note${health.warnCount === 1 ? '' : 's'}`}
+            </div>
+            <div className="space-y-1 text-xs">
+              {health.checks.map((c) => (
+                <div key={c.name} className="flex items-start gap-2">
+                  <span className={c.status === 'ok' ? 'text-emerald-400' : c.status === 'warn' ? 'text-amber-400' : 'text-red-400'}>
+                    {c.status === 'ok' ? '●' : c.status === 'warn' ? '○' : '✗'}
+                  </span>
+                  <span className="text-ink-300 shrink-0">{c.name}</span>
+                  <span className={`ml-auto text-right ${c.status === 'fail' ? 'text-red-300' : 'text-ink-500'}`}>{c.detail}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-4 text-xs">
           {[
             {
               label: 'AI brain',
+              // Deliberately reports only what is CONFIGURED — a saved key can still be
+              // rejected. "Run full check" above is the authority on whether it works.
               ok: settings.activeProvider === 'free' || (settings.activeProvider === 'ollama' ? !!ollamaStatus?.connected : settings.activeProvider === 'anthropic' ? settings.hasAnthropicKey : settings.hasOpenAIKey),
-              note: settings.activeProvider === 'free' ? 'Free (online)' : settings.activeProvider
+              note:
+                settings.activeProvider === 'free'
+                  ? 'Free (online)'
+                  : `${settings.activeProvider} — configured; run the check to confirm`
             },
             { label: 'Photo scenes', ok: true, note: 'built-in key — needs internet (free queue)' },
             { label: 'Online music removal', ok: true, note: 'built-in token — needs internet (free queue)' },
@@ -203,7 +251,10 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-ink-600 mt-2">Green = ready. Amber = optional/needs setup. AI features also need internet.</p>
+        <p className="text-[10px] text-ink-600 mt-2">
+          This list shows what is SET UP. It cannot tell whether a saved key is accepted — click
+          &ldquo;🩺 Run full check&rdquo; above for the live truth. Green = ready. Amber = optional/needs setup.
+        </p>
       </div>
 
       <div className="mt-6 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-2">

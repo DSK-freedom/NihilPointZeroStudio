@@ -3,13 +3,37 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-30 00:19
+## Build: v0.1.1 · 2026-07-30 03:17
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
-## New in this build (2026-07-29)
+## New in this build (2026-07-30)
+- **🩺 "Run full check" in Settings — LIVE tests, not guesses.** The old health panel only
+  asked "is a key saved?", which is why a WRONG Anthropic key showed a green light while
+  every request failed for 11 days. The new check actually contacts each service: internet,
+  the free text + image AI, Ollama (and whether your chosen model is installed), and it
+  validates saved Anthropic/OpenAI keys with a real authenticated request — a rejected key
+  now shows RED with the reason. First thing to click when answers feel weak.
+- **💾 Automatic weekly backup.** The app now backs up your work by itself, at most once
+  every 7 days, shortly after startup, and records it in the Activity Log. Copy-only: it
+  never deletes or moves anything, and files you removed from your work folder stay in the
+  backup. **Your API keys and the app's browser data are deliberately NOT copied** — the
+  backup lives in Documents, which is often cloud-synced, and saved keys are recoverable in
+  the portable copy. It backs up videos, thumbnails, scripts, library, drafts and logs (no
+  size limit — the big finished videos are the whole point). If any file can't be copied the
+  Activity Log says INCOMPLETE and it retries next launch instead of falsely reporting success.
+  BACKUP-NOW.cmd applies the same exclusions.
+- **🏷 One-click posting text.** Every video in Video Studio has "Posting text · YouTube /
+  TikTok": it writes a click-worthy title, a short description and hashtags for that clip,
+  each with a Copy button. Pair it with "📱 Cut into vertical shorts" and uploading becomes
+  copy-paste. If the free AI is busy it hands back a sane fallback instead of failing.
+- **🏠 A "Today" home screen.** The app now opens on Today: your latest videos, what
+  happened recently, and one-click cards for the usual jobs. Ideas & Trends moved to its own
+  sidebar item right below it (nothing was removed).
+
+## New in the 2026-07-29 build
 - **⬆ The app now tells you when a newer version exists.** On startup it quietly checks
   the download page; if a newer build was published, a small blue notice appears with a
   "Show me the file" button that opens the studio folder with the setup exe selected.

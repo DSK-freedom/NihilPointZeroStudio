@@ -17,6 +17,7 @@ import { getOllamaStatus, ollamaChatStream, type ChatTurn } from './llm/ollama'
 import { buildAdvisorSystemPrompt } from './prompts'
 import { APP_GUIDE } from './appGuide'
 import { getAvailableUpdate, tagDate } from './updateCheck'
+import { runHealthCheck } from './health'
 import { generateIdeasFlow, generateScriptFlow } from './services'
 import { synthesizeSpeechToFile } from './voiceover'
 import { analyzeImportedFile, correlateFlowWithPrice, parseSpreadsheetFile } from './analysis'
@@ -641,6 +642,10 @@ export function registerIpcHandlers(): void {
     return reply
   })
 
+  // Live health check — actually talks to every service (validates keys with a cheap
+  // authenticated request) instead of trusting saved settings. See src/main/health.ts.
+  ipcMain.handle(IPC.healthRun, () => runHealthCheck())
+
   // "Update available" banner support: pull-based re-read for renderers that mounted
   // after the one-shot broadcast (slow first paint, Ctrl+R reload).
   ipcMain.handle(IPC.updateGet, () => getAvailableUpdate())
@@ -1235,6 +1240,55 @@ export function registerIpcHandlers(): void {
    * transcript finds the moments, pure scoring picks the strongest, and bundled ffmpeg
    * cuts + reframes + burns the captions. Each clip is added to Video Studio.
    */
+  /**
+   * Ready-to-paste posting text for a finished clip: title + description + hashtags.
+   * Uses the video's own title/script as grounding so it describes THIS clip, and
+   * degrades to a usable non-AI fallback rather than failing the click.
+   */
+  ipcMain.handle(IPC.videoPostMeta, async (_e, videoId: string, platform: 'youtube' | 'tiktok', vertical?: boolean) => {
+    const job = listVideos().find((j) => j.id === videoId)
+    if (!job) throw new Error('Video not found — build it again first.')
+    // The saved script isn't part of VideoJob, so the title is the grounding text.
+    const source = job.title.slice(0, 2500)
+    const prompt =
+      `Write posting text for a ${vertical ? 'VERTICAL short-form' : 'long-form'} video on ` +
+      `${platform === 'youtube' ? (vertical ? 'YouTube Shorts' : 'YouTube') : 'TikTok'}.\n` +
+      `The channel covers Pakistani/global finance and markets for a general audience; the video's ` +
+      `language may be Roman Urdu — match the language of the source text.\n` +
+      `Return STRICT JSON only, no prose, no code fence:\n` +
+      `{"title": "<=80 chars, high click-through, no clickbait lying", ` +
+      `"description": "2-3 short lines, plain text, no markdown", ` +
+      `"hashtags": ["8-12 relevant tags WITHOUT the # symbol"]}\n\n` +
+      `VIDEO TITLE: ${source}`
+    const fallback = {
+      title: job.title.slice(0, 80),
+      description: `${job.title}\n\nMore finance breakdowns on the channel.`,
+      hashtags: ['finance', 'stockmarket', 'psx', 'pakistan', 'investing', 'money', 'shorts', 'trading']
+    }
+    try {
+      const raw = await getActiveProvider().generateText(prompt, 700)
+      // director's extractJson is untyped (and THROWS on non-JSON — caught below).
+      const parsed = extractJson(raw) as { title?: string; description?: string; hashtags?: unknown }
+      const tags = Array.isArray(parsed.hashtags)
+        ? (parsed.hashtags as unknown[])
+            .filter((t): t is string => typeof t === 'string')
+            .map((t: string) => t.replace(/^#+/, '').replace(/\s+/g, '').trim())
+            .filter(Boolean)
+            .slice(0, 12)
+        : []
+      const meta = {
+        title: (parsed.title || fallback.title).slice(0, 100),
+        description: parsed.description || fallback.description,
+        hashtags: tags.length ? tags : fallback.hashtags
+      }
+      logActivity('ai', 'Generated posting text for a video', job.title)
+      return meta
+    } catch {
+      // A busy free model must not cost the user the feature — hand back the fallback.
+      return fallback
+    }
+  })
+
   ipcMain.handle(IPC.videoMakeShorts, async (e, videoId: string, count: number) => {
     const src = listVideos().find((j) => j.id === videoId)
     if (!src) throw new Error('Video not found — build it again first.')

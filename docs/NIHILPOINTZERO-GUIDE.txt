@@ -148,6 +148,24 @@ Copy the folder to another PC and:
   💾 BACKUP-NOW.cmd (in the Desktop studio folder): double-click to copy ALL your work
      (videos, scripts, settings) to Documents\NihilPointZero-Backups. It only adds/updates,
      never deletes. Do it weekly — and now and then copy that folder to a USB stick too.
+     AUTOMATIC TOO: the app quietly runs this same backup for you at most once every 7
+     days (about half a minute after you open it) and notes it in the Activity Log.
+     WHAT IS AND ISN'T COPIED: videos, thumbnails, scripts, library, drafts and logs —
+     with NO size limit, so your biggest finished videos are protected. Your API keys and
+     the app's browser data are deliberately EXCLUDED (Documents is often cloud-synced,
+     and in the portable copy saved keys can be read back — they must not travel). If any
+     file can't be copied, the Activity Log says INCOMPLETE and it retries next time you
+     open the app — it never claims success it didn't achieve.
+  🩺 "RUN FULL CHECK" (Settings, top-right of Setup health): the most useful button in the
+     app when something feels off. It really tests everything — internet, the free AI, the
+     free image service, Ollama (and whether your chosen model is installed), and whether
+     your saved Anthropic/OpenAI key is actually ACCEPTED. A wrong key turns RED with the
+     reason. Green = truly working, not just "saved".
+  🏠 TODAY (first sidebar item): the app opens here — latest videos, recent activity, and
+     one-click cards to start the usual jobs. Ideas & Trends is now the item just below it.
+  🏷 POSTING TEXT (Video Studio, under each video): one click writes a title, description
+     and hashtags for that clip, each with its own Copy button — made for pasting straight
+     into YouTube/TikTok after cutting shorts.
 
 -------------------------------------------------------------------------------
 4. MAKE A VIDEO — STEP BY STEP

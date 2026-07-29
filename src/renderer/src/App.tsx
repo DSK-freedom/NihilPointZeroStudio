@@ -7,6 +7,7 @@ import GuideWidget from './components/GuideWidget'
 import CommandPalette from './components/CommandPalette'
 import ToastHost from './components/Toast'
 import ConfirmHost from './components/Confirm'
+import TodayPage from './pages/TodayPage'
 import IdeasPage from './pages/IdeasPage'
 import AgentPage from './pages/AgentPage'
 import SceneStudioPage from './pages/SceneStudioPage'
@@ -33,7 +34,8 @@ export default function App() {
         <Sidebar />
         <main className="flex-1 overflow-y-auto">
           <Routes>
-            <Route path="/" element={<IdeasPage />} />
+            <Route path="/" element={<TodayPage />} />
+            <Route path="/ideas" element={<IdeasPage />} />
             <Route path="/agent" element={<AgentPage />} />
             <Route path="/scenes" element={<SceneStudioPage />} />
             <Route path="/writer" element={<WriterPage />} />

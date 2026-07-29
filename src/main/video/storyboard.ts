@@ -256,6 +256,120 @@ export function compileStoryboardToTimeline(
 }
 
 /**
+ * No-AI DIRECTOR FALLBACK: turns a script or shot-pointers into a raw storyboard object
+ * (feed it through sanitizeStoryboard) without any model call — so "Direct storyboard"
+ * ALWAYS produces an editable board, even when the AI is down, weak, or returns garbage.
+ *
+ * Understands, in order of preference:
+ *  1) Timed pointer lines — "0-15s: …", "0:00 to 0:15 …", "15 – 40 sec …" (forgiving
+ *     about format); a `VO: "…"` part inside a line becomes that beat's narration.
+ *  2) [Bracketed visual directions] of the kind pro scripts use (each becomes a shot).
+ *  3) Plain prose — split into ~2-sentence beats; the text is both narration and the
+ *     basis of the visual. Durations follow speech pace (~2.5 words/sec).
+ * If totalSeconds is given, beat durations are scaled to roughly match it. Pure.
+ */
+export function storyboardFromScript(input: {
+  title: string
+  brief: string
+  totalSeconds?: number
+  language?: string
+}): unknown {
+  const brief = (input.brief || '').trim()
+  const beats: Record<string, unknown>[] = []
+
+  const toSec = (t: string): number => {
+    const mm = /^(\d{1,3})[:.](\d{2})$/.exec(t)
+    return mm ? Number(mm[1]) * 60 + Number(mm[2]) : Number(t)
+  }
+  const voSplit = (text: string): { visual: string; narration?: string } => {
+    const m = /\bVO\s*:\s*/i.exec(text)
+    if (!m) return { visual: text }
+    const visual = text.slice(0, m.index).replace(/[,;.\s]+$/, '').trim()
+    const narration = text.slice(m.index + m[0].length).replace(/^["'“]|["'”]$/g, '').trim()
+    return { visual: visual || narration, narration: narration || undefined }
+  }
+
+  // 1) Timed pointer lines (forgiving: "0-15s", "0:00 to 0:15", "15 – 40 seconds").
+  const timeRe =
+    /^(?:from\s+)?(\d{1,3}[:.]\d{2}|\d{1,4})\s*(?:s|sec|secs|seconds?)?\s*(?:-|–|—|to)\s*(\d{1,3}[:.]\d{2}|\d{1,4})\s*(?:s|sec|secs|seconds?)?\s*[:.\-–—)]?\s*(.+)$/i
+  const lines = brief.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  const timed = lines
+    .map((l) => timeRe.exec(l))
+    .filter((m): m is RegExpExecArray => !!m && !!m[3]?.trim())
+  if (timed.length >= 2) {
+    for (const m of timed) {
+      const from = toSec(m[1])
+      const to = toSec(m[2])
+      const { visual, narration } = voSplit(m[3].trim())
+      // Forgive swapped/typo'd times: use the absolute span, minimum 2s.
+      const span = Math.abs(to - from)
+      beats.push({
+        durationSec: clamp(span >= 1 ? span : 5, 2, 120),
+        visual,
+        narration,
+        motion: 'in',
+        transitionSec: 0.8
+      })
+    }
+  }
+
+  // 2) Descriptive [bracketed visual directions] (≥20 chars so [HOOK] tags don't count).
+  if (!beats.length) {
+    const blocks = [...brief.matchAll(/\[([^\]]{20,600})\]/g)].map((m) => m[1].replace(/\s+/g, ' ').trim())
+    if (blocks.length >= 3) {
+      for (const visual of blocks) {
+        beats.push({ durationSec: 8, visual, motion: 'in', transitionSec: 0.8 })
+      }
+    }
+  }
+
+  // 3) Plain prose → ~2-sentence beats; the text narrates itself and drives the visual.
+  if (!beats.length) {
+    const clean = brief
+      .replace(/^\s*#{1,6}.*$/gm, ' ')
+      .replace(/\*\*/g, '')
+      .replace(/\[[^\]]*\]/g, ' ')
+      .replace(/^\s*\d+\.\s+/gm, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    const sentences = clean.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter((s) => s.split(' ').length >= 3)
+    for (let i = 0; i < sentences.length; i += 2) {
+      const text = sentences.slice(i, i + 2).join(' ')
+      const words = text.split(/\s+/).length
+      beats.push({
+        durationSec: clamp(Math.round(words / 2.5), 4, 30),
+        visual: text,
+        narration: text,
+        motion: i % 4 === 0 ? 'in' : i % 4 === 2 ? 'left' : 'right',
+        transitionSec: 0.8
+      })
+    }
+  }
+
+  // Last resort: even a bare title yields ONE editable establishing shot — the button
+  // must never come back empty-handed.
+  if (!beats.length) {
+    beats.push({
+      durationSec: 10,
+      visual: `Cinematic establishing shot for: ${input.title || brief || 'the video'}`,
+      motion: 'in',
+      transitionSec: 0
+    })
+  }
+
+  // Scale to the requested total length, if any.
+  if (input.totalSeconds && input.totalSeconds > 0) {
+    const sum = beats.reduce((a, b) => a + (b.durationSec as number), 0)
+    if (sum > 0) {
+      const factor = input.totalSeconds / sum
+      for (const b of beats) b.durationSec = clamp(Math.round((b.durationSec as number) * factor), 2, 120)
+    }
+  }
+
+  return { title: input.title || 'Untitled', language: input.language, beats }
+}
+
+/**
  * Builds the strict prompt that asks the model for a JSON storyboard. In AUTO mode the
  * model invents the whole thing from a title + script; in GUIDED mode it structures the
  * beats the user described. Either way the output is validated by sanitizeStoryboard.

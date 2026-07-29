@@ -30,6 +30,26 @@ $dot = [char]0x00B7  # the badge's middle-dot separator, kept out of this file's
 $buildTag = "v$ver $dot $(Get-Date -Format 'yyyy-MM-dd HH:mm') $dot $(git rev-parse --short HEAD)"
 $env:NPZ_BUILD_TAG = $buildTag
 
+Step 'Verify NSIS tooling (self-heal after antivirus quarantine)' {
+    # COMODO/Defender sometimes silently quarantine makensis.exe from the electron-builder
+    # cache (a classic NSIS false positive) -> the build dies with "spawn UNKNOWN".
+    # If the exe is missing but a stale cache dir remains, rename it aside (never delete)
+    # so electron-builder re-downloads a fresh copy. The durable fix is an antivirus
+    # exclusion for %LOCALAPPDATA%\electron-builder\Cache - only the user can add that.
+    $nsisRoot = Join-Path $env:LOCALAPPDATA 'electron-builder\Cache\nsis'
+    if (Test-Path $nsisRoot) {
+        $mk = Get-ChildItem $nsisRoot -Recurse -Filter 'makensis.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $mk) {
+            $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+            Get-ChildItem $nsisRoot -Directory | ForEach-Object {
+                Rename-Item $_.FullName "$($_.Name).quarantined-$stamp.bak"
+                Write-Host "  NSIS cache '$($_.Name)' was incomplete (antivirus?) - set aside for re-download" -ForegroundColor Yellow
+            }
+        }
+    }
+    $global:LASTEXITCODE = 0
+}
+
 Step 'Clear previous build artifacts' {
     # NSIS fails with "Can't open output file" if an old exe is momentarily
     # locked (e.g. antivirus scan). Deleting first surfaces the lock early,
@@ -65,6 +85,8 @@ Step 'Deploy docs to Desktop studio' {
                      'NIHILPOINTZERO-CHEATSHEET.txt', 'MEGA-DIAGNOSTIC-REPORT.md') {
         Copy-Item (Join-Path $repo "docs\$doc") $studio -Force
     }
+    # The setup guide lives at the repo root (it covers building from source too).
+    Copy-Item (Join-Path $repo 'SETUP_GUIDE.md') $studio -Force
 }
 
 Step 'Push to GitHub' {
@@ -138,7 +160,8 @@ If Windows shows "Windows protected your PC": click **More info -> Run anyway** 
         (Join-Path $repo 'docs\HOW-TO-USE.txt'),
         (Join-Path $repo 'docs\NIHILPOINTZERO-GUIDE.txt'),
         (Join-Path $repo 'docs\NIHILPOINTZERO-CHEATSHEET.txt'),
-        (Join-Path $repo 'docs\MEGA-DIAGNOSTIC-REPORT.md')
+        (Join-Path $repo 'docs\MEGA-DIAGNOSTIC-REPORT.md'),
+        (Join-Path $repo 'SETUP_GUIDE.md')
     )
     $existing = Invoke-RestMethod -Uri "https://api.github.com/repos/$gh/releases/$($rel.id)/assets" -Headers $hdr
     Add-Type -AssemblyName System.Net.Http

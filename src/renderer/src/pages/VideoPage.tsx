@@ -144,6 +144,8 @@ export default function VideoPage() {
   const [replaceMood, setReplaceMood] = useState<Mood>('calm')
   const [voiceOpenId, setVoiceOpenId] = useState<string | null>(null)
   const [captionBusyId, setCaptionBusyId] = useState<string | null>(null)
+  const [shortsBusyId, setShortsBusyId] = useState<string | null>(null)
+  const [shortsCount, setShortsCount] = useState(3)
   const [watermarkLogo, setWatermarkLogo] = useState<string | null>(null)
   const [watermarkPos, setWatermarkPos] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('bottom-right')
   const [watermarkBusyId, setWatermarkBusyId] = useState<string | null>(null)
@@ -394,6 +396,33 @@ export default function VideoPage() {
     } finally {
       unsubscribe()
       setCaptionBusyId(null)
+      setStage(null)
+    }
+  }
+
+  /**
+   * MAKE SHORTS — cut this video into vertical, captioned clips for Shorts/TikTok/Reels.
+   * Everything is local and free: offline transcript → best moments → 9:16 crop + burned
+   * captions. Each clip appears in this same list.
+   */
+  async function handleMakeShorts(job: VideoJob, count: number): Promise<void> {
+    setShortsBusyId(job.id)
+    setError(null)
+    setSavedNote(null)
+    setStage('Finding the best moments…')
+    const unsubscribe = window.api.video.onProgress((s) => setStage(s))
+    try {
+      const res = await window.api.shorts.make(job.id, count)
+      await refreshJobs()
+      const picked = res.moments.map((m, i) => `${i + 1}. “${m.title}” — ${m.reason}`).join('\n')
+      setSavedNote(`${res.jobs.length} vertical short(s) created and added to this list:\n${picked}`)
+      toast(`${res.jobs.length} short(s) ready ✓`, 'success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not make shorts')
+      toast(err instanceof Error ? err.message : 'Could not make shorts', 'error')
+    } finally {
+      unsubscribe()
+      setShortsBusyId(null)
       setStage(null)
     }
   }
@@ -1182,6 +1211,35 @@ export default function VideoPage() {
                       <span className="w-full text-[10px] text-ink-600">
                         Transcribes your narration offline (free). The .srt uploads straight to YouTube; “Burn” makes a
                         captioned copy for Shorts/Reels.
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-gold-500/30 bg-ink-900/60 p-2">
+                      <span className="text-[11px] text-gold-300">📱 Make Shorts</span>
+                      <label className="text-[11px] text-ink-400 flex items-center gap-1">
+                        How many
+                        <select
+                          value={shortsCount}
+                          onChange={(e) => setShortsCount(Number(e.target.value))}
+                          disabled={shortsBusyId === job.id}
+                          className="rounded bg-ink-800 border border-ink-700 px-2 py-1 text-xs text-ink-100"
+                        >
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        onClick={() => handleMakeShorts(job, shortsCount)}
+                        disabled={shortsBusyId === job.id}
+                        className="rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 text-xs font-medium px-3 py-1 transition-colors disabled:opacity-50"
+                      >
+                        📱 Cut into vertical shorts
+                      </button>
+                      {shortsBusyId === job.id && <span className="text-[10px] text-gold-300">working…</span>}
+                      <span className="w-full text-[10px] text-ink-600">
+                        Listens to this video offline, picks the strongest moments (hooks, numbers, questions), and
+                        makes 9:16 clips with big burned-in captions — ready for YouTube Shorts, TikTok and Reels.
+                        They appear in this list. Free, no internet needed.
                       </span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900/60 p-2">

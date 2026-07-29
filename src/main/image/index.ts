@@ -83,7 +83,7 @@ async function fetchImageOnce(
 export async function generateImage(prompt: string, outPath: string, opts: ImageGenOptions = {}): Promise<string> {
   const width = opts.width ?? 1280
   const height = opts.height ?? 720
-  const attempts = Math.max(1, opts.attempts ?? 4)
+  const attempts = Math.max(1, opts.attempts ?? 5)
   const timeoutMs = opts.timeoutMs ?? 60_000
   // Try the requested model (default flux) for the first attempts, then drop to turbo,
   // which is markedly more reliable when the queue is busy.
@@ -98,8 +98,10 @@ export async function generateImage(prompt: string, outPath: string, opts: Image
     } catch (err) {
       lastErr = err
       if (opts.signal?.aborted) throw new Error('Render cancelled by user.', { cause: err })
-      // Exponential-ish backoff (1s, 2s, 4s) to let a busy free queue recover.
-      if (i < attempts - 1) await sleep(1000 * 2 ** i)
+      // Exponential backoff with ±40% jitter, capped at 12s. The jitter matters: several
+      // scenes generating in parallel used to retry in LOCKSTEP, hammering the busy free
+      // queue at the same instants — so whole batches failed together.
+      if (i < attempts - 1) await sleep(Math.min(12_000, 1200 * 2 ** i) * (0.6 + Math.random() * 0.8))
     }
   }
   throw new Error(

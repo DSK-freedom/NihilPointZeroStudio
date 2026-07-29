@@ -26,6 +26,8 @@ const PAGE_NAMES: Record<string, string> = {
   '/scriptpad': 'Script Pad',
   '/video': 'Video Studio',
   '/storyboard': 'Storyboard Director',
+  '/presenter': 'Presenter Studio',
+  '/recorder': 'Recorder',
   '/timeline': 'Timeline Editor',
   '/charts': 'Charts',
   '/psx': 'Live PSX Data',
@@ -69,6 +71,8 @@ export default function AssistantWidget(): React.JSX.Element {
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'chat' | 'edit' | 'do'>('chat')
+  // Answer density for how-to answers: full step-by-step vs tight bullets.
+  const [density, setDensity] = useState<'detailed' | 'brief'>('detailed')
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -111,8 +115,10 @@ export default function AssistantWidget(): React.JSX.Element {
     })
     try {
       const ctx =
-        pageName +
-        (target ? `. The creator is editing their ${target.kind} ("${target.label}"). Their current draft:\n${target.text.slice(0, 4000)}` : '')
+        `The user is currently on the "${pageName}" tab. Their answer-density preference: ${
+          density === 'detailed' ? 'DETAILED full step-by-step instructions' : 'BRIEF high-level bullet points'
+        }.` +
+        (target ? ` The creator is editing their ${target.kind} ("${target.label}"). Their current draft:\n${target.text.slice(0, 4000)}` : '')
       const history = next.slice(0, -1).map((m) => ({ role: m.role, content: m.content }))
       const reply = await window.api.assistant.ask(history, ctx)
       setMsgs((cur) => {
@@ -274,7 +280,13 @@ export default function AssistantWidget(): React.JSX.Element {
               <button onClick={() => target && setMode('edit')} disabled={!target} className={`px-2.5 py-1 ${mode === 'edit' ? 'bg-gold-500 text-ink-950' : 'text-ink-300'} disabled:opacity-40`}>Edit my {target?.kind ?? 'text'}</button>
               <button onClick={() => setMode('do')} className={`px-2.5 py-1 ${mode === 'do' ? 'bg-gold-500 text-ink-950' : 'text-ink-300'}`}>Do it</button>
             </div>
-            <span className="text-[10px] text-ink-600">{mode === 'edit' ? 'Rewrites apply only when you click Apply.' : mode === 'do' ? 'I plan real actions — you click Run.' : 'Growth advice, grounded in your draft.'}</span>
+            <div className="ml-auto inline-flex rounded-md border border-ink-700 overflow-hidden text-[10px]" title="How much detail answers should have">
+              <button onClick={() => setDensity('detailed')} className={`px-2 py-1 ${density === 'detailed' ? 'bg-ink-700 text-gold-300' : 'text-ink-400'}`}>📖 Detailed</button>
+              <button onClick={() => setDensity('brief')} className={`px-2 py-1 ${density === 'brief' ? 'bg-ink-700 text-gold-300' : 'text-ink-400'}`}>⚡ Brief</button>
+            </div>
+          </div>
+          <div className="px-3 py-1 border-b border-ink-800 text-[10px] text-ink-600">
+            {mode === 'edit' ? 'Rewrites apply only when you click Apply.' : mode === 'do' ? 'I plan real actions — you click Run.' : 'Ask anything — growth advice, or HOW to do anything in the app (I know every tab).'}
           </div>
 
           {/* Quick actions */}
@@ -291,7 +303,9 @@ export default function AssistantWidget(): React.JSX.Element {
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
             {msgs.length === 0 && (
               <p className="text-[11px] text-ink-500">
-                I'm your producer — I obsess over hooks, titles, thumbnails, pacing and retention.{' '}
+                I'm your producer — I obsess over hooks, titles, thumbnails, pacing and retention, and I know
+                every tab of this studio. Ask me &ldquo;how do I…?&rdquo; anything (use 📖/⚡ above to pick full steps or
+                quick bullets).{' '}
                 {target ? (
                   <>Use the chips above or switch to <span className="text-ink-300">Edit</span> to rewrite your <span className="text-ink-300">{target.label}</span> — you approve every change with Apply.</>
                 ) : (

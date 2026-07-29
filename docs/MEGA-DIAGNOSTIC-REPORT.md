@@ -3,13 +3,41 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-29 16:09 · 77dafb4
+## Build: v0.1.1 · 2026-07-29 17:24 · 8275a17
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
 ## New in this build (2026-07-29)
+- **📱 MAKE SHORTS.** Every video in Video Studio now has a "Cut into vertical shorts"
+  button: the app listens to the video (offline Whisper), picks the strongest moments —
+  hooks, questions, concrete numbers — and cuts 1–5 vertical 9:16 clips with big
+  burned-in captions, ready for YouTube Shorts / TikTok / Reels. It tells you why it
+  picked each moment, and the clips land in the same list. Completely free and offline.
+- **The 🎬 Producer button (bottom-right of EVERY tab) is now also your in-app guide.**
+  Ask it "how do I…?" about anything — it knows every tab, every button and every
+  workflow, and answers with exact click-paths instead of guesses. Two new buttons let
+  you choose the answer length: **📖 Detailed** (full step-by-step) or **⚡ Brief**
+  (quick bullets). It still does everything it did before: growth advice, rewriting your
+  script/title (you approve with Apply), and "Do it" action plans you approve with Run.
+- **A new `SETUP_GUIDE.md`** (in the project folder and on GitHub) explains, in plain
+  English, how to install or run the portable app on ANY new machine — including USB and
+  CD transfer rules — plus a developer section for building from source.
+- **Storyboard Director can no longer say "could not turn that into shots".** If the AI
+  fails to structure your script (common on the free backup AI), the Director now retries
+  once with stricter instructions and then — if the AI still fails — builds the storyboard
+  DIRECTLY from your script with no AI at all: timed pointers like "0-15s: …" or
+  "0:15 to 0:40 …" (typos forgiven) become shots, [bracketed directions] become shots, and
+  plain prose is split into speech-paced beats. Even a bare title yields an editable shot.
+- **"Generate all scenes" now finishes the whole board in one click.** The free image
+  service rate-limits parallel requests; generation is now paced to what it accepts, retries
+  are spread out instead of hammering in lockstep, and any scenes that still fail are
+  automatically retried in up to two extra passes — no more clicking "regenerate" one by one.
+- **A building video can never silently vanish.** Builds always ran in the background (they
+  keep going when you switch tabs, and the finished video lands in Video Studio) — but now
+  the Activity Log records when a build STARTS, when it FINISHES, and — new — if it FAILS
+  and why. If you ever wonder "where did my video go?", the Activity Log has the answer.
 - **Scene Studio images are now downloadable.** Every generated scene has a "⬇ Save"
   button, and "⬇ Save all images" copies the whole storyboard, numbered in order, into a
   folder you pick — so you can use the pictures outside the studio too.

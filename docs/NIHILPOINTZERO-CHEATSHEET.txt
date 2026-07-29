@@ -12,6 +12,11 @@ BUILD BADGE ....... the sidebar (under "OS") shows e.g. "v0.1.1 · 2026-07-19 15
 DON'T PIN THE RUNNING PORTABLE EXE ... a taskbar/Start pin made while the PORTABLE app is open freezes
                     to a temporary copy and keeps launching OLD code forever. (The INSTALLED version
                     has no such trap — pin it freely.) This was the #1 cause of "my updates didn't show".
+MAKE SHORTS ....... Video Studio -> any video -> "📱 Cut into vertical shorts" -> it finds the best
+                    moments itself and makes 9:16 captioned clips for Shorts/TikTok (free, offline)
+STUCK? ASK IT .... click 🎬 Producer (bottom-right of EVERY tab) and ask "how do I ...?" — it knows every
+                    tab and button of this studio and gives you the exact steps. 📖 Detailed / ⚡ Brief
+                    buttons set how long the answer is.
 JUMP ANYWHERE ..... press Ctrl-K, type a tab (e.g. "scene"), Enter
 AUTOSAVE .......... work saves itself ("Saved ✓" near the title) and survives restart
 ONLY YOU DELETE ... every delete asks you to confirm; the AI can create/edit but NEVER deletes

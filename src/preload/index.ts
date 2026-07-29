@@ -366,6 +366,16 @@ const api = {
     saveAllImages: (srcPaths: string[]): Promise<{ saved: boolean; path?: string; count?: number; error?: string }> =>
       ipcRenderer.invoke(IPC.sceneSaveAllImages, srcPaths)
   },
+  shorts: {
+    /** One long video → N vertical captioned clips, added to Video Studio. */
+    make: (
+      videoId: string,
+      count: number
+    ): Promise<{
+      jobs: import('../shared/types').VideoJob[]
+      moments: { title: string; reason: string; startSec: number; endSec: number }[]
+    }> => ipcRenderer.invoke(IPC.videoMakeShorts, videoId, count)
+  },
   ai: {
     engineStatus: (): Promise<import('../shared/types').AiEngineStatus> => ipcRenderer.invoke(IPC.aiEngineStatus),
     getConfig: (): Promise<{ cloudEndpoint: string; cloudModel: string; localEndpoint: string; hasCloudKey: boolean }> =>

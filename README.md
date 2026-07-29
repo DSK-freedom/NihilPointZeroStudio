@@ -16,6 +16,10 @@ content in Roman Urdu / Urdu / English — institutional-grade tone.
 
 The guide, cheatsheet, and how-to documents are also attached on the Downloads page — those are small and readable on a phone.
 
+> **📖 New here, or setting up on a new machine? Read [SETUP_GUIDE.md](SETUP_GUIDE.md).**
+> Step-by-step: install or run portable, move it by USB or CD, first-run settings, and a
+> full developer section for building from source (prerequisites, commands, troubleshooting).
+
 ### ⚠️ Read this first
 
 - **This is a Windows program.** It runs on Windows PCs and laptops only.

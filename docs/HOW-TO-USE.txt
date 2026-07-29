@@ -21,6 +21,13 @@ WHAT'S IN THIS FOLDER
                                         what needs one-time setup, and what it can't do
    HOW-TO-USE.txt                   -> this page
 
+STUCK AT ANY POINT? ASK THE APP ITSELF
+   Click the gold "🎬 Producer" button at the bottom-right of ANY tab and ask your
+   question in plain words — "how do I put myself in a scene?", "where is the clip
+   tool?", "why can't I find my video?". It knows every tab and button of this studio
+   and answers with the exact steps. Use its 📖 Detailed / ⚡ Brief buttons to choose
+   between full instructions and a quick summary.
+
 FIRST TIME YOU RUN IT
    1. Double-click NIHILPOINTZERO-OS-portable.exe — ONCE. (Or use the "NIHILPOINTZERO-OS"
       shortcut on your Desktop — it points straight at this exe.)

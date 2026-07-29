@@ -15,6 +15,7 @@ import type {
 import { getActiveProvider } from './llm'
 import { getOllamaStatus, ollamaChatStream, type ChatTurn } from './llm/ollama'
 import { buildAdvisorSystemPrompt } from './prompts'
+import { APP_GUIDE } from './appGuide'
 import { generateIdeasFlow, generateScriptFlow } from './services'
 import { synthesizeSpeechToFile } from './voiceover'
 import { analyzeImportedFile, correlateFlowWithPrice, parseSpreadsheetFile } from './analysis'
@@ -31,7 +32,8 @@ import { assembleVoice } from './audio/voiceAssemble'
 import { executeActions, interpretInstruction } from './director'
 import { executeAgentPlan, interpretCommand, runBatch, sanitizeAgentPlan } from './agent'
 import { extractJson } from './director'
-import { buildStoryboardPrompt, sanitizeStoryboard } from './video/storyboard'
+import { buildStoryboardPrompt, sanitizeStoryboard, storyboardFromScript } from './video/storyboard'
+import { buildShortArgs, pickShortMoments } from './video/shorts'
 import { renderStoryboard } from './video/storyboardRender'
 import { planPresenterStoryboard, type PresenterMode } from './video/presenter'
 import { renderGraftPreview, renderGraftVideo, runGraftTool, sanitizeGraftRegion } from './video/graft'
@@ -543,13 +545,19 @@ export function registerIpcHandlers(): void {
     const ctx = typeof context === 'string' ? context.slice(0, 6000) : ''
     const system =
       `You are the channel's in-house YouTube PRODUCER inside NihilPointZero Studio — a sharp, ` +
-      `highly intelligent growth strategist and script doctor. You think in hooks (first 3 seconds), ` +
-      `curiosity gaps, pattern interrupts, retention/watch-time, high-CTR titles & thumbnails, pacing, and CTAs. ` +
-      `Context: ${ctx || 'the app'}. Give practical, specific, direct advice — concrete rewrites and numbers, ` +
-      `not vague tips. When the user wants you to actually REWRITE what they're editing (hook, title, intro, script), ` +
-      `tell them to use the quick-action buttons or say "rewrite this" so the change can be applied to their field. ` +
-      `For cutting/keeping video parts or adding music/SFX, point them to the AI Director in Video Studio or the ` +
-      `Timeline editor. Keep replies tight unless asked for depth.`
+      `highly intelligent growth strategist, script doctor AND the app's own guide. You think in hooks ` +
+      `(first 3 seconds), curiosity gaps, pattern interrupts, retention/watch-time, high-CTR titles & thumbnails, ` +
+      `pacing, and CTAs. Context: ${ctx || 'the app'}. Give practical, specific, direct advice — concrete rewrites ` +
+      `and numbers, not vague tips. When the user wants you to actually REWRITE what they're editing (hook, title, ` +
+      `intro, script), tell them to use the quick-action buttons or say "rewrite this" so the change can be applied ` +
+      `to their field. For cutting/keeping video parts or adding music/SFX, point them to the AI Director in Video ` +
+      `Studio or the Timeline editor.\n\n` +
+      `HOW-TO QUESTIONS: when the user asks how to do something in the app ("how do I…", "where is…", "why won't…"), ` +
+      `answer ONLY from the manual below with exact tab names and click-paths, as numbered steps. If the manual ` +
+      `doesn't cover it, say so honestly rather than inventing buttons. ANSWER DENSITY: if the user asks for detail ` +
+      `("step by step", "explain fully", or their preference in the context says detailed), give complete granular ` +
+      `steps; if they ask for brevity ("quick", "short", or preference says brief), give tight high-level bullets. ` +
+      `Default to short numbered steps.\n${APP_GUIDE}`
     const msgs = Array.isArray(messages) ? messages : []
     const flat = `${system}\n\n${msgs.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')}\n\nASSISTANT:`
     let reply: string
@@ -644,32 +652,41 @@ export function registerIpcHandlers(): void {
     const slug = (req.title || 'video').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 50) || 'video'
     const outPath = join(videosDir(), `${slug}-${id.slice(0, 8)}.mp4`)
     const narrationOutPath = `${outPath}.narration.wav`
-    await buildVideoFromScript(
-      req.title,
-      req.body,
-      outPath,
-      (stage) => {
-        if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, stage)
-      },
-      {
-        resolution: req.resolution,
-        aspect: req.aspect,
-        template: req.template,
-        narrationVoice: req.narrationVoice,
-        musicPath: req.musicPath,
-        soundEffects: req.soundEffects,
-        engine: req.engine,
-        style: req.style,
-        images: req.images,
-        useStock: req.useStock,
-        // Read the key server-side (never sent from the renderer).
-        stockApiKey: req.useStock ? getStockConfig().pixabayKey : undefined,
-        onPreview: (png) => {
-          if (!e.sender.isDestroyed()) e.sender.send(IPC.videoPreview, png)
+    // Bookend the build in the Activity Log. Builds run here in the MAIN process, so they
+    // keep going when the user switches tabs — these entries (start / failed / built) are
+    // how the user can always answer "where did my video go?".
+    logActivity('ai', 'Started building a video — it keeps building even if you switch tabs; the finished video appears in Video Studio', req.title)
+    try {
+      await buildVideoFromScript(
+        req.title,
+        req.body,
+        outPath,
+        (stage) => {
+          if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, stage)
         },
-        narrationOutPath
-      }
-    )
+        {
+          resolution: req.resolution,
+          aspect: req.aspect,
+          template: req.template,
+          narrationVoice: req.narrationVoice,
+          musicPath: req.musicPath,
+          soundEffects: req.soundEffects,
+          engine: req.engine,
+          style: req.style,
+          images: req.images,
+          useStock: req.useStock,
+          // Read the key server-side (never sent from the renderer).
+          stockApiKey: req.useStock ? getStockConfig().pixabayKey : undefined,
+          onPreview: (png) => {
+            if (!e.sender.isDestroyed()) e.sender.send(IPC.videoPreview, png)
+          },
+          narrationOutPath
+        }
+      )
+    } catch (err) {
+      logActivity('ai', 'Video build FAILED', `${req.title} — ${err instanceof Error ? err.message : 'unknown error'}`)
+      throw err
+    }
     const job = {
       id,
       title: req.title,
@@ -1135,6 +1152,56 @@ export function registerIpcHandlers(): void {
     return { srtPath, job }
   })
 
+  /**
+   * MAKE SHORTS — one long video → several vertical (9:16) captioned clips for
+   * YouTube Shorts / TikTok / Reels. Everything is local and free: the offline Whisper
+   * transcript finds the moments, pure scoring picks the strongest, and bundled ffmpeg
+   * cuts + reframes + burns the captions. Each clip is added to Video Studio.
+   */
+  ipcMain.handle(IPC.videoMakeShorts, async (e, videoId: string, count: number) => {
+    const src = listVideos().find((j) => j.id === videoId)
+    if (!src) throw new Error('Video not found — build it again first.')
+    const notify = (m: string): void => {
+      if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, m)
+    }
+    logActivity('user', 'Started making shorts from a video', src.title)
+    notify('Listening to the video to find the best moments (offline)…')
+    const audioSrc = src.narrationPath && existsSync(src.narrationPath) ? src.narrationPath : src.path
+    const segments = await transcribeFileToSegments(audioSrc)
+    if (!segments.length) {
+      throw new Error('No speech was found in this video, so there are no moments to clip.')
+    }
+    const moments = pickShortMoments(segments, { count: Math.max(1, Math.min(10, Math.round(count) || 3)) })
+    if (!moments.length) throw new Error('This video is too short to cut into shorts.')
+
+    const jobs: VideoJob[] = []
+    for (let i = 0; i < moments.length; i++) {
+      const m = moments[i]
+      notify(`Making short ${i + 1} of ${moments.length} — ${m.title}…`)
+      const id = randomUUID()
+      const slug = (src.title || 'video').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 32) || 'video'
+      const outPath = join(videosDir(), `${slug}-short${i + 1}-${id.slice(0, 8)}.mp4`)
+      // Per-clip .srt on the clip's own timeline (pickShortMoments re-bases the captions).
+      const srtPath = `${outPath.replace(/\.mp4$/i, '')}.srt`
+      writeFileSync(srtPath, buildSrt(m.captions), 'utf-8')
+      await runFfmpeg(
+        buildShortArgs({ srcPath: src.path, outPath, startSec: m.startSec, endSec: m.endSec, srtPath }),
+        (line) => notify(line.trim().slice(0, 160))
+      )
+      const job: VideoJob = {
+        id,
+        title: `${src.title} — Short ${i + 1}: ${m.title}`,
+        path: outPath,
+        hasCustomVoice: src.hasCustomVoice,
+        createdAt: new Date().toISOString()
+      }
+      appendVideo(job)
+      jobs.push(job)
+    }
+    logActivity('ai', `Made ${jobs.length} vertical short(s) — now in Video Studio`, src.title)
+    return { jobs, moments: moments.map((m) => ({ title: m.title, reason: m.reason, startSec: m.startSec, endSec: m.endSec })) }
+  })
+
   // Brand kit: overlay a logo watermark in a corner. New video, original kept.
   ipcMain.handle(
     IPC.videoWatermark,
@@ -1472,30 +1539,48 @@ export function registerIpcHandlers(): void {
       _e,
       params: { mode: 'auto' | 'guided'; title: string; brief: string; totalSeconds?: number; language?: string; width?: number; height?: number; fps?: number }
     ) => {
-      try {
-        const prompt = buildStoryboardPrompt({
-          mode: params.mode,
-          title: params.title,
-          brief: params.brief,
-          totalSeconds: params.totalSeconds,
-          language: params.language
-        })
-        const reply = await getActiveProvider().generateText(prompt, 2600)
-        const parsed = extractJson(reply)
-        const doc = sanitizeStoryboard(parsed, {
-          width: params.width ?? 1920,
-          height: params.height ?? 1080,
-          fps: params.fps ?? 25
-        })
-        if (!doc.beats.length) return { ok: false, error: 'The director could not turn that into shots. Add more detail or try again.' }
-        // Keep the title/language the user asked for if the model dropped them.
-        if (params.title.trim()) doc.title = params.title.trim()
-        if (params.language) doc.language = params.language
-        logActivity('ai', `Planned a ${doc.beats.length}-beat storyboard`, doc.title)
-        return { ok: true, storyboard: doc }
-      } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : 'Could not plan the storyboard.' }
+      const defaults = { width: params.width ?? 1920, height: params.height ?? 1080, fps: params.fps ?? 25 }
+      // One AI attempt: null (never a throw) when the model is down or returns junk.
+      const attemptAI = async (extra = ''): Promise<ReturnType<typeof sanitizeStoryboard> | null> => {
+        try {
+          const prompt =
+            buildStoryboardPrompt({
+              mode: params.mode,
+              title: params.title,
+              brief: params.brief,
+              totalSeconds: params.totalSeconds,
+              language: params.language
+            }) + extra
+          const doc = sanitizeStoryboard(extractJson(await getActiveProvider().generateText(prompt, 2600)), defaults)
+          return doc.beats.length ? doc : null
+        } catch {
+          return null
+        }
       }
+      let doc = await attemptAI()
+      // Weak/free models often wrap the JSON in prose — one strict retry fixes most cases.
+      if (!doc) {
+        doc = await attemptAI('\nIMPORTANT: Reply with ONLY the JSON object — no explanation, no markdown. Start with { and end with }.')
+      }
+      if (!doc) {
+        // The AI failed twice — direct it ourselves. storyboardFromScript always yields at
+        // least one beat, so this button never dead-ends with "could not turn that into shots".
+        doc = sanitizeStoryboard(
+          storyboardFromScript({
+            title: params.title,
+            brief: params.brief,
+            totalSeconds: params.totalSeconds,
+            language: params.language
+          }),
+          defaults
+        )
+        logActivity('ai', 'Director AI could not structure the script — built the storyboard directly from it instead', params.title)
+      }
+      // Keep the title/language the user asked for if the model dropped them.
+      if (params.title.trim()) doc.title = params.title.trim()
+      if (params.language) doc.language = params.language
+      logActivity('ai', `Planned a ${doc.beats.length}-beat storyboard`, doc.title)
+      return { ok: true, storyboard: doc }
     }
   )
 

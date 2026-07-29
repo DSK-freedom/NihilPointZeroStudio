@@ -178,25 +178,42 @@ export default function SceneStudioPage(): React.JSX.Element {
     }
   }
 
-  /** Runs a small concurrency pool over the not-yet-done scenes, honoring Pause. */
+  /**
+   * Runs a PACED worker pool over the not-yet-done scenes, honoring Pause, then
+   * automatically re-tries any failed scenes (up to 2 extra passes with a breather in
+   * between) — so ONE click finishes the whole board even when the free image queue is
+   * busy, instead of leaving scenes on "✗ failed" for the user to regenerate by hand.
+   */
   async function generateRemaining(): Promise<void> {
     setGenerating(true)
     setPaused(false)
     pausedRef.current = false
-    const pending = scenesRef.current.filter((s) => s.status !== 'done').map((s) => s.index)
-    let cursor = 0
-    // Photo scenes go through a slow free queue — run fewer at once.
-    const anyPhoto = scenesRef.current.some((s) => s.photo)
-    const workers = anyPhoto ? 1 : Math.max(1, Math.min(3, fast ? 3 : 2))
-    const worker = async (): Promise<void> => {
-      while (true) {
-        if (pausedRef.current) return
-        const at = cursor++
-        if (at >= pending.length) return
-        await genOne(pending[at])
+    const runPool = async (indexes: number[], seedBump: number): Promise<void> => {
+      let cursor = 0
+      // The free image service rate-limits parallel requests from one machine: 3 workers
+      // made whole batches fail together. 2 (turbo) / 1 (flux or the slow photo queue),
+      // with staggered starts, is the reliable pace.
+      const anyPhoto = scenesRef.current.some((s) => s.photo)
+      const workers = anyPhoto ? 1 : fastRef.current ? 2 : 1
+      const worker = async (offsetMs: number): Promise<void> => {
+        await new Promise((r) => setTimeout(r, offsetMs))
+        while (true) {
+          if (pausedRef.current) return
+          const at = cursor++
+          if (at >= indexes.length) return
+          await genOne(indexes[at], seedBump)
+        }
       }
+      await Promise.all(Array.from({ length: workers }, (_, w) => worker(w * 700)))
     }
-    await Promise.all(Array.from({ length: workers }, () => worker()))
+    await runPool(scenesRef.current.filter((s) => s.status !== 'done').map((s) => s.index), 0)
+    for (let round = 1; round <= 2 && !pausedRef.current; round++) {
+      const failed = scenesRef.current.filter((s) => s.status === 'error').map((s) => s.index)
+      if (!failed.length) break
+      toast(`Retrying ${failed.length} failed scene${failed.length === 1 ? '' : 's'} — the free queue was busy…`, 'info')
+      await new Promise((r) => setTimeout(r, 8000))
+      await runPool(failed, round * 1000)
+    }
     setGenerating(false)
   }
 

@@ -113,6 +113,7 @@ export const IPC = {
   sceneProgress: 'scene:progress',
   sceneSaveImage: 'scene:save-image',
   sceneSaveAllImages: 'scene:save-all-images',
+  videoMakeShorts: 'video:make-shorts',
   webServerStatus: 'webserver:status',
   webServerStart: 'webserver:start',
   webServerStop: 'webserver:stop',

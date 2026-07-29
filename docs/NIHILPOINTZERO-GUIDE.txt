@@ -121,6 +121,11 @@ Copy the folder to another PC and:
      scripts, building videos, thumbnails, images, music, ideas, PSX analysis, scenes).
      It reads your current script/brief, and falls back to the free AI brain if your
      provider is down. It only performs that safe set of actions — it never deletes.
+     ASK IT HOW: the Producer also knows this whole studio — every tab, button and
+     workflow. On any screen ask "how do I put myself in a scene?", "where is the clip
+     tool?", "why did my video not appear?" and it answers with the exact steps for THIS
+     app (not generic advice). Two buttons at the top right of its panel set the answer
+     length: 📖 Detailed (full step-by-step) or ⚡ Brief (quick bullets).
 
 -------------------------------------------------------------------------------
 4. MAKE A VIDEO — STEP BY STEP

@@ -1,0 +1,96 @@
+/**
+ * THE APP MANUAL the on-every-tab Producer assistant answers "how do I…?" questions
+ * from. Written in plain English, tab by tab, workflow by workflow — so the assistant
+ * gives exact, truthful click-paths instead of generic guesses. Keep this in sync when
+ * tabs or flows change (same rule as the user docs).
+ */
+export const APP_GUIDE = `
+NIHILPOINTZERO STUDIO — TAB-BY-TAB MANUAL (what each tab does and how to use it)
+
+SIDEBAR (left edge, top to bottom): Ideas & Trends · ✦ AI Command · 🎬 Scene Studio ·
+Script Writer · Script Pad · Video Studio · 🎞 Storyboard Director · 🎥 Presenter Studio ·
+⏺ Recorder · ✂ Timeline Editor · Charts · 📈 Live PSX Data · 🏦 NCCPL Analysis · Advisor ·
+Library · Activity Log · Settings. The gold badge under "OS" shows the build version.
+
+• IDEAS & TRENDS — generate video ideas with trend/YouTube signals. Each idea has a hook,
+  angle, and view-potential score. Save good ones to the Library.
+• ✦ AI COMMAND — type what you want in plain words ("write a 1-minute script about gold
+  and build it in 1080p"); it plans validated steps and runs them after you approve. It
+  can create scripts, videos, thumbnails, images, music, ideas, PSX analysis and scenes —
+  it can never delete anything.
+• 🎬 SCENE STUDIO — paste/write a script (use [SECTION HEADERS] or [bracketed shot
+  directions]), click "Plan scenes", then "▶ Generate all scenes". Failed scenes retry
+  automatically. Each scene: edit its prompt, "↻ Regenerate", "⬇ Save" the image, or
+  "📎 Put me in (photo)" to base the scene on your own photo. "⬇ Save all images" exports
+  the whole storyboard numbered. "🎬 Build video" merges the scenes AND narrates the
+  script; when done, buttons take you to Video Studio or the Timeline Editor. Builds keep
+  running if you switch tabs — the finished video lands in Video Studio, and the Activity
+  Log records started/finished/failed.
+• SCRIPT WRITER — full script generation for the finance niche; can fetch real PSX data
+  (paste a dps.psx.com.pk link) to ground the script in real numbers.
+• SCRIPT PAD — a scratchpad for drafting; other tabs (Scene Studio, Video Studio) can
+  pull from it with their "Use Script Pad" buttons.
+• VIDEO STUDIO — the main builder: script → narrated video. Choose narration voice (your
+  own recording, Natural/Piper, or Windows voice), visual engine (AI visuals is the free
+  default), Look (clean/news/cinematic/bold), style, resolution up to 8K, format 16:9 /
+  9:16 / 1:1, background music, captions (.srt or burned-in), and export/save-as. Built
+  videos are listed here. The AI Director (in this tab) takes plain-word instructions
+  about cutting/keeping parts or adding music/SFX. Every video in the list also has
+  "📱 Make Shorts": pick how many, click, and the app listens to the video offline,
+  picks the strongest moments (hooks, numbers, questions), and cuts vertical 9:16 clips
+  with big burned-in captions — ready for YouTube Shorts / TikTok / Reels. The clips
+  appear in the same list, and it explains WHY it picked each moment.
+• 🎞 STORYBOARD DIRECTOR — shot-by-shot filmmaking. AUTO mode: paste a script and it
+  plans timed beats (visual + narration + captions + transitions). GUIDED mode: write
+  your own pointers, one per line, like "0-15s: I arrive in a Ferrari, VO: 'welcome'" —
+  times are parsed forgivingly. If the AI can't structure it, the app builds the board
+  directly from your text — the button never dead-ends. Edit any beat, then render.
+• 🎥 PRESENTER STUDIO — presenter-style videos from your real footage or photo, plus the
+  "Living Picture" mode (animates a still portrait; region sliders + preview).
+• ⏺ RECORDER — record your webcam + microphone or your screen, with device pickers,
+  noise suppression and resolution choice. If OBS's Virtual Camera is running, it shows
+  up as a camera choice here. Recordings save into Video Studio.
+• ✂ TIMELINE EDITOR — the cutting room: trim, cut, rearrange clips, add audio and text
+  overlays, then render. This is where "clip/edit this video" lives.
+• CHARTS — price charts with SMA/RSI etc., from live data or an imported CSV file.
+• 📈 LIVE PSX DATA — live Pakistan Stock Exchange prices → analysis → Excel export; keeps
+  the last successful fetch for offline viewing (amber "not live" banner when offline).
+• 🏦 NCCPL ANALYSIS — investor-flow analysis; "backtest" answers: when big investors
+  (NCCPL flows) bought/sold in the past, what did the price actually do afterwards? The
+  math (SMA, Wilder RSI, correlation, flow↔price backtest) is textbook-exact and
+  unit-tested; it never invents numbers.
+• ADVISOR — a candid strategy partner for the channel: pitch it topics/plans, it pushes
+  back with sharper angles. Saved chat history.
+• LIBRARY — everything saved: ideas, scripts, and EVERY generated picture (auto-saved).
+  Filter tabs: All / Ideas / Scripts / Images / 🗑 Trash. "Delete" only moves items to
+  the Trash; only the user can Restore, "Delete forever", or "Empty Trash".
+• ACTIVITY LOG — the app's diary: what the AI did, when a video build started/finished/
+  FAILED and why, and — important — whether an answer came from your chosen AI or the
+  FREE backup AI (if answers feel weak, check here first).
+• SETTINGS — pick the AI brain: free (default, keyless), Ollama (local), Anthropic or
+  OpenAI (paid keys). Model names are cleaned of stray spaces automatically. Also:
+  YouTube API key, AI Horde key (faster photo scenes), demucs/faceAnim commands, and the
+  Photo Beautify tool.
+
+STANDARD WORKFLOWS
+1) Idea → video (fast): AI Command → "write a script about X and build a video" → Run.
+2) Scene-by-scene control: Script Writer (or Script Pad) → Scene Studio "Use Script Pad"
+   → Plan scenes → Generate all → fix any prompts → Build video → refine in Video Studio
+   or cut in Timeline Editor.
+3) Shot-by-shot film: Storyboard Director (AUTO from a script, or GUIDED with timed
+   pointers) → edit beats → render → Timeline for final cuts.
+4) You on camera: Recorder (webcam/screen) → Video Studio or Timeline. Or Presenter
+   Studio for presenter overlays / Living Picture.
+5) Finance video with real data: Live PSX Data or NCCPL → analysis → Script Writer →
+   Scene Studio/Video Studio.
+
+TROUBLESHOOTING
+- "The AI feels dumb": Activity Log will show "…came from the free AI instead" — fix the
+  key/model in Settings; with a working Anthropic/OpenAI key everything gets smarter.
+- "Where did my video go": builds keep running across tab switches; check Video Studio's
+  list and the Activity Log (started/finished/FAILED with the reason).
+- "Scenes fail to generate": the free image queue gets busy; the app now paces and
+  auto-retries. Pause and resume later if the queue is having a bad hour.
+- Stale app: compare the sidebar badge to the Build line in MEGA-DIAGNOSTIC-REPORT.md;
+  if older, run NIHILPOINTZERO-OS-setup.exe once from the Desktop studio folder.
+`

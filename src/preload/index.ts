@@ -381,7 +381,14 @@ const api = {
     getConfig: (): Promise<{ cloudEndpoint: string; cloudModel: string; localEndpoint: string; hasCloudKey: boolean }> =>
       ipcRenderer.invoke(IPC.aiGetConfig),
     setConfig: (partial: import('../shared/types').AiVideoConfig): Promise<{ ok: boolean }> =>
-      ipcRenderer.invoke(IPC.aiSetConfig, partial)
+      ipcRenderer.invoke(IPC.aiSetConfig, partial),
+    // Fires when the chosen paid/local AI failed and the free AI answered instead
+    // (drives the on-screen warning banner). Returns an unsubscribe fn.
+    onFallback: (cb: (notice: { provider: string; detail: string }) => void) => {
+      const listener = (_e: unknown, notice: { provider: string; detail: string }): void => cb(notice)
+      ipcRenderer.on(IPC.aiFallback, listener)
+      return () => ipcRenderer.removeListener(IPC.aiFallback, listener)
+    }
   },
   stock: {
     getConfig: (): Promise<{ hasPixabay: boolean; hasPexels: boolean }> => ipcRenderer.invoke(IPC.stockGetConfig),

@@ -23,11 +23,40 @@ function Step([string]$name, [scriptblock]$block) {
 
 Step 'Tests' { npm run test }
 
-# Compute the build identity ONCE and share it with the vite build (sidebar badge) and the
-# doc stamp below, so the badge and MEGA-DIAGNOSTIC-REPORT.md can never disagree again.
+# Build identity: the doc stamp carries version + date-time; the sidebar badge carries the
+# same PLUS the git hash. The hash can only be truthful if the ship commit exists BEFORE
+# the build, so the order is: stamp doc -> commit -> compute badge from HEAD -> build.
+# (A commit can never contain its own hash, which is why the doc line carries no hash.)
 $ver = (Get-Content (Join-Path $repo 'package.json') -Raw | ConvertFrom-Json).version
 $dot = [char]0x00B7  # the badge's middle-dot separator, kept out of this file's literal text
-$buildTag = "v$ver $dot $(Get-Date -Format 'yyyy-MM-dd HH:mm') $dot $(git rev-parse --short HEAD)"
+$stamp = "v$ver $dot $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+
+Step 'Stamp build identity into the diagnostic report' {
+    # Keeps the doc's "## Build:" line matching the sidebar badge's version+date prefix,
+    # so comparing the two remains a valid staleness check.
+    $doc = Join-Path $repo 'docs\MEGA-DIAGNOSTIC-REPORT.md'
+    $txt = [IO.File]::ReadAllText($doc)
+    $txt = $txt -replace '(?m)^## Build: .*$', "## Build: $stamp"
+    [IO.File]::WriteAllText($doc, $txt, [Text.UTF8Encoding]::new($false))
+    $global:LASTEXITCODE = 0
+}
+
+Step 'Commit source (so the badge hash names the code actually built)' {
+    # Committing BEFORE the build lets the badge carry THIS commit's hash. Previously the
+    # hash was read before the ship commit existed, so the badge always named the PREVIOUS
+    # ship's commit (one behind) - which misled anyone comparing it against git log.
+    git add -A
+    if ($LASTEXITCODE) { throw 'git add failed - fix the reported git error and re-ship' }
+    if (git status --porcelain) {
+        git commit -m ("Ship " + (Get-Date -Format 'yyyy-MM-dd HH:mm'))
+        # A masked commit failure would silently rebuild the old one-behind badge bug AND
+        # ship code that exists in no commit - keep this check loud.
+        if ($LASTEXITCODE) { throw 'git commit failed - fix the reported git error and re-ship' }
+    }
+    $global:LASTEXITCODE = 0
+}
+
+$buildTag = "$stamp $dot $(git rev-parse --short HEAD)"
 $env:NPZ_BUILD_TAG = $buildTag
 
 Step 'Verify NSIS tooling (self-heal after antivirus quarantine)' {
@@ -70,16 +99,6 @@ Step 'Deploy exes to Desktop studio' {
     Copy-Item (Join-Path $repo 'release\NIHILPOINTZERO-OS-setup.exe')    $studio -Force
 }
 
-Step 'Stamp build tag into the diagnostic report' {
-    # Keeps the doc's "## Build:" line byte-identical to the sidebar badge, so comparing
-    # the two remains a valid staleness check (it used to be hand-edited and drifted).
-    $doc = Join-Path $repo 'docs\MEGA-DIAGNOSTIC-REPORT.md'
-    $txt = [IO.File]::ReadAllText($doc)
-    $txt = $txt -replace '(?m)^## Build: .*$', "## Build: $buildTag"
-    [IO.File]::WriteAllText($doc, $txt, [Text.UTF8Encoding]::new($false))
-    $global:LASTEXITCODE = 0
-}
-
 Step 'Deploy docs to Desktop studio' {
     foreach ($doc in 'HOW-TO-USE.txt', 'NIHILPOINTZERO-GUIDE.txt',
                      'NIHILPOINTZERO-CHEATSHEET.txt', 'MEGA-DIAGNOSTIC-REPORT.md') {
@@ -90,10 +109,8 @@ Step 'Deploy docs to Desktop studio' {
 }
 
 Step 'Push to GitHub' {
-    git add -A
-    if (git status --porcelain) {
-        git commit -m ("Ship " + (Get-Date -Format 'yyyy-MM-dd HH:mm'))
-    }
+    # The ship commit was already made before the build (see above); nothing tracked
+    # changes during build/deploy (build outputs are gitignored), so this is push-only.
     git push
 }
 

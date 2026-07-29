@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
+import FallbackBanner from './components/FallbackBanner'
 import AssistantWidget from './components/AssistantWidget'
 import CommandPalette from './components/CommandPalette'
 import ToastHost from './components/Toast'
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
+        <FallbackBanner />
         <AssistantWidget />
         <CommandPalette />
         <ToastHost />

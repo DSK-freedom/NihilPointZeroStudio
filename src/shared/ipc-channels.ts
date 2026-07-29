@@ -82,6 +82,7 @@ export const IPC = {
   aiEngineStatus: 'ai:engine-status',
   aiGetConfig: 'ai:get-config',
   aiSetConfig: 'ai:set-config',
+  aiFallback: 'ai:fallback',
   stockGetConfig: 'stock:get-config',
   stockSetKey: 'stock:set-key',
   scriptpadGet: 'scriptpad:get',

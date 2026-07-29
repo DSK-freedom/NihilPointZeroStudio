@@ -333,6 +333,13 @@ Q: How do I use my own keys? A: Settings has fields (AI Horde for photos, MVSEP 
 - A build fails at a weird resolution: it auto-retries safely; if not, use 1080p/4K.
 - Writing stopped after changing provider: set it to "Free (online)" in Settings
   (needs no key), or make sure Ollama / your paid key is set up.
+- An amber warning appears: "Your ... AI failed — this answer came from the free AI
+  instead": your chosen paid/local AI could not answer, so the app used the basic free
+  AI (answers will be noticeably weaker). Most common cause: a wrong, expired, or
+  out-of-credit API key — open Settings and re-paste your key (an Anthropic key starts
+  with "sk-ant-api..." and is very long; copy ALL of it). If your provider is Ollama,
+  make sure Ollama is installed and running. The full technical reason is kept in the
+  Activity Log. If you see NO warning, your chosen AI answered normally.
 - Multiple copies open / won't launch: close all "NIHILPOINTZERO-OS" in Task Manager,
   then open once.
 

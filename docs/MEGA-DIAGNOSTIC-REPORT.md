@@ -3,7 +3,7 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-29 17:24 · 8275a17
+## Build: v0.1.1 · 2026-07-29 18:50
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
@@ -56,12 +56,20 @@ don't show up"** at the bottom of this file.
   written to the Activity Log in plain English (e.g. "Your anthropic AI failed — this
   answer came from the free AI instead"), including the technical reason. If answers seem
   weak, check the Activity Log first.
+- **...and shows an amber WARNING BANNER on screen the moment it happens.** The banner
+  names the AI that failed, shows the technical reason in small print, and links straight
+  to Settings so a wrong/expired API key gets fixed in seconds instead of going unnoticed
+  for weeks. Dismissing it hides it until the next failure.
+- **The sidebar build badge now names the exact commit that was built.** It used to run
+  one commit behind (the hash was read before the ship commit existed), which could make
+  a perfectly current app look outdated when checked against the project history.
 - **Model names are cleaned up automatically.** A pasted model name with an accidental
   space (e.g. " claude-sonnet-5") used to break every AI call invisibly; spaces are now
   removed when you save.
-- **The Build line at the top of this file is now stamped automatically at ship time**,
-  exactly matching the app's sidebar badge — it can no longer drift out of date and
-  wrongly tell you a stale app is current.
+- **The Build line at the top of this file is now stamped automatically at ship time**
+  and matches the sidebar badge's version and date (the badge additionally shows the
+  exact commit that was built) — it can no longer drift out of date and wrongly tell
+  you a stale app is current.
 
 ## New in the 2026-07-19 build
 - **An INSTALLED version now exists** — run `NIHILPOINTZERO-OS-setup.exe` once (in the studio

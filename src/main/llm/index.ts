@@ -5,6 +5,7 @@ import { PollinationsProvider } from './pollinations'
 import { ResilientProvider } from './resilient'
 import { LLMConfigError, type LLMProvider } from './types'
 import { getDecryptedKey, getModel, getSettings, logActivity } from '../store'
+import { broadcastAiFallback } from '../notify'
 
 /** Builds the raw provider for the chosen id (throws for a paid provider with no key). */
 function buildProvider(id: string, model: string): LLMProvider {
@@ -37,12 +38,14 @@ export function getActiveProvider(): LLMProvider {
     labels.push(settings.activeProvider)
   } catch (err) {
     // No usable primary (missing/undecryptable key) — degrade to the free fallback below,
-    // but SAY SO in the activity log: a silent downgrade looks like "the AI got dumb".
+    // but SAY SO (activity log + on-screen banner): a silent downgrade looks like "the AI got dumb".
+    const detail = err instanceof Error ? err.message : String(err)
     logActivity(
       'ai',
       `Your ${settings.activeProvider} AI could not be used — answers will come from the free AI`,
-      err instanceof Error ? err.message : String(err)
+      detail
     )
+    broadcastAiFallback({ provider: settings.activeProvider, detail })
   }
   if (settings.activeProvider !== 'free') {
     chain.push(new PollinationsProvider('openai'))
@@ -56,11 +59,13 @@ export function getActiveProvider(): LLMProvider {
     // A free->free retry is routine; only a paid/local provider degrading to free is
     // worth surfacing to the user.
     if (labels[i] === 'free') return
+    const detail = err instanceof Error ? err.message : String(err)
     logActivity(
       'ai',
       `Your ${labels[i]} AI failed — this answer came from the free AI instead`,
-      err instanceof Error ? err.message : String(err)
+      detail
     )
+    broadcastAiFallback({ provider: labels[i], detail })
   })
 }
 

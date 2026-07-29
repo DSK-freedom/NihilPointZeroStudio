@@ -180,7 +180,6 @@ If Windows shows "Windows protected your PC": click **More info -> Run anyway** 
         (Join-Path $repo 'docs\MEGA-DIAGNOSTIC-REPORT.md'),
         (Join-Path $repo 'SETUP_GUIDE.md')
     )
-    $existing = Invoke-RestMethod -Uri "https://api.github.com/repos/$gh/releases/$($rel.id)/assets" -Headers $hdr
     Add-Type -AssemblyName System.Net.Http
     $client = New-Object System.Net.Http.HttpClient
     $client.Timeout = [TimeSpan]::FromMinutes(60)
@@ -189,20 +188,34 @@ If Windows shows "Windows protected your PC": click **More info -> Run anyway** 
     try {
         foreach ($path in $assets) {
             $name = Split-Path $path -Leaf
-            $old = $existing | Where-Object { $_.name -eq $name }
-            if ($old) { Invoke-RestMethod -Method Delete -Uri "https://api.github.com/repos/$gh/releases/assets/$($old.id)" -Headers $hdr | Out-Null }
-            $mb = [math]::Round((Get-Item $path).Length / 1MB, 1)
-            Write-Host "  uploading $name ($mb MB)..." -ForegroundColor DarkCyan
-            $fs = [IO.File]::OpenRead($path)
-            try {
-                $content = New-Object System.Net.Http.StreamContent($fs)
-                $content.Headers.ContentType = New-Object System.Net.Http.Headers.MediaTypeHeaderValue('application/octet-stream')
-                $up = "https://uploads.github.com/repos/$gh/releases/$($rel.id)/assets?name=$([uri]::EscapeDataString($name))"
-                $resp = $client.PostAsync($up, $content).GetAwaiter().GetResult()
-                if (-not $resp.IsSuccessStatusCode) {
-                    throw "Upload of $name failed: $($resp.StatusCode) $($resp.Content.ReadAsStringAsync().GetAwaiter().GetResult())"
+            # Up to 3 attempts per asset: a 200 MB upload over home internet can die
+            # mid-stream ("Error while copying content to a stream") — one blip should
+            # not fail the whole ship. Existing assets are re-queried each attempt
+            # because a failed attempt can leave a partial/stale asset behind.
+            for ($try = 1; $try -le 3; $try++) {
+                try {
+                    $existing = Invoke-RestMethod -Uri "https://api.github.com/repos/$gh/releases/$($rel.id)/assets" -Headers $hdr
+                    $old = $existing | Where-Object { $_.name -eq $name }
+                    if ($old) { Invoke-RestMethod -Method Delete -Uri "https://api.github.com/repos/$gh/releases/assets/$($old.id)" -Headers $hdr | Out-Null }
+                    $mb = [math]::Round((Get-Item $path).Length / 1MB, 1)
+                    Write-Host "  uploading $name ($mb MB)$(if ($try -gt 1) { ", attempt $try" })..." -ForegroundColor DarkCyan
+                    $fs = [IO.File]::OpenRead($path)
+                    try {
+                        $content = New-Object System.Net.Http.StreamContent($fs)
+                        $content.Headers.ContentType = New-Object System.Net.Http.Headers.MediaTypeHeaderValue('application/octet-stream')
+                        $up = "https://uploads.github.com/repos/$gh/releases/$($rel.id)/assets?name=$([uri]::EscapeDataString($name))"
+                        $resp = $client.PostAsync($up, $content).GetAwaiter().GetResult()
+                        if (-not $resp.IsSuccessStatusCode) {
+                            throw "Upload of $name failed: $($resp.StatusCode) $($resp.Content.ReadAsStringAsync().GetAwaiter().GetResult())"
+                        }
+                        break
+                    } finally { $fs.Dispose() }
+                } catch {
+                    if ($try -eq 3) { throw }
+                    Write-Host "  upload of $name failed ($($_.Exception.Message)) - retrying in 10s..." -ForegroundColor Yellow
+                    Start-Sleep -Seconds 10
                 }
-            } finally { $fs.Dispose() }
+            }
         }
     } finally { $client.Dispose() }
     $global:LASTEXITCODE = 0

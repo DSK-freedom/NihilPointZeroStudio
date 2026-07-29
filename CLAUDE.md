@@ -4,10 +4,15 @@ Electron desktop app for Windows x64: a video studio + financial content & analy
 engine that produces narrated videos in Roman Urdu / Urdu / English. The user is
 non-technical — all user-facing docs are written in plain English.
 
-**THE source of truth is THIS folder (`finscript-studio`).** The exe on the Desktop
+**THE source of truth is THIS folder (`NihilPointZeroStudio-workshop`,
+formerly `finscript-studio` — renamed 2026-07-21).** The exe on the Desktop
 (inside the `NihilPointZeroStudio` folder) is a *build output* — never edit or
 inspect it expecting current code. After code changes, a new build must be made and
 shipped for the user to see them.
+
+The `name` field in package.json stays `finscript-studio`: it determines the
+installed app's data folder (`%APPDATA%\finscript-studio`) and install dir.
+Changing it would orphan the user's installed-app data — never rename it.
 
 ## Commands
 
@@ -16,7 +21,7 @@ npm run dev        # run the app in dev mode (electron-vite)
 npm run test       # vitest (tests are colocated: src/**/*.test.ts)
 npm run lint       # eslint src
 npm run dist:win   # full build -> release\ (portable exe + NSIS installer)
-npm run ship       # test -> build -> copy exes+docs to Desktop studio -> git push
+npm run ship       # test -> build -> copy exes+docs to Desktop studio -> git push -> update GitHub release downloads
 ```
 
 Builds land in `release\` as `NIHILPOINTZERO-OS-portable.exe` and

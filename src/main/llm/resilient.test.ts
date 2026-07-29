@@ -45,4 +45,25 @@ describe('ResilientProvider', () => {
   it('requires at least one provider', () => {
     expect(() => new ResilientProvider([])).toThrow()
   })
+
+  it('reports each fallback through onFallback with the failed index', async () => {
+    const seen: number[] = []
+    const r = new ResilientProvider([stub('a', true), stub('b', false)], (i) => seen.push(i))
+    expect(await r.generateText('x')).toBe('b')
+    expect(seen).toEqual([0])
+  })
+
+  it('does not report a fallback when the LAST provider fails (nothing left to try)', async () => {
+    const seen: number[] = []
+    const r = new ResilientProvider([stub('a', true), stub('b', true)], (i) => seen.push(i))
+    await expect(r.generateText('x')).rejects.toThrow(/down/)
+    expect(seen).toEqual([0])
+  })
+
+  it('a throwing onFallback reporter never breaks the chain', async () => {
+    const r = new ResilientProvider([stub('a', true), stub('b', false)], () => {
+      throw new Error('reporter exploded')
+    })
+    expect(await r.generateText('x')).toBe('b')
+  })
 })

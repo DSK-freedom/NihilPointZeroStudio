@@ -3,13 +3,28 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-19 15:59 · 4e5e704
+## Build: v0.1.1 · 2026-07-29 07:47 · c12ffb7
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
-## New in this build (2026-07-19 afternoon)
+## New in this build (2026-07-29)
+- **The app now TELLS you when the free backup AI answered.** Before, if your chosen AI
+  (Anthropic/OpenAI/Ollama) failed for any reason — wrong key, no credits, a typo in the
+  model name — the app silently asked a free public AI instead and showed that answer as
+  if nothing happened, which looked like "the AI got dumb". Now every such switch is
+  written to the Activity Log in plain English (e.g. "Your anthropic AI failed — this
+  answer came from the free AI instead"), including the technical reason. If answers seem
+  weak, check the Activity Log first.
+- **Model names are cleaned up automatically.** A pasted model name with an accidental
+  space (e.g. " claude-sonnet-5") used to break every AI call invisibly; spaces are now
+  removed when you save.
+- **The Build line at the top of this file is now stamped automatically at ship time**,
+  exactly matching the app's sidebar badge — it can no longer drift out of date and
+  wrongly tell you a stale app is current.
+
+## New in the 2026-07-19 build
 - **An INSTALLED version now exists** — run `NIHILPOINTZERO-OS-setup.exe` once (in the studio
   folder). It opens in ~2 seconds (no 60-90s unpack), taskbar pins are SAFE forever, and it uses
   the SAME `nihilpointzero-data` folder as the portable exe — same videos, scripts and settings

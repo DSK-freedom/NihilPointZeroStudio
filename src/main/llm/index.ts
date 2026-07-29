@@ -4,7 +4,7 @@ import { OllamaProvider } from './ollama'
 import { PollinationsProvider } from './pollinations'
 import { ResilientProvider } from './resilient'
 import { LLMConfigError, type LLMProvider } from './types'
-import { getDecryptedKey, getModel, getSettings } from '../store'
+import { getDecryptedKey, getModel, getSettings, logActivity } from '../store'
 
 /** Builds the raw provider for the chosen id (throws for a paid provider with no key). */
 function buildProvider(id: string, model: string): LLMProvider {
@@ -31,16 +31,37 @@ function buildProvider(id: string, model: string): LLMProvider {
 export function getActiveProvider(): LLMProvider {
   const settings = getSettings()
   const chain: LLMProvider[] = []
+  const labels: string[] = []
   try {
     chain.push(buildProvider(settings.activeProvider, getModel(settings.activeProvider)))
-  } catch {
-    /* no usable primary (missing/undecryptable key) — degrade to the free fallback below */
+    labels.push(settings.activeProvider)
+  } catch (err) {
+    // No usable primary (missing/undecryptable key) — degrade to the free fallback below,
+    // but SAY SO in the activity log: a silent downgrade looks like "the AI got dumb".
+    logActivity(
+      'ai',
+      `Your ${settings.activeProvider} AI could not be used — answers will come from the free AI`,
+      err instanceof Error ? err.message : String(err)
+    )
   }
-  if (settings.activeProvider !== 'free') chain.push(new PollinationsProvider('openai'))
+  if (settings.activeProvider !== 'free') {
+    chain.push(new PollinationsProvider('openai'))
+    labels.push('free')
+  }
   // Final keyless safety net / retry — guarantees the chain is never empty and the free
   // default still gets one automatic retry.
   chain.push(new PollinationsProvider('openai'))
-  return new ResilientProvider(chain)
+  labels.push('free')
+  return new ResilientProvider(chain, (i, err) => {
+    // A free->free retry is routine; only a paid/local provider degrading to free is
+    // worth surfacing to the user.
+    if (labels[i] === 'free') return
+    logActivity(
+      'ai',
+      `Your ${labels[i]} AI failed — this answer came from the free AI instead`,
+      err instanceof Error ? err.message : String(err)
+    )
+  })
 }
 
 export { LLMConfigError, LLMRequestError } from './types'

@@ -160,11 +160,14 @@ export function setActiveProvider(provider: LLMProviderId): ProviderSettings {
 }
 
 export function setModel(provider: LLMProviderId, model: string): ProviderSettings {
+  // A pasted model id with a stray space (" claude-fable-5") 404s on every call, and the
+  // failure is invisible to the user because of the free-AI fallback — so sanitize here.
+  const m = (model || '').trim()
   const s = readSettings()
-  if (provider === 'anthropic') s.anthropicModel = model
-  else if (provider === 'openai') s.openaiModel = model
-  else if (provider === 'free') s.freeModel = model
-  else s.ollamaModel = model
+  if (provider === 'anthropic') s.anthropicModel = m
+  else if (provider === 'openai') s.openaiModel = m
+  else if (provider === 'free') s.freeModel = m
+  else s.ollamaModel = m
   writeSettings(s)
   return getSettings()
 }

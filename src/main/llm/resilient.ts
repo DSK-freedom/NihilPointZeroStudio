@@ -8,18 +8,32 @@ import type { IdeaGenRequest, ScriptGenRequest, TrendTopic, VideoIdea, YouTubeSi
 import type { LLMProvider } from './types'
 
 export class ResilientProvider implements LLMProvider {
-  /** Providers to try in order; the first that succeeds wins. At least one required. */
-  constructor(private chain: LLMProvider[]) {
+  /**
+   * Providers to try in order; the first that succeeds wins. At least one required.
+   * onFallback fires when provider [i] fails and a later one will be tried — so callers
+   * can tell the user which AI actually answered instead of silently degrading.
+   */
+  constructor(
+    private chain: LLMProvider[],
+    private onFallback?: (failedIndex: number, err: unknown) => void
+  ) {
     if (!chain.length) throw new Error('ResilientProvider needs at least one provider')
   }
 
   private async attempt<T>(run: (p: LLMProvider) => Promise<T>): Promise<T> {
     let lastErr: unknown
-    for (const p of this.chain) {
+    for (let i = 0; i < this.chain.length; i++) {
       try {
-        return await run(p)
+        return await run(this.chain[i])
       } catch (err) {
         lastErr = err
+        if (i < this.chain.length - 1) {
+          try {
+            this.onFallback?.(i, err)
+          } catch {
+            // a broken fallback reporter must never take the whole chain down with it
+          }
+        }
       }
     }
     throw lastErr instanceof Error ? lastErr : new Error('All AI providers failed. Check your internet connection.')

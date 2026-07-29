@@ -126,6 +126,19 @@ Copy the folder to another PC and:
      tool?", "why did my video not appear?" and it answers with the exact steps for THIS
      app (not generic advice). Two buttons at the top right of its panel set the answer
      length: 📖 Detailed (full step-by-step) or ⚡ Brief (quick bullets).
+  🧭 EXPERT: a SECOND floating AI on every screen (the button at the BOTTOM-LEFT,
+     next to the sidebar), SEPARATE from the Producer. It's the app's dedicated expert — it does
+     nothing but know this software inside-out and help you use it:
+     - ASK ANYTHING, ANY WAY: "detailed bullet points", "step wise", "precise steps
+       naming every click", "explain fully", "keep it brief" — pick a format chip at
+       the top or just say the format in your question; it obeys exactly.
+     - ⚡ EXECUTE THESE STEPS: under each answer, one click turns the explanation into
+       a real, validated action plan (write scripts, build videos, scenes, images,
+       thumbnails, music, ideas, PSX analysis). NOTHING runs until you press "▶ Run it".
+     - EXECUTE MODE: or write the orders yourself ("make a 30-second script about gold
+       and build it vertical") and it plans + runs them the same way.
+     Steps that are pure UI clicks (open a tab, toggle a setting) it explains precisely
+     but cannot press for you — and like everything AI in this app, it can never delete.
 
 -------------------------------------------------------------------------------
 4. MAKE A VIDEO — STEP BY STEP

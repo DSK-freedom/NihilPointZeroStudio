@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import MicButton, { appendDictation } from './MicButton'
 import { toast } from './Toast'
 import { getProducerTarget, subscribeProducerTarget, type ProducerTarget } from '../store/ProducerContext'
+import { releaseAgentRun, tryAcquireAgentRun } from '../store/agentRunLock'
 import type { AgentPlan } from '../../../shared/types'
 
 interface Msg {
@@ -186,6 +187,11 @@ export default function AssistantWidget(): React.JSX.Element {
 
   /** Executes an approved plan through the validated engine, streaming progress. */
   async function runPlan(p: AgentPlan, msgIndex: number): Promise<void> {
+    // The progress channel is shared with the Expert widget — never run both at once.
+    if (!tryAcquireAgentRun()) {
+      toast('Another AI run is already in progress — wait for it to finish.', 'info')
+      return
+    }
     setBusy(true)
     setMsgs((cur) => cur.map((m, i) => (i === msgIndex ? { ...m, ran: true } : m)))
     push({ role: 'assistant', content: '▶ Running…' })
@@ -219,6 +225,7 @@ export default function AssistantWidget(): React.JSX.Element {
       })
     } finally {
       unsub()
+      releaseAgentRun()
       setBusy(false)
     }
   }

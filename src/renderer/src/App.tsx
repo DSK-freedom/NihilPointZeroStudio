@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import FallbackBanner from './components/FallbackBanner'
 import AssistantWidget from './components/AssistantWidget'
+import GuideWidget from './components/GuideWidget'
 import CommandPalette from './components/CommandPalette'
 import ToastHost from './components/Toast'
 import ConfirmHost from './components/Confirm'
@@ -52,6 +53,7 @@ export default function App() {
         </main>
         <FallbackBanner />
         <AssistantWidget />
+        <GuideWidget />
         <CommandPalette />
         <ToastHost />
         <ConfirmHost />

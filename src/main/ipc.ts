@@ -587,6 +587,59 @@ export function registerIpcHandlers(): void {
     return reply
   })
 
+  // The "Studio Expert" (🧭): a SECOND on-every-tab assistant, separate from the Producer.
+  // Pure app expert — answers anything about the software from the manual, in whatever
+  // format the user asks (bullets / steps / precise clicks / detailed / brief), and points
+  // the user at the widget's Execute flow when they want steps actually RUN. Ephemeral,
+  // same streaming shape as the Producer's assistantAsk.
+  ipcMain.handle(IPC.guideAsk, async (e, messages: { role: 'user' | 'assistant'; content: string }[], context: string) => {
+    const settings = getSettings()
+    const ctx = typeof context === 'string' ? context.slice(0, 6000) : ''
+    const system =
+      `You are the STUDIO EXPERT inside NihilPointZero Studio — the app's dedicated, all-knowing guide ` +
+      `(a separate helper from the YouTube Producer). The manual below is your ONLY source of truth about ` +
+      `the app: answer with exact tab names and click-paths, and if the manual doesn't cover something, say ` +
+      `so honestly instead of inventing buttons.\n\n` +
+      `FORMAT — the user chooses, you obey EXACTLY: "bullet points" = tight bullets; "step by step" or ` +
+      `"step wise" = numbered steps; "precise steps"/"exact clicks" = one UI action per numbered step naming ` +
+      `the exact button/tab; "detailed" = a full granular walkthrough including what the user should see ` +
+      `after each action; "brief"/"quick" = 3-5 lines max. A format asked in the message beats any default. ` +
+      `If no format is requested, use short numbered steps.\n\n` +
+      `EXECUTION — you cannot click the UI yourself, but the app CAN run real creation steps (write scripts, ` +
+      `build videos, generate scenes/images/thumbnails/music/ideas, PSX analysis). When the user wants ` +
+      `something DONE rather than explained, tell them to press the "⚡ Execute" button under your answer, or ` +
+      `switch this panel to Execute mode and type the order directly — the app turns it into a validated plan ` +
+      `they approve with Run. NEVER claim you already did or clicked something yourself.\n\n` +
+      `Context: ${ctx || 'the app'}\n${APP_GUIDE}`
+    const msgs = Array.isArray(messages) ? messages : []
+    const flat = `${system}\n\n${msgs.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')}\n\nASSISTANT:`
+    let reply: string
+    try {
+      if (settings.activeProvider === 'ollama') {
+        const turns: ChatTurn[] = [{ role: 'system', content: system }, ...msgs]
+        try {
+          reply = await ollamaChatStream(getModel('ollama'), turns, (delta) => {
+            if (!e.sender.isDestroyed()) e.sender.send(IPC.guideStream, delta)
+          })
+        } catch {
+          // Ollama unreachable — degrade to the active chain (which itself degrades to free)
+          // so the Expert still answers instead of dying with ECONNREFUSED.
+          reply = await getActiveProvider().generateText(flat, 1200)
+          if (!e.sender.isDestroyed()) e.sender.send(IPC.guideStream, reply)
+        }
+      } else {
+        reply = await getActiveProvider().generateText(flat, 1200)
+        if (!e.sender.isDestroyed()) e.sender.send(IPC.guideStream, reply)
+      }
+    } catch (err) {
+      // Never reject the invoke: surface a readable error in the chat instead of an
+      // unhandled rejection that makes the panel appear dead.
+      reply = `⚠ ${err instanceof Error ? err.message : 'The AI brain is unavailable'} — check Settings (Free online needs internet; Ollama/paid need setup).`
+      if (!e.sender.isDestroyed()) e.sender.send(IPC.guideStream, reply)
+    }
+    return reply
+  })
+
   // The "YouTube Producer": a growth-strategist that critiques/rewrites the creator's
   // current document (script/title/brief/notes) and returns a structured result — a short
   // reasoning `reply` plus, when a rewrite is warranted, the full `edited` text the UI can

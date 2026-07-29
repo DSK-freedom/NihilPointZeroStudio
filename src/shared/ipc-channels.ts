@@ -43,6 +43,8 @@ export const IPC = {
   advisorStream: 'advisor:stream',
   assistantAsk: 'assistant:ask',
   assistantStream: 'assistant:stream',
+  guideAsk: 'guide:ask',
+  guideStream: 'guide:stream',
   advisorHistory: 'advisor:history',
   advisorDelete: 'advisor:delete',
   advisorClear: 'advisor:clear',

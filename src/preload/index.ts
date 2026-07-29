@@ -405,6 +405,17 @@ const api = {
       return () => ipcRenderer.removeListener(IPC.assistantStream, listener)
     }
   },
+  guide: {
+    // The Studio Expert (🧭) — a second, separate on-every-tab assistant: pure app
+    // knowledge, answers in whatever format is asked. Streaming, not persisted.
+    ask: (messages: { role: 'user' | 'assistant'; content: string }[], context: string): Promise<string> =>
+      ipcRenderer.invoke(IPC.guideAsk, messages, context),
+    onStream: (cb: (delta: string) => void) => {
+      const listener = (_e: unknown, delta: string): void => cb(delta)
+      ipcRenderer.on(IPC.guideStream, listener)
+      return () => ipcRenderer.removeListener(IPC.guideStream, listener)
+    }
+  },
   producer: {
     // Ask the YouTube Producer to critique/rewrite the current field. Returns a short
     // reasoning `reply` and, when a rewrite is warranted, the full `edited` text to apply.

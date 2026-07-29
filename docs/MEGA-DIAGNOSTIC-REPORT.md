@@ -3,13 +3,19 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-29 18:50
+## Build: v0.1.1 · 2026-07-29 20:19
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
 ## New in this build (2026-07-29)
+- **🧭 A second AI helper — the STUDIO EXPERT — now floats on every tab**, separate from
+  the 🎬 Producer. It knows the entire app and answers anything about it in whatever
+  format you ask (bullet points · step-wise · precise clicks · fully detailed · brief —
+  chips or your own words). Under each answer, "⚡ Execute these steps" turns the
+  explanation into a validated action plan, and its Execute mode takes orders you write
+  yourself — nothing runs until you click "▶ Run it", and it can never delete anything.
 - **📱 MAKE SHORTS.** Every video in Video Studio now has a "Cut into vertical shorts"
   button: the app listens to the video (offline Whisper), picks the strongest moments —
   hooks, questions, concrete numbers — and cuts 1–5 vertical 9:16 clips with big

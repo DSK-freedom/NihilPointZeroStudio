@@ -12,6 +12,16 @@ Script Writer · Script Pad · Video Studio · 🎞 Storyboard Director · 🎥 
 ⏺ Recorder · ✂ Timeline Editor · Charts · 📈 Live PSX Data · 🏦 NCCPL Analysis · Advisor ·
 Library · Activity Log · Settings. The gold badge under "OS" shows the build version.
 
+TWO HELPERS FLOAT ON EVERY TAB:
+• 🎬 PRODUCER (bottom-RIGHT) — the growth strategist: hooks, titles, retention advice, rewrites
+  your current script/title (you approve with Apply), and "Do it" action plans (approve with Run).
+• 🧭 EXPERT (bottom-LEFT, next to the sidebar) — the app's dedicated guide (separate from the
+  Producer): ask ANYTHING about
+  the software in ANY format — bullet points, step-wise, precise clicks, fully detailed, or
+  brief (chips at the top, or just ask in your own words). Under each answer, "⚡ Execute
+  these steps" turns the explanation into a validated action plan; its Execute mode takes
+  orders you write yourself. Nothing runs until the user clicks Run; nothing can be deleted.
+
 • IDEAS & TRENDS — generate video ideas with trend/YouTube signals. Each idea has a hook,
   angle, and view-potential score. Save good ones to the Library.
 • ✦ AI COMMAND — type what you want in plain words ("write a 1-minute script about gold

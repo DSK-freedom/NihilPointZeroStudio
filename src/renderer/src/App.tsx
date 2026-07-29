@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import FallbackBanner from './components/FallbackBanner'
+import UpdateBanner from './components/UpdateBanner'
 import AssistantWidget from './components/AssistantWidget'
 import GuideWidget from './components/GuideWidget'
 import CommandPalette from './components/CommandPalette'
@@ -52,6 +53,7 @@ export default function App() {
           </Routes>
         </main>
         <FallbackBanner />
+        <UpdateBanner />
         <AssistantWidget />
         <GuideWidget />
         <CommandPalette />

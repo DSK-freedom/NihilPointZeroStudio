@@ -26,7 +26,12 @@ const BUILD_TAG = process.env.NPZ_BUILD_TAG || `v${pkg.version} · ${stamp}${git
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    define: {
+      // Also injected into MAIN so the startup update-check can compare the running
+      // build's date against the newest GitHub release without asking the renderer.
+      __BUILD_TAG__: JSON.stringify(BUILD_TAG)
+    }
   },
   preload: {
     plugins: [externalizeDepsPlugin()]

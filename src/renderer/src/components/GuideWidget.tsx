@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import MicButton, { appendDictation } from './MicButton'
 import { toast } from './Toast'
 import { releaseAgentRun, tryAcquireAgentRun } from '../store/agentRunLock'
@@ -45,6 +45,14 @@ const FORMATS: { label: string; ask: string }[] = [
   { label: '⚡ Brief', ask: 'Answer in 3-5 short lines max.' }
 ]
 
+/** Tabs an answer mentions by name — rendered as one-click "take me there" chips. */
+function mentionedTabs(content: string, currentPath: string): [string, string][] {
+  const lower = content.toLowerCase()
+  return Object.entries(PAGE_NAMES)
+    .filter(([route, name]) => route !== currentPath && lower.includes(name.toLowerCase()))
+    .slice(0, 4)
+}
+
 /**
  * The "Studio Expert" (🧭) — a SECOND on-every-tab assistant, deliberately separate from
  * the 🎬 Producer. It does one thing: it knows the entire app and answers anything about
@@ -61,6 +69,7 @@ export default function GuideWidget(): React.JSX.Element {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const navigate = useNavigate()
 
   const pageName = PAGE_NAMES[location.pathname] ?? 'the app'
 
@@ -275,12 +284,31 @@ export default function GuideWidget(): React.JSX.Element {
                 write the orders yourself. Nothing runs until you click Run, and nothing can ever be deleted.
               </p>
             )}
-            {msgs.map((m, i) => (
+            {msgs.map((m, i) => {
+              const places =
+                m.role === 'assistant' && m.content && !m.content.startsWith('⚠')
+                  ? mentionedTabs(m.content, location.pathname)
+                  : []
+              return (
               <div key={i} className="text-[12px] leading-relaxed">
                 <span className={m.role === 'user' ? 'text-gold-400' : 'text-sky-400'}>{m.role === 'user' ? 'You' : 'Expert'}: </span>
                 <span className={`whitespace-pre-wrap ${m.role === 'user' ? 'text-ink-100' : 'text-ink-300'}`}>
                   {m.content || (busy && i === msgs.length - 1 ? '…' : '')}
                 </span>
+                {places.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {places.map(([route, name]) => (
+                      <button
+                        key={route}
+                        onClick={() => navigate(route)}
+                        className="rounded-full border border-ink-700 px-2.5 py-1 text-[11px] text-sky-300 hover:bg-ink-800"
+                        title={`Take me there: ${name}`}
+                      >
+                        → Open {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {m.executable && !busy && (
                   <div className="mt-1">
                     <button
@@ -314,7 +342,8 @@ export default function GuideWidget(): React.JSX.Element {
                   </div>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
 
           <div className="border-t border-ink-800 p-2 flex gap-1.5">

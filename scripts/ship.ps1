@@ -106,6 +106,8 @@ Step 'Deploy docs to Desktop studio' {
     }
     # The setup guide lives at the repo root (it covers building from source too).
     Copy-Item (Join-Path $repo 'SETUP_GUIDE.md') $studio -Force
+    # The one-click backup tool the docs point at — must exist wherever the studio does.
+    Copy-Item (Join-Path $repo 'BACKUP-NOW.cmd') $studio -Force
 }
 
 Step 'Push to GitHub' {
@@ -178,7 +180,8 @@ If Windows shows "Windows protected your PC": click **More info -> Run anyway** 
         (Join-Path $repo 'docs\NIHILPOINTZERO-GUIDE.txt'),
         (Join-Path $repo 'docs\NIHILPOINTZERO-CHEATSHEET.txt'),
         (Join-Path $repo 'docs\MEGA-DIAGNOSTIC-REPORT.md'),
-        (Join-Path $repo 'SETUP_GUIDE.md')
+        (Join-Path $repo 'SETUP_GUIDE.md'),
+        (Join-Path $repo 'BACKUP-NOW.cmd')
     )
     Add-Type -AssemblyName System.Net.Http
     $client = New-Object System.Net.Http.HttpClient

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, shell } from 'electron'
+import { checkForUpdate } from './updateCheck'
 import { join } from 'path'
 import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs'
 import { registerIpcHandlers } from './ipc'
@@ -109,6 +110,11 @@ if (!gotLock) {
   app.whenReady().then(() => {
     registerIpcHandlers()
     createWindow()
+
+    // Quiet, delayed check for a newer shipped build (silent when offline/failing).
+    setTimeout(() => {
+      void checkForUpdate()
+    }, 8000)
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

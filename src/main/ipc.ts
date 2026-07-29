@@ -1,6 +1,6 @@
 import { app, BrowserWindow, clipboard, desktopCapturer, dialog, ipcMain, shell } from 'electron'
 import { randomUUID } from 'crypto'
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { basename, extname, join } from 'path'
 import { IPC } from '../shared/ipc-channels'
@@ -16,6 +16,7 @@ import { getActiveProvider } from './llm'
 import { getOllamaStatus, ollamaChatStream, type ChatTurn } from './llm/ollama'
 import { buildAdvisorSystemPrompt } from './prompts'
 import { APP_GUIDE } from './appGuide'
+import { getAvailableUpdate, tagDate } from './updateCheck'
 import { generateIdeasFlow, generateScriptFlow } from './services'
 import { synthesizeSpeechToFile } from './voiceover'
 import { analyzeImportedFile, correlateFlowWithPrice, parseSpreadsheetFile } from './analysis'
@@ -638,6 +639,29 @@ export function registerIpcHandlers(): void {
       if (!e.sender.isDestroyed()) e.sender.send(IPC.guideStream, reply)
     }
     return reply
+  })
+
+  // "Update available" banner support: pull-based re-read for renderers that mounted
+  // after the one-shot broadcast (slow first paint, Ctrl+R reload).
+  ipcMain.handle(IPC.updateGet, () => getAvailableUpdate())
+
+  // Reveal the setup exe in the Desktop studio folder so a non-technical user finds it
+  // in one click. ONLY when that exe is at least as new as the advertised build — on a
+  // PC where the studio folder was merely copied, the local exe is the OLD installer and
+  // revealing it would trap the user in an update loop. Stale/missing -> download page.
+  ipcMain.handle(IPC.updateRevealSetup, (_e, remoteTag?: string) => {
+    const setup = join(app.getPath('desktop'), 'NihilPointZeroStudio', 'NIHILPOINTZERO-OS-setup.exe')
+    const remoteAt = typeof remoteTag === 'string' ? tagDate(remoteTag) : null
+    if (existsSync(setup)) {
+      const mtime = statSync(setup).mtimeMs
+      // 30 min slack: build/copy timestamps of the SAME release can differ slightly.
+      if (remoteAt === null || mtime >= remoteAt - 30 * 60_000) {
+        shell.showItemInFolder(setup)
+        return { ok: true, opened: 'local' }
+      }
+    }
+    void shell.openExternal('https://github.com/DSKJazz/NihilPointZeroStudio/releases/latest')
+    return { ok: true, opened: 'download-page' }
   })
 
   // The "YouTube Producer": a growth-strategist that critiques/rewrites the creator's

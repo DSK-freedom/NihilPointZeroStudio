@@ -21,6 +21,14 @@ TWO HELPERS FLOAT ON EVERY TAB:
   brief (chips at the top, or just ask in your own words). Under each answer, "⚡ Execute
   these steps" turns the explanation into a validated action plan; its Execute mode takes
   orders you write yourself. Nothing runs until the user clicks Run; nothing can be deleted.
+  When an Expert answer mentions a tab, "→ Open <tab>" chips appear under it — one click
+  jumps straight to that tab.
+
+OTHER GLOBAL FEATURES: on startup the app quietly checks for a newer published version and
+shows a small blue notice with a "Show me the file" button (opens the studio folder with
+NIHILPOINTZERO-OS-setup.exe selected; one double-click updates). BACKUP-NOW.cmd in the
+Desktop studio folder copies ALL user work to Documents\\NihilPointZero-Backups (copy-only,
+never deletes) — recommend it weekly.
 
 • IDEAS & TRENDS — generate video ideas with trend/YouTube signals. Each idea has a hook,
   angle, and view-potential score. Save good ones to the Library.

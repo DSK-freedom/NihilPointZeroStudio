@@ -139,6 +139,15 @@ Copy the folder to another PC and:
        and build it vertical") and it plans + runs them the same way.
      Steps that are pure UI clicks (open a tab, toggle a setting) it explains precisely
      but cannot press for you — and like everything AI in this app, it can never delete.
+     - → TAKE ME THERE: when an answer mentions a tab, chips appear under it ("→ Open
+       Scene Studio") — one click jumps you straight to that tab.
+  ⬆ UPDATE NOTICES: on startup the app quietly checks if a newer version was published.
+     If yes, a small blue notice appears with a "Show me the file" button that opens the
+     studio folder with NIHILPOINTZERO-OS-setup.exe selected — one double-click updates.
+     Offline? The check silently skips; it never blocks or nags.
+  💾 BACKUP-NOW.cmd (in the Desktop studio folder): double-click to copy ALL your work
+     (videos, scripts, settings) to Documents\NihilPointZero-Backups. It only adds/updates,
+     never deletes. Do it weekly — and now and then copy that folder to a USB stick too.
 
 -------------------------------------------------------------------------------
 4. MAKE A VIDEO — STEP BY STEP

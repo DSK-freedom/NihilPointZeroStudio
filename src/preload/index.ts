@@ -390,6 +390,20 @@ const api = {
       return () => ipcRenderer.removeListener(IPC.aiFallback, listener)
     }
   },
+  updates: {
+    // Fires when a newer shipped build exists on GitHub (drives the update banner).
+    onAvailable: (cb: (info: { remoteTag: string; localTag: string }) => void) => {
+      const listener = (_e: unknown, info: { remoteTag: string; localTag: string }): void => cb(info)
+      ipcRenderer.on(IPC.updateAvailable, listener)
+      return () => ipcRenderer.removeListener(IPC.updateAvailable, listener)
+    },
+    // Pull the already-found update (covers renderers that mounted after the broadcast).
+    get: (): Promise<{ remoteTag: string; localTag: string } | null> => ipcRenderer.invoke(IPC.updateGet),
+    // Opens the studio folder with the setup exe selected — but only when that exe is as
+    // new as the advertised build; otherwise opens the download page.
+    revealSetup: (remoteTag?: string): Promise<{ ok: boolean; opened: string }> =>
+      ipcRenderer.invoke(IPC.updateRevealSetup, remoteTag)
+  },
   stock: {
     getConfig: (): Promise<{ hasPixabay: boolean; hasPexels: boolean }> => ipcRenderer.invoke(IPC.stockGetConfig),
     setKey: (provider: 'pixabay' | 'pexels', key: string): Promise<{ hasPixabay: boolean; hasPexels: boolean }> =>

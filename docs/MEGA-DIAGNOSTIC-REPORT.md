@@ -3,13 +3,23 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-29 20:47
+## Build: v0.1.1 · 2026-07-30 00:19
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
 ## New in this build (2026-07-29)
+- **⬆ The app now tells you when a newer version exists.** On startup it quietly checks
+  the download page; if a newer build was published, a small blue notice appears with a
+  "Show me the file" button that opens the studio folder with the setup exe selected.
+  Offline or failed check = total silence, never a nag.
+- **→ "Take me there" chips in the 🧭 Expert.** When an Expert answer mentions a tab
+  ("open Scene Studio…"), one-click chips appear under the answer that jump straight to
+  that tab — the Expert now walks you to the room, not just describes it.
+- **💾 BACKUP-NOW.cmd** now sits in the Desktop studio folder: double-click to copy all
+  your work (videos, scripts, settings) to Documents\NihilPointZero-Backups. Copy-only —
+  it can never delete anything.
 - **🧭 A second AI helper — the STUDIO EXPERT — now floats on every tab**, separate from
   the 🎬 Producer. It knows the entire app and answers anything about it in whatever
   format you ask (bullet points · step-wise · precise clicks · fully detailed · brief —

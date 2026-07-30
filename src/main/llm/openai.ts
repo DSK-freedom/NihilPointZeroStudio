@@ -3,6 +3,7 @@ import type { IdeaGenRequest, ScriptGenRequest, TrendTopic, VideoIdea, YouTubeSi
 import { buildIdeaPrompt, buildScriptPrompt, buildThumbnailPrompt, buildTrendPrompt } from '../prompts'
 import { LLMRequestError, type LLMProvider } from './types'
 import { extractJson, parseScriptResponse } from './parse'
+import { logAiError } from './errorLog'
 
 export class OpenAIProvider implements LLMProvider {
   private client: OpenAI
@@ -22,8 +23,11 @@ export class OpenAIProvider implements LLMProvider {
       if (!text) throw new LLMRequestError('OpenAI returned no text content')
       return text
     } catch (err) {
+      const status = (err as { status?: number })?.status
+      const message = err instanceof Error ? err.message : 'OpenAI request failed'
+      logAiError({ at: new Date().toISOString(), provider: 'openai', feature: 'text', status, message })
       if (err instanceof LLMRequestError) throw err
-      throw new LLMRequestError(err instanceof Error ? err.message : 'OpenAI request failed')
+      throw new LLMRequestError(message, { status, permanent: status === 401 || status === 403 })
     }
   }
 

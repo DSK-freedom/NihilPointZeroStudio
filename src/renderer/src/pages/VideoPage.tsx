@@ -10,16 +10,20 @@ import type {
   Mood,
   PostMetadata,
   TrimMode,
+  HardwareReport,
   VideoAspect,
   VideoJob,
   VideoResolution,
   VideoStyle,
   VideoTemplate
 } from '../../../shared/types'
-import { EXPORT_FORMATS, MOODS, VIDEO_STYLES, VIDEO_TEMPLATES } from '../../../shared/types'
+import { EXPORT_FORMATS, MOODS, VIDEO_STYLE_GROUPS, VIDEO_TEMPLATES } from '../../../shared/types'
 import { useStudio } from '../store/StudioContext'
 import MicButton, { appendDictation } from '../components/MicButton'
 import VoiceRecorder from '../components/VoiceRecorder'
+import TrimTimeline, { mmss } from '../components/TrimTimeline'
+import MusicTrackBar, { type MusicRegion } from '../components/MusicTrackBar'
+import MusicPicker from '../components/MusicPicker'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../components/Confirm'
 import DjStationPage from './DjStationPage'
@@ -32,9 +36,11 @@ const ENGINE_INFO: Record<LookEngine, { label: string; badge: string; blurb: str
     blurb: 'Styles text, backgrounds, waveform + your own images. Always works, no key.'
   },
   'ai-free': {
-    label: 'AI visuals (free)',
+    label: 'Photo slideshow (AI images)',
     badge: '🟢 Free · online · no key',
-    blurb: 'Generates a real AI image for each scene and animates them. Needs internet; no key or install.'
+    blurb:
+      'Generates a real AI image per scene, then pans and zooms across them. A moving photo slideshow — ' +
+      'not filmed motion. Needs internet; no key or install.'
   },
   'ai-cloud': {
     label: 'AI footage (cloud)',
@@ -42,9 +48,9 @@ const ENGINE_INFO: Record<LookEngine, { label: string; badge: string; blurb: str
     blurb: 'Real AI-generated footage from a paid provider you supply a key for.'
   },
   'ai-local': {
-    label: 'AI footage (local GPU)',
-    badge: '🟢 Free · needs GPU',
-    blurb: 'Runs AI models on your own GPU via a local server. Free per video, not portable.'
+    label: 'AI motion video (local GPU)',
+    badge: '🟢 Free · needs NVIDIA GPU',
+    blurb: 'Real generated motion from a text prompt, on your own graphics card. Needs a dedicated NVIDIA card.'
   }
 }
 
@@ -108,7 +114,7 @@ export default function VideoPage() {
   const [resolution, setResolution] = useState<VideoResolution>('1080p')
   const [aspect, setAspect] = useState<VideoAspect>('16:9')
   const [template, setTemplate] = useState<VideoTemplate>('cinematic')
-  const [narrationVoice, setNarrationVoice] = useState<'windows' | 'piper' | 'winnatural'>('windows')
+  const [narrationVoice, setNarrationVoice] = useState<'windows' | 'piper' | 'winnatural' | 'silent'>('windows')
   const [piperInstalled, setPiperInstalled] = useState(false)
   // Windows NATURAL voices (incl. Urdu Asad/Uzma once the Windows speech pack exists).
   const [winVoices, setWinVoices] = useState<{ id: string; name: string; language: string }[]>([])
@@ -208,6 +214,36 @@ export default function VideoPage() {
   const [stitchSel, setStitchSel] = useState<string[]>([])
   const [stitching, setStitching] = useState(false)
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({})
+  const [trimDuration, setTrimDuration] = useState(0)
+  const [playhead, setPlayhead] = useState(0)
+  const [hardware, setHardware] = useState<HardwareReport | null>(null)
+  const [captionsAndChapters, setCaptionsAndChapters] = useState(false)
+  const [extras, setExtras] = useState<{ videoId: string; srtPath?: string; chapters: string } | null>(null)
+  const [musicRegion, setMusicRegion] = useState<MusicRegion | null>(null)
+  const [musicPickerOpen, setMusicPickerOpen] = useState(false)
+  const [musicBusy, setMusicBusy] = useState(false)
+
+  async function handleApplyMusic(job: VideoJob): Promise<void> {
+    if (!musicRegion?.track) return
+    setMusicBusy(true)
+    setError(null)
+    setStage('Adding your music…')
+    const unsubscribe = window.api.video.onProgress((s) => setStage(s))
+    try {
+      const res = await window.api.music.applyRegion(job.id, musicRegion.track, musicRegion.startSec, musicRegion.endSec)
+      if (res.ok && res.video) {
+        await refreshJobs()
+        setMusicRegion(null)
+        setSavedNote(`Music added — new video “${res.video.title}” saved. Your original is untouched.`)
+      } else {
+        setError(res.error || 'Could not add the music.')
+      }
+    } finally {
+      unsubscribe()
+      setMusicBusy(false)
+      setStage(null)
+    }
+  }
 
   async function handleEnhance(job: VideoJob): Promise<void> {
     setEnhanceBusyId(job.id)
@@ -229,6 +265,14 @@ export default function VideoPage() {
 
   // Assemble the list of scripts you can build from: the current Writer draft (if
   // any) plus every script already saved to the Library. Also load built videos.
+  useEffect(() => {
+    const off = window.api.video.onExtras(setExtras)
+    void window.api.hardware.check().then(setHardware).catch(() => {})
+    return () => {
+      off()
+    }
+  }, [])
+
   useEffect(() => {
     void (async () => {
       const [lib, vids, pad] = await Promise.all([
@@ -316,6 +360,7 @@ export default function VideoPage() {
         aspect,
         template,
         narrationVoice,
+        captionsAndChapters,
         winVoiceId: narrationVoice === 'winnatural' ? winVoiceId : undefined,
         musicPath: musicPath ?? undefined,
         soundEffects,
@@ -575,6 +620,8 @@ export default function VideoPage() {
     // Seed the range from the player: start at current time, end at duration.
     const el = videoRefs.current[job.id]
     const dur = el && Number.isFinite(el.duration) ? el.duration : 0
+    setTrimDuration(dur)
+    setPlayhead(el ? el.currentTime : 0)
     setTrimStart(el ? Math.floor(el.currentTime) : 0)
     setTrimEnd(dur ? Math.round(dur) : 0)
     setTrimMode('remove')
@@ -594,6 +641,16 @@ export default function VideoPage() {
       setError('Pick an end time later than the start (at least 0.05s apart).')
       return
     }
+    const span = (trimEnd - trimStart).toFixed(1)
+    const okToCut = await confirmDialog({
+      title: trimMode === 'remove' ? 'Remove this section?' : 'Keep only this section?',
+      message:
+        trimMode === 'remove'
+          ? `${span} seconds (from ${mmss(trimStart)} to ${mmss(trimEnd)}) will be cut out. A new video is created — your original stays untouched.`
+          : `Only ${span} seconds (from ${mmss(trimStart)} to ${mmss(trimEnd)}) will be kept. A new video is created — your original stays untouched.`,
+      confirmLabel: trimMode === 'remove' ? 'Yes, remove it' : 'Yes, keep it'
+    })
+    if (!okToCut) return
     setError(null)
     setSavedNote(null)
     setTrimmingId(job.id)
@@ -842,6 +899,22 @@ export default function VideoPage() {
                   offline. If the chosen AI engine isn’t configured, the build will show setup instructions.
                 </p>
               )}
+              {/* Hardware honesty: say plainly, before a build is started, whether this PC
+                  can do AI motion video at all — instead of failing halfway through. */}
+              {engine === 'ai-local' && hardware && !hardware.gpu.hasCuda && (
+                <div className="mt-1.5 rounded-md border border-amber-600/50 bg-amber-950/20 p-2">
+                  <div className="text-[11px] text-amber-300 font-medium">This PC can’t run AI motion video</div>
+                  <p className="text-[10px] text-ink-300 mt-1 leading-relaxed">
+                    {hardware.models.find((m) => m.id === 'cogvideox-2b')?.verdict.message}
+                  </p>
+                  <button
+                    onClick={() => setEngine('ai-free')}
+                    className="mt-1.5 rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 text-[11px] font-medium px-2.5 py-1"
+                  >
+                    Use Photo slideshow instead
+                  </button>
+                </div>
+              )}
               {engine === 'ai-free' && (
                 <p className="text-[10px] text-emerald-400/90 mt-1.5">
                   Generates a real AI image for each scene (free, no key) and animates them. Needs internet; if the
@@ -858,10 +931,14 @@ export default function VideoPage() {
                   onChange={(e) => setStyle(e.target.value as VideoStyle)}
                   className="mt-1 w-full rounded-md bg-ink-800 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500 capitalize"
                 >
-                  {VIDEO_STYLES.map((s) => (
-                    <option key={s} value={s} className="capitalize">
-                      {s}
-                    </option>
+                  {VIDEO_STYLE_GROUPS.map((g) => (
+                    <optgroup key={g.family} label={g.family}>
+                      {g.styles.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>
@@ -876,10 +953,14 @@ export default function VideoPage() {
                     onChange={(e) => setStyle(e.target.value as VideoStyle)}
                     className="mt-1 w-full rounded-md bg-ink-800 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500 capitalize"
                   >
-                    {VIDEO_STYLES.map((s) => (
-                      <option key={s} value={s} className="capitalize">
-                        {s}
-                      </option>
+                    {VIDEO_STYLE_GROUPS.map((g) => (
+                      <optgroup key={g.family} label={g.family}>
+                        {g.styles.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                   <p className="text-[10px] text-ink-600 mt-1">
@@ -944,7 +1025,7 @@ export default function VideoPage() {
               <label className="text-xs text-ink-400">Narration voice</label>
               <select
                 value={narrationVoice}
-                onChange={(e) => setNarrationVoice(e.target.value as 'windows' | 'piper' | 'winnatural')}
+                onChange={(e) => setNarrationVoice(e.target.value as typeof narrationVoice)}
                 className="mt-1 w-full rounded-md bg-ink-800 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
               >
                 <option value="winnatural" disabled={!winVoices.length}>
@@ -956,7 +1037,31 @@ export default function VideoPage() {
                   {piperInstalled ? 'Natural voice (Piper)' : 'Natural voice (Piper) — install in Settings first'}
                 </option>
                 <option value="windows">Built-in Windows voice (robotic, always free)</option>
+                <option value="silent">🔇 No voice / silent — I&rsquo;ll record my own</option>
               </select>
+
+              <label className="mt-2 flex items-start gap-2 text-xs text-ink-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={captionsAndChapters}
+                  onChange={(e) => setCaptionsAndChapters(e.target.checked)}
+                  className="mt-0.5 accent-gold-500"
+                />
+                <span>
+                  Also make subtitles + YouTube chapters
+                  <span className="block text-[10px] text-ink-600">
+                    Off by default. When off, neither is created. Adds a minute or so to the build.
+                  </span>
+                </span>
+              </label>
+
+              {narrationVoice === 'silent' && (
+                <p className="mt-1.5 text-[10px] text-emerald-300/90">
+                  The video will be built with no narration at all. Its length is set from how long your script would
+                  take to read aloud. Afterwards open 🎙 Voice studio under the finished video to record your own voice
+                  over it.
+                </p>
+              )}
 
               {narrationVoice === 'winnatural' && (
                 <div className="mt-2 space-y-1.5">
@@ -1433,6 +1538,12 @@ export default function VideoPage() {
                           await refreshJobs()
                           setSavedNote(`Voice-over added — new video “${newJob.title}” saved.`)
                         }}
+                        onPlayVideo={() => {
+                          const el = videoRefs.current[job.id]
+                          if (!el) return
+                          el.currentTime = 0
+                          void el.play().catch(() => {})
+                        }}
                       />
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900/60 p-2">
@@ -1467,15 +1578,112 @@ export default function VideoPage() {
                       src={fileUrl(job.path)}
                       controls
                       preload="metadata"
+                      onLoadedMetadata={(e) => {
+                        if (trimOpenId === job.id && Number.isFinite(e.currentTarget.duration)) {
+                          setTrimDuration(e.currentTarget.duration)
+                        }
+                      }}
+                      onTimeUpdate={(e) => {
+                        if (trimOpenId === job.id) setPlayhead(e.currentTarget.currentTime)
+                      }}
                       className="mt-2 w-full max-h-72 rounded-md bg-black"
                     />
+                    {extras?.videoId === job.id && (extras.chapters || extras.srtPath) && (
+                      <div className="mt-2 rounded-md border border-emerald-600/40 bg-ink-900/60 p-3 space-y-2">
+                        <div className="text-[11px] text-emerald-300 font-medium">Subtitles &amp; chapters</div>
+                        {extras.srtPath ? (
+                          <div className="text-[10px] text-ink-400">
+                            Subtitle file saved next to the video (.srt) — upload it with your video on YouTube.
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-amber-300">
+                            No speech was detected, so no subtitles were made.
+                          </div>
+                        )}
+                        {extras.chapters ? (
+                          <>
+                            <textarea
+                              readOnly
+                              value={extras.chapters}
+                              rows={Math.min(8, extras.chapters.split('\n').length)}
+                              className="w-full rounded-md bg-ink-950 border border-ink-700 px-2 py-1 text-[11px] text-ink-200 font-mono"
+                            />
+                            <button
+                              onClick={() => {
+                                void navigator.clipboard.writeText(extras.chapters)
+                                toast('Chapters copied — paste them into your YouTube description.')
+                              }}
+                              className="rounded-md border border-ink-600 px-2 py-1 text-[10px] text-ink-300 hover:border-gold-500"
+                            >
+                              📋 Copy chapters for the description
+                            </button>
+                          </>
+                        ) : (
+                          <div className="text-[10px] text-ink-500">
+                            This script was too short (or had too few sections) for YouTube chapters.
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {trimOpenId === job.id && (
                       <div className="mt-2 rounded-md border border-gold-500/30 bg-ink-900/60 p-3 space-y-2">
                         <p className="text-[11px] text-ink-300">
-                          Play the video above, pause where you want, then click “Use current”. Choose whether to keep
-                          only that range or cut it out.
+                          Tap the bar to move the nearest marker, or drag a marker. Then choose whether to cut that
+                          section out or keep only it.
                         </p>
-                        <div className="flex flex-wrap items-end gap-2">
+                        <TrimTimeline
+                          duration={trimDuration}
+                          start={trimStart}
+                          end={trimEnd}
+                          playhead={playhead}
+                          mode={trimMode}
+                          onChange={(s, e2) => {
+                            setTrimStart(s)
+                            setTrimEnd(e2)
+                          }}
+                          onSeek={(sec) => {
+                            const el = videoRefs.current[job.id]
+                            if (!el) return
+                            el.currentTime = sec
+                            setPlayhead(sec)
+                          }}
+                        />
+                        <div className="pt-1 border-t border-ink-800">
+                          <MusicTrackBar
+                            duration={trimDuration}
+                            region={musicRegion}
+                            onChange={setMusicRegion}
+                            onPick={() => setMusicPickerOpen(true)}
+                            busy={musicBusy}
+                          />
+                          {musicPickerOpen && (
+                            <MusicPicker
+                              scriptText={`${job.title}\n${body}`}
+                              current={musicRegion?.track ?? null}
+                              onChoose={(t) => {
+                                setMusicRegion((r) =>
+                                  r
+                                    ? { ...r, track: t }
+                                    : { startSec: 0, endSec: Math.min(30, trimDuration || 30), track: t }
+                                )
+                                setMusicPickerOpen(false)
+                              }}
+                              onClose={() => setMusicPickerOpen(false)}
+                            />
+                          )}
+                          {musicRegion?.track && (
+                            <button
+                              onClick={() => void handleApplyMusic(job)}
+                              disabled={musicBusy}
+                              className="mt-2 rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 transition-colors"
+                            >
+                              {musicBusy ? 'Adding music…' : '🎵 Add this music to the video'}
+                            </button>
+                          )}
+                        </div>
+                        <details className="text-[10px] text-ink-500">
+                          <summary className="cursor-pointer hover:text-ink-300">Type exact times instead</summary>
+                        <div className="flex flex-wrap items-end gap-2 mt-2">
                           <div>
                             <label className="text-[10px] text-ink-400 block">Start (s)</label>
                             <input
@@ -1511,6 +1719,7 @@ export default function VideoPage() {
                             </button>
                           </div>
                         </div>
+                        </details>
                         <div className="flex flex-wrap items-center gap-2">
                           <select
                             value={trimMode}

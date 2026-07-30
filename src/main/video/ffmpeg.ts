@@ -176,6 +176,24 @@ export function ffprobeVideoSize(file: string): Promise<[number, number]> {
   })
 }
 
+/**
+ * True when the file has at least one audio stream. Matters because a filtergraph
+ * referencing [0:a] fails outright ("matches no streams") on a silent video — which
+ * is exactly what a screen recording or a downloaded clip often is.
+ */
+export function ffprobeHasAudio(file: string): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const proc = spawn(ffprobePath, [
+      '-v', 'error', '-select_streams', 'a:0',
+      '-show_entries', 'stream=codec_type', '-of', 'csv=p=0', file
+    ])
+    let out = ''
+    proc.stdout.on('data', (d) => (out += d.toString()))
+    proc.on('error', () => resolve(false))
+    proc.on('exit', () => resolve(out.trim().includes('audio')))
+  })
+}
+
 /** Returns the media duration in seconds via ffprobe. */
 export function ffprobeDuration(file: string): Promise<number> {
   return new Promise<number>((resolve, reject) => {

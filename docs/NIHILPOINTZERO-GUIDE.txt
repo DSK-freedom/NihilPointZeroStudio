@@ -24,6 +24,7 @@ CONTENTS
   14. What's already set up for you
   15. Pro tips — get the best results
   16. Everything this studio can do (quick index)
+  17. NEW: the AI outage, free music, the trim bar, and what this PC can't do
 
 -------------------------------------------------------------------------------
 1. WHAT THIS IS / FIRST LAUNCH
@@ -464,3 +465,109 @@ Q: How do I use my own keys? A: Settings has fields (AI Horde for photos, MVSEP 
 Keep the .exe and the nihilpointzero-data folder together, be online for the AI
 parts, and copy the whole folder to go anywhere. Enjoy.
 ===============================================================================
+
+-------------------------------------------------------------------------------
+17. NEW (2026-07-30): THE AI OUTAGE, FREE MUSIC, THE TRIM BAR, AND LIMITS
+-------------------------------------------------------------------------------
+
+WHY THE AI "STOPPED RESPONDING" - AND WHAT WAS DONE
+The free online AI brain this app shipped with stopped being free. That was tested
+directly, over and over: it now answers "402 Payment Required", "404 Model not found
+- this is our legacy API", "429 Queue full", or returns an error page. Nothing on
+your PC is broken and your internet is fine. They changed their business.
+
+Why it FELT like a freeze rather than an error: the app used to ask that same dead
+service TWICE for every question, waiting up to two minutes each time, and it never
+wrote the failure down. So you waited a long time and got nothing.
+
+What is different now:
+  * Ollama - the free AI that runs on YOUR OWN PC - is now the automatic backup.
+    You already have it, with two models installed. When the online one refuses,
+    your answer quietly comes from your own machine instead. No key, no internet.
+  * A service that refuses permanently is set aside for 30 minutes instead of being
+    asked again before every single answer.
+  * Every failure is written to nihilpointzero-data\logs\ai-errors.log with the time,
+    the service, the error code, and the service's own words.
+  * Settings has a new "Known Issues" panel showing that list, so a problem is
+    provable instead of silently vanishing. It is read-only - nothing erases it.
+  * Settings -> "Run full check" now genuinely tests the AI. It used to check a
+    different web address than the one the app really uses, which is exactly why it
+    kept showing a green light all through the outage.
+
+If you want the most reliable free setup: keep Ollama installed and running.
+
+PICTURES THAT NEVER APPEARED
+Generated images were being made and saved correctly all along - the app's own
+security rules were stopping the window from showing files from your disk. Fixed;
+images, video previews and audio players across the whole app now appear.
+
+THE NEW TRIM BAR
+Open a finished video -> "Trim / cut". Instead of typing numbers:
+  * Tap anywhere on the bar to move the nearest marker there.
+  * Drag either marker to fine-tune. Arrow keys nudge; hold Shift for bigger steps.
+  * The selected stretch is shaded RED when you're cutting it out, GOLD when you're
+    keeping only it.
+  * "Jump to start"/"Jump to end" move the player so you can check your marks.
+  * Pressing Apply asks "Remove this section?" with Yes/Cancel BEFORE anything is cut.
+  * A new video is always created - your original is never touched.
+If you preferred typing exact times, that's still there under "Type exact times".
+
+FREE, COPYRIGHT-SAFE BACKGROUND MUSIC
+Under the trim bar is a green "Music track" lane:
+  * Tap it to drop music, or drag across it to choose exactly where music plays.
+  * Tapping opens a small picker right there - no separate screen.
+  * The AI reads your script and picks the mood for you (tense, uplifting, corporate,
+    and so on), then shows matching tracks. You can also search a mood yourself.
+  * Tap the round button to preview a track; tap "Use" to take it.
+  * Every track shows its licence in plain words: "no credit needed" (use it and
+    forget it) or "credit needed" (put the artist's name in your description).
+    Credit-free tracks are listed first on purpose.
+  * Music comes from Pixabay (add a free key in Settings) and Openverse (needs no key
+    at all, so this works out of the box). All safe for monetised YouTube.
+  * If neither service can be reached, you're told and the video is simply left
+    without music - it never fails the whole job.
+
+"NO VOICE / SILENT" NARRATION
+Video Studio -> Narration voice -> "No voice / silent". The video is built with NO
+narration at all, timed to how long your script would take to read aloud, so you can
+record your own voice over it afterwards in Voice studio.
+
+RECORDING YOURSELF - NOW IN THE RIGHT PLACE
+Voice studio (under any finished video) no longer records only sound:
+  * Choose "Voice only" or "Voice + camera".
+  * Tick "Play the video while I record" and the finished video rolls as you perform,
+    so you're genuinely recording over it rather than guessing. WEAR HEADPHONES - on
+    speakers your microphone will also pick up the video's own sound.
+  * A camera take can be saved straight into Video Studio (optionally cleaned up), or
+    you can keep just its sound as the video's narration.
+No more hopping to a separate Recorder tab and re-uploading the file.
+
+CAPTIONS AND YOUTUBE CHAPTERS - ONE SWITCH, OFF BY DEFAULT
+There is now a single tick-box in Video Studio: "Also make subtitles + YouTube
+chapters". It is OFF unless you tick it, and when it's off neither is created.
+Being straight with you: captions were NEVER being forced on - they only ever ran
+when you clicked the Captions button yourself. Chapter markers didn't exist at all
+until now. Both are now behind one visible switch. Chapters come with a Copy button
+so you can paste the timestamps into your YouTube description.
+
+WHAT THIS PC CANNOT DO - THE HONEST ANSWER
+Real AI "motion video" (LTX-Video, Wan 2.2, CogVideoX) and "talking photo" tools
+(SadTalker, LivePortrait) CANNOT run on this laptop. Not slowly - not at all.
+
+Those models need a dedicated NVIDIA graphics card with its own video memory. This
+PC has Intel graphics built into the processor, which borrows ordinary system memory
+and has none of the special hardware those models require. The lightest one asks for
+6GB of dedicated video memory; there is none here. No setting changes that.
+
+So instead of pretending, the app now:
+  * Checks your graphics card when it starts and tells you plainly, in Settings and
+    before you start a build, what can and cannot run.
+  * Labels the slideshow honestly as "Photo slideshow (AI images)" - described as a
+    moving photo slideshow, NOT filmed motion.
+  * Offers 16 distinct looks instead of 5: five cinematic (modern film, film noir,
+    blockbuster, vintage 70s, documentary), four cartoon (bold flat, 3D animated,
+    comic book, watercolour storybook), four anime (modern key visual, retro 90s,
+    painterly pastoral, dark seinen), plus neon, minimal and infographic.
+If you ever run this on a PC with an NVIDIA card, the check notices and the motion
+video option becomes available on its own.
+

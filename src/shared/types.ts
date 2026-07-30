@@ -208,9 +208,86 @@ export const VIDEO_ASPECTS: VideoAspect[] = ['16:9', '9:16', '1:1']
 export type VideoTemplate = 'clean' | 'news' | 'cinematic' | 'bold'
 export const VIDEO_TEMPLATES: VideoTemplate[] = ['clean', 'news', 'cinematic', 'bold']
 
-/** Visual style for the free preset renderer. */
-export type VideoStyle = 'cinematic' | 'cartoon' | 'anime' | 'neon' | 'minimal'
-export const VIDEO_STYLES: VideoStyle[] = ['cinematic', 'cartoon', 'anime', 'neon', 'minimal']
+/**
+ * Visual style for the free preset renderer and AI scene images. Several distinct looks
+ * per family — see main/image/styles.ts for what each one actually asks for.
+ */
+export type VideoStyle =
+  | 'cinematic'
+  | 'noir'
+  | 'blockbuster'
+  | 'vintage-film'
+  | 'documentary'
+  | 'cartoon'
+  | 'cartoon-3d'
+  | 'comic'
+  | 'watercolour'
+  | 'anime'
+  | 'anime-90s'
+  | 'anime-pastoral'
+  | 'anime-dark'
+  | 'neon'
+  | 'minimal'
+  | 'infographic'
+
+export const VIDEO_STYLES: VideoStyle[] = [
+  'cinematic',
+  'noir',
+  'blockbuster',
+  'vintage-film',
+  'documentary',
+  'cartoon',
+  'cartoon-3d',
+  'comic',
+  'watercolour',
+  'anime',
+  'anime-90s',
+  'anime-pastoral',
+  'anime-dark',
+  'neon',
+  'minimal',
+  'infographic'
+]
+
+/** Human-readable grouping for the style picker. */
+export const VIDEO_STYLE_GROUPS: { family: string; styles: { id: VideoStyle; label: string }[] }[] = [
+  {
+    family: 'Cinematic',
+    styles: [
+      { id: 'cinematic', label: 'Modern film' },
+      { id: 'noir', label: 'Film noir' },
+      { id: 'blockbuster', label: 'Blockbuster' },
+      { id: 'vintage-film', label: 'Vintage 70s' },
+      { id: 'documentary', label: 'Documentary' }
+    ]
+  },
+  {
+    family: 'Cartoon',
+    styles: [
+      { id: 'cartoon', label: 'Bold flat' },
+      { id: 'cartoon-3d', label: '3D animated film' },
+      { id: 'comic', label: 'Comic book' },
+      { id: 'watercolour', label: 'Watercolour storybook' }
+    ]
+  },
+  {
+    family: 'Anime',
+    styles: [
+      { id: 'anime', label: 'Modern key visual' },
+      { id: 'anime-90s', label: 'Retro 90s' },
+      { id: 'anime-pastoral', label: 'Painterly pastoral' },
+      { id: 'anime-dark', label: 'Dark seinen' }
+    ]
+  },
+  {
+    family: 'Other',
+    styles: [
+      { id: 'neon', label: 'Neon cyberpunk' },
+      { id: 'minimal', label: 'Minimal / clean' },
+      { id: 'infographic', label: 'Infographic / explainer' }
+    ]
+  }
+]
 
 /**
  * Which engine renders the video's look:
@@ -258,8 +335,9 @@ export interface VideoBuildRequest {
    *    Urdu Asad/Uzma voices once the Windows Urdu speech pack is installed)
    *  - 'piper'      — bundled offline natural voice
    *  - 'windows'    — legacy robotic System.Speech voice
+   *  - 'silent'     — no narration at all, so the user can record their own over it
    */
-  narrationVoice?: 'windows' | 'piper' | 'winnatural'
+  narrationVoice?: 'windows' | 'piper' | 'winnatural' | 'silent'
   /** Which Windows natural voice to use (WinRT voice id) when narrationVoice is 'winnatural'. */
   winVoiceId?: string
   /** Absolute path to a background music file (chosen via the pick-music dialog). */
@@ -274,6 +352,12 @@ export interface VideoBuildRequest {
   images?: string[]
   /** Use real stock footage (online) matched to the script (needs a saved Pixabay key). */
   useStock?: boolean
+  /**
+   * Generate subtitles (.srt) and YouTube chapter timestamps after the build.
+   * OFF unless explicitly set — a video should never come back with captions or
+   * chapters the user did not ask for.
+   */
+  captionsAndChapters?: boolean
 }
 
 export interface VideoJob {
@@ -652,4 +736,61 @@ export interface ActivityLogEntry {
   actor: ActivityActor
   action: string
   details?: string
+}
+
+/** A free, copyright-safe music track (Pixabay or an open Creative-Commons index). */
+export interface MusicTrack {
+  id: string
+  title: string
+  tags: string
+  durationSec: number
+  url: string
+  pageUrl?: string
+  source: 'pixabay' | 'openverse'
+  /** e.g. 'Pixabay', 'CC0', 'BY', 'BY-SA'. Shown so the licence is never a surprise. */
+  license: string
+  /**
+   * True when the licence obliges the user to credit the artist. Monetised YouTube is
+   * fine either way, but "no credit needed" vs "must credit" is the difference between
+   * pasting a line in the description or getting a claim, so it is never hidden.
+   */
+  needsAttribution: boolean
+}
+
+/** What the music picker gets back: the moods the AI chose plus matching tracks. */
+export interface MusicSuggestion {
+  moods: string[]
+  tracks: MusicTrack[]
+  /** Set when no music could be found, so the UI can say why instead of showing nothing. */
+  note?: string
+}
+
+/** What this PC can actually run — see main/hardware/gpu.ts. */
+export interface HardwareReport {
+  gpu: {
+    name: string
+    vramGB: number
+    hasCuda: boolean
+    integrated: boolean
+    totalRamGB: number
+  }
+  summary: string
+  models: {
+    id: string
+    label: string
+    minVramGB: number
+    note: string
+    verdict: { canRun: boolean; message: string; suggestion?: string }
+  }[]
+}
+
+/** One recorded AI failure, shown in Settings → Known Issues. */
+export interface AiErrorEntry {
+  at: string
+  provider: string
+  feature: string
+  status?: number
+  ms?: number
+  message: string
+  body?: string
 }

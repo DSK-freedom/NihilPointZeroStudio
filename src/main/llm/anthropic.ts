@@ -3,6 +3,7 @@ import type { IdeaGenRequest, ScriptGenRequest, TrendTopic, VideoIdea, YouTubeSi
 import { buildIdeaPrompt, buildScriptPrompt, buildThumbnailPrompt, buildTrendPrompt } from '../prompts'
 import { LLMRequestError, type LLMProvider } from './types'
 import { extractJson, parseScriptResponse } from './parse'
+import { logAiError } from './errorLog'
 
 export class AnthropicProvider implements LLMProvider {
   private client: Anthropic
@@ -22,8 +23,13 @@ export class AnthropicProvider implements LLMProvider {
       if (!block || block.type !== 'text') throw new LLMRequestError('Anthropic returned no text content')
       return block.text
     } catch (err) {
+      const status = (err as { status?: number })?.status
+      const message = err instanceof Error ? err.message : 'Anthropic request failed'
+      logAiError({ at: new Date().toISOString(), provider: 'anthropic', feature: 'text', status, message })
       if (err instanceof LLMRequestError) throw err
-      throw new LLMRequestError(err instanceof Error ? err.message : 'Anthropic request failed')
+      // A rejected or revoked key will reject identically every time — say so, so the
+      // chain stops re-asking it.
+      throw new LLMRequestError(message, { status, permanent: status === 401 || status === 403 })
     }
   }
 

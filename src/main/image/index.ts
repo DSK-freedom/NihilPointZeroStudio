@@ -8,6 +8,8 @@
  * chosen resolution — generating at the full 8K would be slow/unreliable on a free tier.
  */
 import { writeFileSync } from 'fs'
+import { logAiError } from '../llm/errorLog'
+import { styleById } from './styles'
 
 const BASE = 'https://image.pollinations.ai/prompt/'
 
@@ -104,10 +106,16 @@ export async function generateImage(prompt: string, outPath: string, opts: Image
       if (i < attempts - 1) await sleep(Math.min(12_000, 1200 * 2 ** i) * (0.6 + Math.random() * 0.8))
     }
   }
+  const detail = lastErr instanceof Error ? lastErr.message : 'unknown error'
+  logAiError({
+    at: new Date().toISOString(),
+    provider: `free-image/${primary}`,
+    feature: 'image',
+    message: `gave up after ${attempts} tries: ${detail}`
+  })
   throw new Error(
-    `Free image service failed after ${attempts} tries (${
-      lastErr instanceof Error ? lastErr.message : 'unknown error'
-    }). It can get busy — the video will use the animated look for this scene.`
+    `Free image service failed after ${attempts} tries (${detail}). ` +
+      `It can get busy — the video will use the animated look for this scene.`
   )
 }
 
@@ -119,14 +127,7 @@ export function sceneImagePrompt(style: string, scene: string, title: string): s
   // LEAD with the user's own visual concept so the image matches their bracketed direction
   // (its subject, mood AND colours) instead of being overridden by a fixed dark "dramatic"
   // style string — that override was why images looked mismatched and washed-out/dark.
-  const look: Record<string, string> = {
-    cinematic: 'cinematic photorealistic film still, 35mm, natural rich colour, sharp focus',
-    cartoon: 'vibrant cartoon illustration, bold clean colours',
-    anime: 'anime key visual, detailed, studio-quality, expressive',
-    neon: 'neon glow, futuristic, luminous colour',
-    minimal: 'minimalist, clean composition, soft palette'
-  }
-  const styleText = look[style] ?? look.cinematic
+  const styleText = styleById(style).prompt
   const subject = [scene, title].filter(Boolean).join('. ')
   return `${subject}. Style: ${styleText}. Accurate rich colour, high detail, professional, no text, no watermark, no letters, no captions, no subtitles.`
 }

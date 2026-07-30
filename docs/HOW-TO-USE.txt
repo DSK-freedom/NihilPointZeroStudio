@@ -50,6 +50,27 @@ HOW TO KNOW YOU'RE ON THE NEWEST BUILD  (READ THIS — it caused a lot of confus
      it opens in seconds. This is the recommended way to use the studio on your own PC;
      keep the portable exe for USB travel.
 
+IF THE AI STOPS ANSWERING  (READ THIS — it was a real bug, now fixed)
+   The free online AI this app shipped with STOPPED BEING FREE (their decision, not a
+   fault on your PC). It now replies "payment required" or "model not found".
+   • The app now falls back automatically to Ollama — the free AI that runs on YOUR PC.
+     If answers still come, that's where they're coming from. Nothing to do.
+   • Every AI failure is now written down. Settings -> "Known Issues" shows exactly what
+     went wrong and when, with the service's own words. The full file is at
+     nihilpointzero-data\logs\ai-errors.log
+   • Settings -> "🩺 Run full check" now really tests the AI (it used to check the wrong
+     address, which is why it stayed green during the whole outage).
+   • For the best free setup: keep Ollama installed and running. No key, no internet
+     needed, nothing to pay.
+
+WHAT THIS STUDIO CANNOT DO ON THIS PC  (being straight with you)
+   Real AI "motion video" and "talking photo" models (LTX-Video, Wan 2.2, CogVideoX,
+   SadTalker, LivePortrait) need a DEDICATED NVIDIA graphics card. This laptop's
+   graphics are built into the processor, so those models cannot run here at all — not
+   even slowly. Settings shows your card and says so plainly.
+   What you CAN make, all free: photo slideshows from AI-generated images (16 styles),
+   real stock footage, your own footage and recordings, narrated in natural voices.
+
 THE ONE RULE
    Keep the .exe and the "nihilpointzero-data" folder TOGETHER. To move the studio to
    another PC, copy the WHOLE "NihilPointZeroStudio" folder (USB/drive) and run the .exe

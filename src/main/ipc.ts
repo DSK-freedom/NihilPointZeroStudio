@@ -2,17 +2,29 @@ import { app, BrowserWindow, clipboard, desktopCapturer, dialog, ipcMain, shell 
 import { randomUUID } from 'crypto'
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { basename, extname, join } from 'path'
+import { basename, dirname, extname, join } from 'path'
 import { IPC } from '../shared/ipc-channels'
 import type {
   AdvisorRequest,
   IdeaGenRequest,
   LLMProviderId,
   LibraryEntry,
+  MusicSuggestion,
+  MusicTrack,
   ScriptGenRequest,
   VideoBuildRequest
 } from '../shared/types'
 import { getActiveProvider } from './llm'
+import { aiErrorLogPath, logAiError, readAiErrors } from './llm/errorLog'
+import { downloadMusicFile, findMusic } from './music/pixabayMusic'
+import { buildMusicRegionArgs } from './video/music'
+import { buildChapters, formatChapters } from './video/chapters'
+import { canRunModel, describeGpu, detectGpu, VIDEO_MODELS } from './hardware/gpu'
+import type { HardwareReport } from '../shared/types'
+
+/** Probed once per session — spawning processes is slow and the answer can't change. */
+let cachedHardware: HardwareReport | null = null
+import { MOOD_PROMPT_HINT, moodsFromText, parseMoodReply } from './music/mood'
 import { getOllamaStatus, ollamaChatStream, type ChatTurn } from './llm/ollama'
 import { buildAdvisorSystemPrompt } from './prompts'
 import { APP_GUIDE } from './appGuide'
@@ -26,7 +38,7 @@ import { buildPriceSeriesFromBars } from './analysis/priceSeries'
 import { buildPriceSeries } from './analysis/priceSeries'
 import { extractPdfText, summarizeStatement } from './analysis/pdf'
 import { attachRecordedVoice, beautifyImage, buildVideoFromScript, exportVideo, ffprobeDuration, formatExtension, renderThumbnail, renderTimeline, setVideoMusic, stitchVideos, trimVideo } from './video'
-import { cancelActiveFfmpeg, ffprobeVideoSize, runFfmpeg } from './video/ffmpeg'
+import { cancelActiveFfmpeg, ffprobeHasAudio, ffprobeVideoSize, runFfmpeg } from './video/ffmpeg'
 import { buildWatermarkArgs, type WatermarkPosition } from './video/watermark'
 import { makeSeparationScratch, separateLocal, separateOnline } from './audio/separate'
 import { deriveTitleFromFilename, normalizeScriptText } from './video/scriptText'
@@ -485,6 +497,15 @@ export function registerIpcHandlers(): void {
   // code path is wired to this channel.
   ipcMain.handle(IPC.activityClear, () => clearActivityLog())
 
+  // Known Issues panel. Read-only by design: the point of this log is to be provable
+  // evidence of what failed, so nothing in the app may erase it.
+  ipcMain.handle(IPC.aiErrorsList, (_e, limit?: number) => readAiErrors(limit ?? 100))
+  ipcMain.handle(IPC.aiErrorsReveal, () => {
+    const file = aiErrorLogPath()
+    if (existsSync(file)) shell.showItemInFolder(file)
+    else shell.openPath(dirname(file))
+  })
+
   ipcMain.handle(IPC.advisorHistory, () => listChat())
 
   // Both deletes below are reachable ONLY from explicit user buttons in the Advisor UI —
@@ -783,6 +804,26 @@ export function registerIpcHandlers(): void {
     }
     appendVideo(job)
     logActivity('ai', `Built ${(req.resolution ?? '1080p').toUpperCase()} video${req.musicPath ? ' with music' : ''}${req.soundEffects ? ' + SFX' : ''}`, req.title)
+    // Captions and chapters are produced ONLY when explicitly asked for. Neither has
+    // ever been forced, and this keeps it that way while making the choice visible.
+    if (req.captionsAndChapters) {
+      try {
+        if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, 'Writing subtitles and chapters…')
+        const durationSec = await ffprobeDuration(outPath)
+        const chapters = formatChapters(buildChapters(req.body, durationSec))
+        const segments = await transcribeFileToSegments(existsSync(narrationOutPath) ? narrationOutPath : outPath)
+        let srtPath: string | undefined
+        if (segments.length) {
+          srtPath = `${outPath.replace(/\.mp4$/i, '')}.srt`
+          writeFileSync(srtPath, buildSrt(segments), 'utf-8')
+        }
+        if (!e.sender.isDestroyed()) e.sender.send(IPC.videoExtras, { videoId: id, srtPath, chapters })
+        logActivity('ai', 'Wrote subtitles and chapter markers', req.title)
+      } catch (err) {
+        // Extras are a bonus — never let them turn a finished video into a failure.
+        logActivity('ai', 'Subtitles/chapters could not be written (the video is fine)', err instanceof Error ? err.message : 'unknown error')
+      }
+    }
     return job
   })
 
@@ -1462,6 +1503,87 @@ export function registerIpcHandlers(): void {
     appendVideo(job)
     logActivity('user', `Music ${mode} on a video`, src.title)
     return job
+  })
+
+  // FREE COPYRIGHT-SAFE MUSIC (Pixabay). Every handler degrades to "no music" with a
+  // readable note rather than throwing — a missing soundtrack must never break a video.
+  ipcMain.handle(IPC.musicSuggest, async (_e, scriptText: string) => {
+    // Ask the AI for the mood, but never let a slow/broken AI hold up the music: the
+    // word-matching fallback is good enough and instant.
+    let moods = moodsFromText(scriptText || '')
+    try {
+      const reply = await getActiveProvider().generateText(
+        `Read this video script and choose the background music mood.\n\n${(scriptText || '').slice(0, 1500)}\n\n${MOOD_PROMPT_HINT}`,
+        60
+      )
+      moods = parseMoodReply(reply, scriptText || '')
+    } catch (err) {
+      logAiError({
+        at: new Date().toISOString(),
+        provider: 'chain',
+        feature: 'music-mood',
+        message: `mood keywords fell back to word matching: ${err instanceof Error ? err.message : String(err)}`
+      })
+    }
+    const tracks = await findMusic(moods, getStockConfig().pixabayKey)
+    return {
+      moods,
+      tracks,
+      note: tracks.length ? undefined : 'No free music came back for this mood. The video will be built without music.'
+    } satisfies MusicSuggestion
+  })
+
+  ipcMain.handle(IPC.musicMoodSearch, async (_e, query: string) => {
+    const tracks = await findMusic([query], getStockConfig().pixabayKey)
+    return { moods: [query], tracks, note: tracks.length ? undefined : `No free music found for “${query}”.` } satisfies MusicSuggestion
+  })
+
+  // Places a chosen track over one stretch of a video, producing a NEW video.
+  ipcMain.handle(
+    IPC.musicApplyRegion,
+    async (e, videoId: string, track: MusicTrack, startSec: number, endSec: number) => {
+      const src = listVideos().find((j) => j.id === videoId)
+      if (!src || !existsSync(src.path)) return { ok: false, error: 'Video not found — build it again first.' }
+      try {
+        const musicPath = join(generatedAudioDir(), `music-${track.source}-${track.id.replace(/[^a-z0-9]/gi, '')}.mp3`)
+        if (!existsSync(musicPath)) await downloadMusicFile(track.url, musicPath)
+        const id = randomUUID()
+        const slug = (src.title || 'video').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40) || 'video'
+        const outPath = join(videosDir(), `${slug}-music-${id.slice(0, 8)}.mp4`)
+        const hasAudio = await ffprobeHasAudio(src.path)
+        const args = buildMusicRegionArgs({ videoPath: src.path, musicPath, startSec, endSec, outPath, hasAudio })
+        await runFfmpeg(args, (line) => {
+          if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, line.trim().slice(0, 160))
+        })
+        const job: VideoJob = {
+          id,
+          title: `${src.title} (music)`,
+          path: outPath,
+          hasCustomVoice: src.hasCustomVoice,
+          createdAt: new Date().toISOString(),
+          narrationPath: src.narrationPath
+        }
+        appendVideo(job)
+        logActivity('user', 'Added free background music to a video', `${track.title} (${track.license})`)
+        return { ok: true, video: job }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'Could not add the music.' }
+      }
+    }
+  )
+
+  // HARDWARE HONESTY: what this PC can actually run, checked live. Cached per session
+  // because probing spawns processes and the answer cannot change while the app runs.
+  ipcMain.handle(IPC.hardwareCheck, async () => {
+    if (!cachedHardware) {
+      const gpu = await detectGpu()
+      cachedHardware = {
+        gpu,
+        summary: describeGpu(gpu),
+        models: VIDEO_MODELS.map((m) => ({ ...m, verdict: canRunModel(gpu, m) }))
+      }
+    }
+    return cachedHardware
   })
 
   // Natural voice (Piper): status of the ACTIVE voice, and an opt-in per-voice download

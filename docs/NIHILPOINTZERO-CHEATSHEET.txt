@@ -71,7 +71,11 @@ Old look / no updates ... check the BUILD BADGE in the sidebar; if old you ran a
                           (or use the installed version, which never has this problem)
 Stop a build ............ the ⏹ Stop button halts EVERY stage INSTANTLY — even mid image-download
 PSX portal down ......... the app now shows your last SAVED data with an amber "not live" banner
-AI busy/failed .......... try again (auto-switches to a backup); needs internet
+AI stops answering ...... the old free online AI went PAID (their change). The app now falls back to
+                          Ollama on your own PC automatically. See Settings -> "Known Issues" for the
+                          exact error + time, or nihilpointzero-data\logs\ai-errors.log
+No AI motion video ...... needs a dedicated NVIDIA card; this PC's graphics are inside the processor.
+                          Use "Photo slideshow (AI images)" or stock footage. Settings shows your card.
 Robotic voice ........... use 🎙 Voice studio or the Natural voice
 Work "gone" on new PC ... you copied only the .exe — copy the WHOLE folder
 
@@ -83,6 +87,12 @@ Voice reads exactly what you type -> keep sentences short and clean
 Best result = record your OWN voice; fix one line with "Redo from playhead"
 Shorts combo = 9:16 + Cinematic/Bold + Burn captions
 Music: use "Replace" (auto-ducks under your voice), not loud background
+Free music: open ✂ Trim on a video -> tap the green "Music track" lane -> AI picks the mood, tap to preview
+   Licence is shown per track: "no credit needed" (safe to ignore) vs "credit needed" (put the artist in your description)
+Trim: tap the bar to move the nearest marker or drag it; it asks "Remove this section?" before cutting
+Silent video: Narration voice -> "🔇 No voice / silent", then 🎙 Voice studio to record your own over it
+Record yourself: 🎙 Voice studio now has "🎥 Voice + camera" and plays the video while you record (wear headphones)
+Captions/chapters: one tick-box in Video Studio, OFF by default — neither is ever made unless you tick it
 Beautify slider: RIGHT = smoother skin/brighter/even tone · LEFT = grittier/sharper (Preview before rendering)
 Real face: the app uses YOUR photo/clip and builds the scene around you — it does NOT fake your face
 Storyboard length: narration decides each shot's length, so speech never gets cut off or overlaps

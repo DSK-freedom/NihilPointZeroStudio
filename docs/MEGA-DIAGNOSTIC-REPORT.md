@@ -3,11 +3,83 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-30 12:00
+## Build: v0.1.1 · 2026-07-30 13:28
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
+
+## New in this build (2026-07-30, later)
+
+### The AI "stops responding" bug — found and fixed
+The free online AI brain the app shipped with (Pollinations) **stopped being free.** This was
+proven, not guessed: repeated live tests got `402 Payment Required` ("this key has 0.0000"),
+`404 Model not found — this is our legacy API`, `429 Queue full`, and Cloudflare `520` error
+pages. It is a change at their end, not a fault in your PC or your internet.
+
+Why it looked like a freeze: the app used to ask that same dead service **twice** for every
+question, waiting up to two minutes each time, and **never wrote the failure down anywhere**.
+So you got a long hang and then nothing.
+
+What changed:
+- **Ollama is now the automatic backup brain.** If you have Ollama installed (you do — with
+  `llama3.2:3b` and `llama3.1:8b`), the app now falls through to it and *answers*. Free,
+  offline, no key.
+- **No more asking a dead service twice.** A service that refuses permanently is skipped for
+  30 minutes instead of being retried before every single answer.
+- **Failures are now written down** to `nihilpointzero-data/logs/ai-errors.log`, with the time,
+  the service, the HTTP code and the service's own words.
+- **New "Known Issues" panel in Settings** shows that log, so a problem is provable instead of
+  silently vanishing.
+- **"Run full check" now actually tests the AI.** It used to ping a different address than the
+  one the app really uses, which is why it showed a green light through the whole outage.
+
+### Pictures that never appeared — fixed
+Generated images (Scene Studio and elsewhere) were being created and saved correctly, but the
+app's own security policy blocked the window from displaying files from your disk. One line
+fixed it; images, video previews and audio players across nine screens now show up.
+
+### Video editing
+- **Touch-friendly trim.** Tap the bar to move the nearest marker or drag it, instead of typing
+  numbers into boxes. Asks **"Remove this section?"** before it cuts. (Typing exact times is
+  still there, tucked under "Type exact times instead".)
+- **Visual music track** under the trim bar: a green region you can drag to place, showing where
+  music plays.
+
+### Free, copyright-safe background music
+Tap the music lane and the AI reads your script, picks the mood, and offers matching tracks —
+preview with one tap, use with one tap. Sources are Pixabay (when you add a free key) and
+Openverse (needs no key at all, so this works out of the box). **Every track shows its licence
+and whether you must credit the artist** — credit-free tracks are listed first.
+
+### Voice & captions
+- **New "🔇 No voice / silent" narration option** — builds the video with no narration so you
+  can record your own over it. Its length is set from how long your script would take to read.
+- **Captions & YouTube chapters are now an explicit tick-box, off by default.** Worth being
+  straight with you: captions were *never* being forced — they only ever ran when you clicked
+  the Captions button. Chapter markers did not exist at all before now. Both are now under one
+  visible switch, and chapters come with a copy button for your description.
+
+### "Real video generation" — the honest answer
+You asked for real AI motion video (LTX-Video, Wan 2.2, CogVideoX) and talking photos
+(SadTalker, LivePortrait). **These cannot run on this laptop.** Not slowly — not at all.
+
+They need a *dedicated NVIDIA graphics card*. This PC has Intel UHD Graphics built into the
+processor, which shares system memory and has no CUDA cores. The lightest of those models
+wants 6GB of dedicated video memory; there is none here. Anyone who tells you a setting will
+fix that is wrong.
+
+What was built instead:
+- **A real hardware check** that detects your graphics card at startup and says plainly what
+  can and cannot run, *before* you start a build — no silent failure, no hang, no garbage.
+- **The slideshow is now labelled honestly** as "Photo slideshow (AI images)" and described as
+  "a moving photo slideshow — not filmed motion", so it is never passed off as something else.
+- **16 distinct visual styles** instead of 5 — five cinematic looks (modern film, film noir,
+  blockbuster, vintage 70s, documentary), four cartoon, four anime, plus neon, minimal and
+  infographic.
+
+If you ever run this on a PC with an NVIDIA card, the hardware check will say so and the
+motion-video option becomes available.
 
 ## New in this build (2026-07-30)
 - **🇵🇰 Real free Urdu narration voices.** Two ways to get a natural Urdu computer voice,

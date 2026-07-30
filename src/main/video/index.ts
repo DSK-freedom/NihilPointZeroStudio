@@ -25,6 +25,7 @@ import { chooseEncoderForJob, runEncodeWithFallback } from './encoder'
 import type { TimelineDoc } from '../../shared/types'
 import { ffprobeVideoSize } from './ffmpeg'
 import { generateCloudFootage } from './aiCloud'
+import { estimateReadingSeconds, writeSilentTrack } from './silentTrack'
 import { generateLocalFootage } from './aiLocal'
 import { extractCards, extractScenePrompts } from './render'
 import { generateImage, sceneImagePrompt } from '../image'
@@ -62,7 +63,7 @@ export interface BuildVideoOptions {
   /** If set, the narration WAV is copied here (persisted) so music can later be removed/replaced. */
   narrationOutPath?: string
   /** Which computer voice to narrate with. See NarrationVoice in shared/types.ts. */
-  narrationVoice?: 'windows' | 'piper' | 'winnatural'
+  narrationVoice?: 'windows' | 'piper' | 'winnatural' | 'silent'
   /** WinRT voice id when narrationVoice is 'winnatural'. */
   winVoiceId?: string
 }
@@ -93,7 +94,14 @@ export async function buildVideoFromScript(
     // speak Urdu (Asad/Uzma), and it beats both other options on quality. Each step falls
     // through to the next so narration NEVER fails outright.
     let narrated = false
-    if (options.narrationVoice === 'winnatural') {
+    if (options.narrationVoice === 'silent') {
+      // No computer voice at all: lay down silence as long as the script would take to
+      // read, so the visuals still have the right pacing for the user to record over.
+      onProgress?.('Preparing a silent track (no narration)…')
+      await writeSilentTrack(estimateReadingSeconds(body), wav)
+      narrated = true
+    }
+    if (!narrated && options.narrationVoice === 'winnatural') {
       try {
         onProgress?.('Generating narration (Windows natural voice)…')
         await synthesizeWithWinNatural(stripStageDirections(body), wav, options.winVoiceId)

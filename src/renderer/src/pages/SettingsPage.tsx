@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import type { HealthReport, LLMProviderId, OllamaStatus, ProviderSettings } from '../../../shared/types'
+import type {
+  AiErrorEntry,
+  HardwareReport,
+  HealthReport,
+  LLMProviderId,
+  OllamaStatus,
+  ProviderSettings
+} from '../../../shared/types'
 
 const providerLabel: Record<LLMProviderId, string> = {
   free: 'Free (online)',
@@ -39,6 +46,9 @@ export default function SettingsPage() {
   const [aiHasCloudKey, setAiHasCloudKey] = useState(false)
   const [pixabayKey, setPixabayKey] = useState('')
   const [hasPixabay, setHasPixabay] = useState(false)
+  const [hardware, setHardware] = useState<HardwareReport | null>(null)
+  const [aiErrors, setAiErrors] = useState<AiErrorEntry[]>([])
+  const [aiErrBusy, setAiErrBusy] = useState(false)
 
   useEffect(() => {
     window.api.settings.get().then((s) => {
@@ -59,7 +69,18 @@ export default function SettingsPage() {
     window.api.voice.piperStatus().then((s) => setPiperInstalled(s.installed))
     window.api.voice.piperCatalogue().then(setPiperVoices)
     window.api.voice.winNaturalList().then(setWinVoices)
+    void loadAiErrors()
+    window.api.hardware.check().then(setHardware).catch(() => {})
   }, [])
+
+  async function loadAiErrors(): Promise<void> {
+    setAiErrBusy(true)
+    try {
+      setAiErrors(await window.api.aiErrors.list(50))
+    } finally {
+      setAiErrBusy(false)
+    }
+  }
 
   async function saveYtChannel(): Promise<void> {
     await window.api.settings.setYouTubeChannel(ytChannel.trim())
@@ -265,10 +286,74 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
+        {hardware && (
+          <div className="mt-2 rounded-md border border-ink-800 bg-ink-950 p-2">
+            <div className="text-[11px] text-ink-300">Graphics card</div>
+            <div className="text-[10px] text-ink-500 mt-0.5">{hardware.summary}</div>
+            {!hardware.gpu.hasCuda && (
+              <div className="text-[10px] text-amber-400/90 mt-1">
+                AI motion-video and talking-photo models need a dedicated NVIDIA card. Photo slideshow, stock footage,
+                voices, music, trimming and captions all work normally.
+              </div>
+            )}
+          </div>
+        )}
         <p className="text-[10px] text-ink-600 mt-2">
           This list shows what is SET UP. It cannot tell whether a saved key is accepted — click
           &ldquo;🩺 Run full check&rdquo; above for the live truth. Green = ready. Amber = optional/needs setup.
         </p>
+      </div>
+
+      {/* Known Issues — the AI failure log. Problems used to vanish silently; now every
+          failure is recorded with a timestamp and the service's own words. */}
+      <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm text-ink-100 font-medium">Known Issues</div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => void loadAiErrors()}
+              disabled={aiErrBusy}
+              className="rounded-md border border-ink-700 hover:border-ink-500 disabled:opacity-50 text-ink-300 text-xs px-3 py-1.5 transition-colors"
+            >
+              {aiErrBusy ? 'Reading…' : '↻ Refresh'}
+            </button>
+            <button
+              onClick={() => void window.api.aiErrors.reveal()}
+              className="rounded-md border border-ink-700 hover:border-ink-500 text-ink-300 text-xs px-3 py-1.5 transition-colors"
+              title="Opens the folder containing ai-errors.log"
+            >
+              📁 Show log file
+            </button>
+          </div>
+        </div>
+        {aiErrors.length === 0 ? (
+          <p className="text-xs text-ink-500">
+            No AI failures recorded. When something goes wrong with an AI feature, it is logged here with the exact
+            time and reason instead of failing silently.
+          </p>
+        ) : (
+          <>
+            <p className="text-[11px] text-ink-400 mb-2">
+              {aiErrors.length} recent failure{aiErrors.length === 1 ? '' : 's'} — newest first. This is a record, not
+              a live alarm; an entry from an hour ago may already be resolved.
+            </p>
+            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+              {aiErrors.map((e, i) => (
+                <div key={`${e.at}-${i}`} className="rounded-md border border-ink-800 bg-ink-950 p-2">
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span className="text-red-400">✗</span>
+                    <span className="text-ink-300">{new Date(e.at).toLocaleString()}</span>
+                    <span className="text-ink-500">{e.provider}</span>
+                    {e.status !== undefined && <span className="text-amber-400">HTTP {e.status}</span>}
+                    {e.ms !== undefined && <span className="text-ink-600 ml-auto">{(e.ms / 1000).toFixed(1)}s</span>}
+                  </div>
+                  <div className="text-xs text-ink-400 mt-1 leading-snug">{e.message}</div>
+                  {e.body && <div className="text-[10px] text-ink-600 mt-1 font-mono break-all">{e.body}</div>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="mt-6 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-2">

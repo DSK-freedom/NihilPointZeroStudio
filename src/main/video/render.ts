@@ -33,7 +33,25 @@ export const STYLE_THEMES: Record<VideoStyle, StyleTheme> = {
   cartoon: { bgColor: '0x1B6CA8', titleColor: '0xFFF14D', cardColor: '0xFFFFFF', waveColor: '0xFF5DA2@0.9', fontScale: 1.12, gradFrom: '0x1B6CA8', gradTo: '0x33B0E0', gradType: 'linear' },
   anime: { bgColor: '0x14122B', titleColor: '0xFF9EE6', cardColor: '0xB6F0FF', waveColor: '0x8A7CFF@0.9', fontScale: 1.06, gradFrom: '0x14122B', gradTo: '0x3A2A6B', gradType: 'radial' },
   neon: { bgColor: '0x05010D', titleColor: '0x39FF14', cardColor: '0x00E5FF', waveColor: '0xFF00E5@0.9', fontScale: 1, gradFrom: '0x05010D', gradTo: '0x2A004A', gradType: 'radial' },
-  minimal: { bgColor: '0xF5F5F0', titleColor: '0x111111', cardColor: '0x222222', waveColor: '0x888888@0.8', fontScale: 1, gradFrom: '0xF5F5F0', gradTo: '0xE2E2DA', gradType: 'linear' }
+  minimal: { bgColor: '0xF5F5F0', titleColor: '0x111111', cardColor: '0x222222', waveColor: '0x888888@0.8', fontScale: 1, gradFrom: '0xF5F5F0', gradTo: '0xE2E2DA', gradType: 'linear' },
+
+  // Cinematic variants
+  noir: { bgColor: '0x0A0A0A', titleColor: '0xF2F2F2', cardColor: '0xD8D8D8', waveColor: '0xFFFFFF@0.75', fontScale: 1, gradFrom: '0x000000', gradTo: '0x2E2E2E', gradType: 'linear' },
+  blockbuster: { bgColor: '0x061218', titleColor: '0xFFB169', cardColor: '0xE8F6FF', waveColor: '0xFF8C42@0.9', fontScale: 1.04, gradFrom: '0x061821', gradTo: '0x1E5C6E', gradType: 'radial' },
+  'vintage-film': { bgColor: '0x1A140C', titleColor: '0xF3D9A4', cardColor: '0xF7ECD8', waveColor: '0xD9A441@0.85', fontScale: 1, gradFrom: '0x1A140C', gradTo: '0x4A3520', gradType: 'linear' },
+  documentary: { bgColor: '0x141618', titleColor: '0xFFFFFF', cardColor: '0xE6E6E6', waveColor: '0xB0B0B0@0.8', fontScale: 0.98, gradFrom: '0x141618', gradTo: '0x30363B', gradType: 'linear' },
+
+  // Cartoon variants
+  'cartoon-3d': { bgColor: '0x1E4FA3', titleColor: '0xFFE066', cardColor: '0xFFFFFF', waveColor: '0x6BE3FF@0.9', fontScale: 1.1, gradFrom: '0x1E4FA3', gradTo: '0x59A5F5', gradType: 'radial' },
+  comic: { bgColor: '0xF2E7C9', titleColor: '0xD62828', cardColor: '0x1A1A1A', waveColor: '0x003049@0.9', fontScale: 1.14, gradFrom: '0xF2E7C9', gradTo: '0xFFD166', gradType: 'linear' },
+  watercolour: { bgColor: '0xFBF6EE', titleColor: '0x4A5D6B', cardColor: '0x33424E', waveColor: '0x8FB3C7@0.8', fontScale: 1.04, gradFrom: '0xFBF6EE', gradTo: '0xDCE9F0', gradType: 'linear' },
+
+  // Anime variants
+  'anime-90s': { bgColor: '0x1C1A24', titleColor: '0xF6C6A8', cardColor: '0xE9E1D6', waveColor: '0xC98F7A@0.85', fontScale: 1.04, gradFrom: '0x1C1A24', gradTo: '0x46374A', gradType: 'linear' },
+  'anime-pastoral': { bgColor: '0x123A2E', titleColor: '0xFFF4C2', cardColor: '0xEAFBEF', waveColor: '0x8FD9A8@0.85', fontScale: 1.06, gradFrom: '0x123A2E', gradTo: '0x3E8E6B', gradType: 'radial' },
+  'anime-dark': { bgColor: '0x0C0C10', titleColor: '0xC8102E', cardColor: '0xD6D6DE', waveColor: '0x8A0F26@0.9', fontScale: 1.02, gradFrom: '0x0C0C10', gradTo: '0x2A1016', gradType: 'radial' },
+
+  infographic: { bgColor: '0xFFFFFF', titleColor: '0x0B3C5D', cardColor: '0x1D3557', waveColor: '0x457B9D@0.85', fontScale: 1, gradFrom: '0xFFFFFF', gradTo: '0xDCE9F2', gradType: 'linear' }
 }
 
 /**

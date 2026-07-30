@@ -36,11 +36,40 @@ async function checkInternet(): Promise<HealthCheck> {
     : ok('Internet', 'connected')
 }
 
+/**
+ * Sends a real (tiny) completion to the SAME endpoint the app generates with.
+ * The old version GET-pinged /hello, a different URL — so when the real
+ * chat endpoint began answering 402 "payment required" for everyone, this check
+ * still showed a cheerful green light. A health check that doesn't exercise the
+ * actual failing path is worse than none: it actively misleads.
+ */
 async function checkFreeText(): Promise<HealthCheck> {
-  const code = await ping('https://text.pollinations.ai/hello', 12000)
-  if (code === null) return fail('Free AI (text)', 'unreachable — check internet')
-  if (code === 429) return warn('Free AI (text)', 'busy right now (rate-limited) — answers may fail or be slow')
-  return code < 400 ? ok('Free AI (text)', 'reachable') : warn('Free AI (text)', `service returned ${code}`)
+  const label = 'Free AI (text)'
+  try {
+    const res = await fetch('https://text.pollinations.ai/openai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'openai',
+        messages: [{ role: 'user', content: 'hi' }],
+        max_tokens: 1,
+        private: true,
+        referrer: 'nihilpointzero-studio'
+      }),
+      signal: AbortSignal.timeout(15000)
+    })
+    if (res.status === 402) {
+      return fail(label, 'no longer free — the service now demands a paid account. Use Ollama or a Claude/OpenAI key')
+    }
+    if (res.status === 404) {
+      return fail(label, 'the free model was removed from their API. Use Ollama or a Claude/OpenAI key')
+    }
+    if (res.status === 429) return warn(label, 'busy right now (rate-limited) — answers may fail or be slow')
+    if (res.status >= 400) return fail(label, `service returned ${res.status} — answers will fail`)
+    return ok(label, 'working')
+  } catch {
+    return fail(label, 'unreachable or too slow to answer — check internet')
+  }
 }
 
 async function checkFreeImages(): Promise<HealthCheck> {

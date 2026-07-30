@@ -130,6 +130,16 @@ const api = {
     list: () => ipcRenderer.invoke(IPC.activityList),
     clear: () => ipcRenderer.invoke(IPC.activityClear)
   },
+  // What this PC can actually run (GPU/VRAM), so limits are stated up front.
+  hardware: {
+    check: (): Promise<import('../shared/types').HardwareReport> => ipcRenderer.invoke(IPC.hardwareCheck)
+  },
+  // Known Issues panel: the AI failure log (read-only — this panel never deletes it).
+  aiErrors: {
+    list: (limit?: number): Promise<import('../shared/types').AiErrorEntry[]> =>
+      ipcRenderer.invoke(IPC.aiErrorsList, limit),
+    reveal: (): Promise<void> => ipcRenderer.invoke(IPC.aiErrorsReveal)
+  },
   advisor: {
     send: (req: AdvisorRequest) => ipcRenderer.invoke(IPC.advisorSend, req),
     history: () => ipcRenderer.invoke(IPC.advisorHistory),
@@ -214,6 +224,12 @@ const api = {
       return () => ipcRenderer.removeListener(IPC.videoProgress, listener)
     },
     // Fires once with a small opening-frame preview PNG during a build. Returns an unsubscribe fn.
+    // Fires after a build when subtitles/chapters were requested. Returns an unsubscribe fn.
+    onExtras: (cb: (x: { videoId: string; srtPath?: string; chapters: string }) => void) => {
+      const listener = (_e: unknown, x: { videoId: string; srtPath?: string; chapters: string }): void => cb(x)
+      ipcRenderer.on(IPC.videoExtras, listener)
+      return () => ipcRenderer.removeListener(IPC.videoExtras, listener)
+    },
     onPreview: (cb: (pngPath: string) => void) => {
       const listener = (_e: unknown, pngPath: string): void => cb(pngPath)
       ipcRenderer.on(IPC.videoPreview, listener)
@@ -305,7 +321,20 @@ const api = {
       ipcRenderer.invoke(IPC.musicSearch, query),
     // Downloads a track locally; returns its file path.
     download: (audioUrl: string, suggestedName: string): Promise<string> =>
-      ipcRenderer.invoke(IPC.musicDownload, audioUrl, suggestedName)
+      ipcRenderer.invoke(IPC.musicDownload, audioUrl, suggestedName),
+    // Mood-matched free music for a script (AI picks the mood; Pixabay + Openverse).
+    suggest: (scriptText: string): Promise<import('../shared/types').MusicSuggestion> =>
+      ipcRenderer.invoke(IPC.musicSuggest, scriptText),
+    moodSearch: (query: string): Promise<import('../shared/types').MusicSuggestion> =>
+      ipcRenderer.invoke(IPC.musicMoodSearch, query),
+    // Places a track over one stretch of a video; makes a NEW video, original untouched.
+    applyRegion: (
+      videoId: string,
+      track: import('../shared/types').MusicTrack,
+      startSec: number,
+      endSec: number
+    ): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; error?: string }> =>
+      ipcRenderer.invoke(IPC.musicApplyRegion, videoId, track, startSec, endSec)
   },
   director: {
     // Interpret a plain-English instruction into a validated edit plan (no changes yet).

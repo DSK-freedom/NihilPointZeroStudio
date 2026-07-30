@@ -126,7 +126,13 @@ export const IPC = {
   webServerStart: 'webserver:start',
   webServerStop: 'webserver:stop',
   speechTranscribe: 'speech:transcribe',
+  voiceWinNaturalList: 'voice:win-natural-list',
+  voiceWinNaturalPreview: 'voice:win-natural-preview',
+  voiceOpenSpeechSettings: 'voice:open-speech-settings',
+  weeklyPlanRun: 'weekly:plan-run',
   voicePiperStatus: 'voice:piper-status',
   voicePiperDownload: 'voice:piper-download',
-  voicePiperProgress: 'voice:piper-progress'
+  voicePiperProgress: 'voice:piper-progress',
+  voicePiperCatalogue: 'voice:piper-catalogue',
+  settingsSetPiperVoice: 'settings:set-piper-voice'
 } as const

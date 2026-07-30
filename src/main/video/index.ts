@@ -3,6 +3,7 @@ import { tmpdir } from 'os'
 import { dirname, join } from 'path'
 import { stripStageDirections, synthesizeSpeechToFile } from '../voiceover'
 import { isPiperInstalled, synthesizeWithPiper } from '../voice/piper'
+import { synthesizeWithWinNatural } from '../voice/winNatural'
 import {
   beginRenderSession,
   ffprobeDuration,
@@ -60,8 +61,10 @@ export interface BuildVideoOptions {
   onPreview?: (pngPath: string) => void
   /** If set, the narration WAV is copied here (persisted) so music can later be removed/replaced. */
   narrationOutPath?: string
-  /** Which computer voice to narrate with: 'windows' (default) or 'piper' (natural, if installed). */
-  narrationVoice?: 'windows' | 'piper'
+  /** Which computer voice to narrate with. See NarrationVoice in shared/types.ts. */
+  narrationVoice?: 'windows' | 'piper' | 'winnatural'
+  /** WinRT voice id when narrationVoice is 'winnatural'. */
+  winVoiceId?: string
 }
 
 /**
@@ -86,10 +89,25 @@ export async function buildVideoFromScript(
     // for every entry point (Video Studio, Scene Studio, AI Command, batch) instead of
     // silently defaulting to the robotic voice when narrationVoice is left unset.
     const wantNatural = options.narrationVoice !== 'windows'
-    if (wantNatural && isPiperInstalled()) {
+    // Windows NATURAL voice first when explicitly chosen — it's the only engine that can
+    // speak Urdu (Asad/Uzma), and it beats both other options on quality. Each step falls
+    // through to the next so narration NEVER fails outright.
+    let narrated = false
+    if (options.narrationVoice === 'winnatural') {
+      try {
+        onProgress?.('Generating narration (Windows natural voice)…')
+        await synthesizeWithWinNatural(stripStageDirections(body), wav, options.winVoiceId)
+        narrated = true
+      } catch {
+        /* fall through to Piper / Windows below */
+      }
+    }
+    if (!narrated && wantNatural && isPiperInstalled()) {
       onProgress?.('Generating narration (natural voice)…')
       await synthesizeWithPiper(stripStageDirections(body), wav)
-    } else {
+      narrated = true
+    }
+    if (!narrated) {
       onProgress?.('Generating narration (Windows voice)…')
       await synthesizeSpeechToFile(body, wav)
     }

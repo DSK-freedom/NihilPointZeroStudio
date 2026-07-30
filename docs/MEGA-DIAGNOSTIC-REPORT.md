@@ -3,13 +3,30 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-30 03:17
+## Build: v0.1.1 · 2026-07-30 12:00
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
 ## New in this build (2026-07-30)
+- **🇵🇰 Real free Urdu narration voices.** Two ways to get a natural Urdu computer voice,
+  both free: (1) Piper — pick and download an Urdu neural voice (male "Fasih" or female
+  "Aegis") in Settings, no Windows setup needed; or (2) Windows' own natural voices —
+  install the Urdu (Pakistan) language pack in Windows' Speech settings (one click from
+  Settings or Video Studio) to unlock Asad/Uzma, with a "🔊 Preview" button so you can hear
+  a voice before committing. Both are far better than the old robotic Windows voice.
+- **🌙 Overnight content factory.** AI Command's Batch section now has an "🌙 Overnight
+  plan" checkbox: pick your topics before bed, and the app also cuts Shorts and writes
+  posting text for every finished video — wake up to publish-ready material, not just raw
+  builds. One failure never stops the rest, same as regular batch.
+- **▶ Publish to YouTube now uses the same posting-text engine as "🏷 Posting text".**
+  Shorts get Shorts-appropriate copy automatically (grounded in the actual clip, not a
+  generic description) — one consistent, better result whichever button you click.
+- **📈 Real YouTube data was already wired into Ideas & Trends** — add a free YouTube
+  Data API key in Settings and idea generation starts calibrating against ACTUAL view
+  counts and competition instead of guessing. (This existed already; worth knowing about
+  if you haven't added a key yet.)
 - **🩺 "Run full check" in Settings — LIVE tests, not guesses.** The old health panel only
   asked "is a key saved?", which is why a WRONG Anthropic key showed a green light while
   every request failed for 11 days. The new check actually contacts each service: internet,

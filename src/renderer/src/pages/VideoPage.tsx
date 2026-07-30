@@ -108,8 +108,12 @@ export default function VideoPage() {
   const [resolution, setResolution] = useState<VideoResolution>('1080p')
   const [aspect, setAspect] = useState<VideoAspect>('16:9')
   const [template, setTemplate] = useState<VideoTemplate>('cinematic')
-  const [narrationVoice, setNarrationVoice] = useState<'windows' | 'piper'>('windows')
+  const [narrationVoice, setNarrationVoice] = useState<'windows' | 'piper' | 'winnatural'>('windows')
   const [piperInstalled, setPiperInstalled] = useState(false)
+  // Windows NATURAL voices (incl. Urdu Asad/Uzma once the Windows speech pack exists).
+  const [winVoices, setWinVoices] = useState<{ id: string; name: string; language: string }[]>([])
+  const [winVoiceId, setWinVoiceId] = useState('')
+  const [previewing, setPreviewing] = useState(false)
   const [musicPath, setMusicPath] = useState<string | null>(null)
   const [soundEffects, setSoundEffects] = useState(true)
   // Default to the free per-scene AI engine so the visuals actually follow the script
@@ -123,6 +127,26 @@ export default function VideoPage() {
   const [aiStatus, setAiStatus] = useState<AiEngineStatus | null>(null)
   const [plan, setPlan] = useState<{ hook: string; sections: { title: string; keyword: string; seconds: number }[]; thumbnailIdea: string; ctrTips: string[] } | null>(null)
   const [planning, setPlanning] = useState(false)
+
+  /** Speaks one line in the chosen Windows natural voice so it can be judged by ear. */
+  async function previewWinVoice(): Promise<void> {
+    setPreviewing(true)
+    try {
+      const r = await window.api.voice.winNaturalPreview(
+        winVoiceId,
+        'Salam. Yeh aapki narration ki awaaz hai. This is your narration voice.'
+      )
+      if (r.ok && r.wavBase64) {
+        await new Audio(`data:audio/wav;base64,${r.wavBase64}`).play()
+      } else {
+        toast(r.error || 'Could not play that voice.', 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Could not play that voice.', 'error')
+    } finally {
+      setPreviewing(false)
+    }
+  }
 
   async function handlePlan(): Promise<void> {
     if (!title.trim() && !body.trim()) return
@@ -236,6 +260,13 @@ export default function VideoPage() {
       setJobs(vids as VideoJob[])
       void refreshAiStatus()
       void window.api.voice.piperStatus().then((s) => setPiperInstalled(s.installed))
+      void window.api.voice.winNaturalList().then((list) => {
+        setWinVoices(list)
+        // Prefer an Urdu voice by default when one is installed — this channel narrates
+        // in Roman Urdu/Urdu, so ur-PK is almost always the right pick.
+        const urdu = list.find((v) => v.language.toLowerCase().startsWith('ur'))
+        setWinVoiceId((cur) => cur || urdu?.id || list[0]?.id || '')
+      })
       void window.api.stock.getConfig().then((c) => {
         setHasStockKey(c.hasPixabay)
         if (c.hasPixabay) setUseStock(true)
@@ -285,6 +316,7 @@ export default function VideoPage() {
         aspect,
         template,
         narrationVoice,
+        winVoiceId: narrationVoice === 'winnatural' ? winVoiceId : undefined,
         musicPath: musicPath ?? undefined,
         soundEffects,
         engine,
@@ -912,17 +944,62 @@ export default function VideoPage() {
               <label className="text-xs text-ink-400">Narration voice</label>
               <select
                 value={narrationVoice}
-                onChange={(e) => setNarrationVoice(e.target.value as 'windows' | 'piper')}
+                onChange={(e) => setNarrationVoice(e.target.value as 'windows' | 'piper' | 'winnatural')}
                 className="mt-1 w-full rounded-md bg-ink-800 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
               >
-                <option value="windows">Built-in Windows voice (robotic, always free)</option>
-                <option value="piper" disabled={!piperInstalled}>
-                  {piperInstalled ? 'Natural voice (Piper)' : 'Natural voice — install in Settings first'}
+                <option value="winnatural" disabled={!winVoices.length}>
+                  {winVoices.length
+                    ? '★ Windows natural voice (best free — supports Urdu)'
+                    : 'Windows natural voice — none found on this PC'}
                 </option>
+                <option value="piper" disabled={!piperInstalled}>
+                  {piperInstalled ? 'Natural voice (Piper)' : 'Natural voice (Piper) — install in Settings first'}
+                </option>
+                <option value="windows">Built-in Windows voice (robotic, always free)</option>
               </select>
+
+              {narrationVoice === 'winnatural' && (
+                <div className="mt-2 space-y-1.5">
+                  <select
+                    value={winVoiceId}
+                    onChange={(e) => setWinVoiceId(e.target.value)}
+                    className="w-full rounded-md bg-ink-800 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
+                  >
+                    {winVoices.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} · {v.language}
+                        {v.language.toLowerCase().startsWith('ur') ? ' (Urdu)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-3">
+                    <button
+                      disabled={previewing || !winVoiceId}
+                      onClick={() => void previewWinVoice()}
+                      className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1.5 disabled:opacity-40"
+                    >
+                      {previewing ? '▶ playing…' : '🔊 Hear this voice'}
+                    </button>
+                    <button
+                      onClick={() => void window.api.voice.openSpeechSettings()}
+                      className="text-[11px] text-gold-300 hover:text-gold-200"
+                      title="Windows Settings → Speech: add a language to get its voices (free)"
+                    >
+                      + Add Urdu / more voices
+                    </button>
+                  </div>
+                  {!winVoices.some((v) => v.language.toLowerCase().startsWith('ur')) && (
+                    <p className="text-[10px] text-amber-400/80">
+                      No Urdu voice on this PC yet. Click &ldquo;+ Add Urdu&rdquo;, add Urdu (Pakistan) speech in Windows,
+                      then reopen this tab — Asad &amp; Uzma will appear here. Free, offline after install.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <p className="text-[10px] text-ink-600 mt-1">
-                Prefer your own voice? Build with either, then use 🎙 Voice studio to record over it — that stays the
-                best quality.
+                Prefer your own voice? Build with any of these, then use 🎙 Voice studio to record over it — that stays
+                the best quality.
               </p>
             </div>
             <div>

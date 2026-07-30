@@ -191,16 +191,23 @@ RESOLUTION: 1080p (fastest) · 1440p · 4K (sharp, slower) · 8K (very slow, hug
    4K is the sweet spot. For Shorts pick the 9:16 shape.
 
 -------------------------------------------------------------------------------
-6. VOICE — 3 WAYS (yours is best)
+6. VOICE — 4 WAYS (yours is best; two are free natural Urdu options)
 -------------------------------------------------------------------------------
   (A) YOUR OWN voice (recommended): build the video, then "🎙 Voice studio" under it:
         Record with ⏸ Pause / ▶ Resume; after Stop, drag the slider to review;
         "Redo from playhead" keeps the part before and re-records the rest;
         finish with "Replace the narration" OR "Keep existing audio + add my voice".
-  (B) NATURAL voice (Piper): a nice computer voice. Already installed on this PC —
-        pick "Narration voice -> Natural" when building. (On a new PC: Settings ->
-        "Download natural voice", ~80 MB, one-time.)
-  (C) WINDOWS voice: basic/robotic, always free, good for a quick draft.
+  (B) WINDOWS NATURAL voice (free, no download): pick "Narration voice -> Windows
+        natural voice". Windows itself ships free voices per installed language —
+        including real Urdu (Pakistan): Asad and Uzma. If you don't see them, click
+        "+ Add Urdu / more voices" (in the picker, or Settings) to install the free
+        Urdu language pack in Windows, then reopen this tab. "🔊 Hear this voice"
+        lets you preview before committing.
+  (C) NATURAL voice (Piper): a nice computer voice with NO Windows setup needed.
+        Pick and download a voice in Settings — includes two real Urdu neural
+        voices (male "Fasih", female "Aegis", ~60 MB each) alongside English ones.
+        Then pick "Narration voice -> Natural voice (Piper)" when building.
+  (D) WINDOWS voice: basic/robotic, always free, good for a quick draft.
 
 -------------------------------------------------------------------------------
 7. CAPTIONS / SUBTITLES
@@ -319,9 +326,17 @@ LOGO: "🏷 Logo" row on a video -> pick a logo image, pick a corner, Apply (a
    join intro + video + outro.
 PUBLISH: "▶ Publish to YouTube" writes an AI title/description/tags to your clipboard,
    opens YOUR channel's upload page, and reveals the file — drag it in. Free, no
-   sign-in, no limits.
+   sign-in, no limits. It uses the same posting-text writer as "🏷 Posting text" below,
+   so Shorts automatically get Shorts-appropriate wording.
+POSTING TEXT: on any video or short, "🏷 Posting text -> YouTube / TikTok" writes a
+   ready-to-paste title, description and hashtags with a Copy button next to each —
+   uploading becomes copy-paste instead of writing from scratch.
 BATCH: ✦ AI Command -> "📦 Batch" -> paste topics (one per line) -> "Make all" builds
    a video for each (up to 25). One failure won't stop the rest.
+OVERNIGHT PLAN: same Batch box, but tick "🌙 Overnight plan" first (and pick how many
+   Shorts per video). Now it ALSO cuts Shorts and writes posting text for every video —
+   pick your topics, walk away, come back to publish-ready material instead of raw
+   builds. Every result shows its posting text with a Copy button.
 
 -------------------------------------------------------------------------------
 11. FREE vs INTERNET vs ONE-TIME SETUP

@@ -31,6 +31,8 @@ export interface ProviderSettings {
   faceAnimCmd: string
   /** The user's YouTube channel ID, used to deep-link the upload page. */
   youtubeChannelId: string
+  /** Which installable Piper voice narrates when narrationVoice is 'piper'. */
+  piperVoiceId: string
 }
 
 export interface YouTubeSignal {
@@ -250,8 +252,16 @@ export interface VideoBuildRequest {
   aspect?: VideoAspect
   /** Graphics v2 finishing template (clean/news/cinematic/bold). */
   template?: VideoTemplate
-  /** Computer narration voice: 'windows' (default) or 'piper' (natural, if installed). */
-  narrationVoice?: 'windows' | 'piper'
+  /**
+   * Computer narration voice:
+   *  - 'winnatural' — Windows NATURAL voice (best free quality; the only route to the
+   *    Urdu Asad/Uzma voices once the Windows Urdu speech pack is installed)
+   *  - 'piper'      — bundled offline natural voice
+   *  - 'windows'    — legacy robotic System.Speech voice
+   */
+  narrationVoice?: 'windows' | 'piper' | 'winnatural'
+  /** Which Windows natural voice to use (WinRT voice id) when narrationVoice is 'winnatural'. */
+  winVoiceId?: string
   /** Absolute path to a background music file (chosen via the pick-music dialog). */
   musicPath?: string
   /** Add a soft transition sound at each section change. */

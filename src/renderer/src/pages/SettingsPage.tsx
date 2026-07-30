@@ -19,8 +19,12 @@ export default function SettingsPage() {
   const [faceAnimCmd, setFaceAnimCmd] = useState('')
   const [ytChannel, setYtChannel] = useState('')
   const [piperInstalled, setPiperInstalled] = useState(false)
-  const [piperBusy, setPiperBusy] = useState(false)
+  const [piperVoices, setPiperVoices] = useState<
+    { id: string; label: string; language: string; approxMB: number; installed: boolean }[]
+  >([])
+  const [piperBusyId, setPiperBusyId] = useState<string | null>(null)
   const [piperMsg, setPiperMsg] = useState<string | null>(null)
+  const [winVoices, setWinVoices] = useState<{ id: string; name: string; language: string }[]>([])
   const [status, setStatus] = useState<string | null>(null)
   const [ollamaStatus, setOllamaStatus] = useState<OllamaStatus | null>(null)
   const [checkingOllama, setCheckingOllama] = useState(false)
@@ -53,6 +57,8 @@ export default function SettingsPage() {
     })
     window.api.stock.getConfig().then((c) => setHasPixabay(c.hasPixabay))
     window.api.voice.piperStatus().then((s) => setPiperInstalled(s.installed))
+    window.api.voice.piperCatalogue().then(setPiperVoices)
+    window.api.voice.winNaturalList().then(setWinVoices)
   }, [])
 
   async function saveYtChannel(): Promise<void> {
@@ -62,20 +68,28 @@ export default function SettingsPage() {
     setTimeout(() => setStatus(null), 2500)
   }
 
-  async function downloadPiper(): Promise<void> {
-    setPiperBusy(true)
+  async function downloadPiper(voiceId: string): Promise<void> {
+    setPiperBusyId(voiceId)
     setPiperMsg('Starting…')
     const unsub = window.api.voice.onPiperProgress((stage) => setPiperMsg(stage))
     try {
-      const r = await window.api.voice.piperDownload()
-      setPiperInstalled(r.installed)
-      setPiperMsg(r.installed ? 'Natural voice installed ✓' : 'Install failed — try again.')
+      await window.api.voice.piperDownload(voiceId)
+      const [status, catalogue] = await Promise.all([window.api.voice.piperStatus(), window.api.voice.piperCatalogue()])
+      setPiperInstalled(status.installed)
+      setPiperVoices(catalogue)
+      setPiperMsg('Voice installed ✓')
     } catch (err) {
       setPiperMsg(err instanceof Error ? err.message : 'Install failed')
     } finally {
       unsub()
-      setPiperBusy(false)
+      setPiperBusyId(null)
     }
+  }
+
+  /** Picking a voice also selects it as the active Piper voice for narration. */
+  async function usePiperVoice(voiceId: string): Promise<void> {
+    const s = await window.api.settings.setPiperVoice(voiceId)
+    setSettings(s)
   }
 
   async function saveStockKey(): Promise<void> {
@@ -495,27 +509,87 @@ export default function SettingsPage() {
 
       <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-ink-100 font-medium">Natural narration voice (optional, free)</span>
+          <span className="text-sm text-ink-100 font-medium">Natural narration voices (optional, free)</span>
           <span className={`text-xs ${piperInstalled ? 'text-emerald-400' : 'text-ink-500'}`}>
-            {piperInstalled ? 'Installed' : 'Not installed'}
+            {piperInstalled ? 'Active voice ready' : 'No voice installed yet'}
           </span>
         </div>
         <p className="text-xs text-ink-500">
-          A far more natural computer voice than the robotic Windows one — free, offline, and it travels with your
-          data folder. One-time ~80 MB download. Your own recorded voice (🎙 Voice studio) is still the best and stays
-          the default; this just upgrades the *computer* voice option. After installing, pick “Natural voice” under a
-          build’s Narration voice.
+          Far more natural than the robotic Windows voice — free, offline, and it travels with your data folder.
+          Includes real Urdu (Pakistan) voices, which the channel actually needs. Your own recorded voice (🎙 Voice
+          studio) is still the best and stays the default; this upgrades the <em>computer</em> voice option. Pick a
+          voice, download it once (~20-60 MB), then choose “Natural voice” under a build’s Narration voice.
         </p>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={downloadPiper}
-            disabled={piperBusy || piperInstalled}
-            className="rounded-md bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-ink-950 font-medium px-4 py-2 text-sm transition-colors"
-          >
-            {piperInstalled ? 'Installed ✓' : piperBusy ? 'Installing…' : 'Download natural voice (~80 MB)'}
-          </button>
+        <div className="space-y-1.5">
+          {piperVoices.map((v) => (
+            <div key={v.id} className="flex flex-wrap items-center gap-2 rounded-md border border-ink-800 bg-ink-950/60 px-3 py-2">
+              <label className="flex items-center gap-2 text-sm text-ink-200 cursor-pointer">
+                <input
+                  type="radio"
+                  name="piperVoice"
+                  checked={settings?.piperVoiceId === v.id}
+                  disabled={!v.installed}
+                  onChange={() => void usePiperVoice(v.id)}
+                  className="accent-gold-500"
+                />
+                {v.label}
+              </label>
+              <span className="text-[11px] text-ink-500">{v.language}</span>
+              {v.installed ? (
+                <span className="text-[11px] text-emerald-400">Installed ✓</span>
+              ) : (
+                <button
+                  onClick={() => void downloadPiper(v.id)}
+                  disabled={piperBusyId !== null}
+                  className="ml-auto rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors disabled:opacity-50"
+                >
+                  {piperBusyId === v.id ? 'Installing…' : `Download (~${v.approxMB} MB)`}
+                </button>
+              )}
+            </div>
+          ))}
           {piperMsg && <span className="text-[11px] text-ink-400">{piperMsg}</span>}
         </div>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-ink-100 font-medium">Windows natural voices (free, no download)</span>
+          <span className={`text-xs ${winVoices.length ? 'text-emerald-400' : 'text-ink-500'}`}>
+            {winVoices.length} found on this PC
+          </span>
+        </div>
+        <p className="text-xs text-ink-500">
+          Windows itself ships free natural voices per language you install — including Asad and Uzma for Urdu
+          (Pakistan). If none show below, or Urdu is missing, install the language pack (free, one-time) in Windows'
+          own Speech settings, then come back and refresh.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => void window.api.voice.openSpeechSettings()}
+            className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors"
+          >
+            Open Windows Speech settings
+          </button>
+          <button
+            onClick={() => window.api.voice.winNaturalList().then(setWinVoices)}
+            className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors"
+          >
+            Refresh list
+          </button>
+        </div>
+        {winVoices.length > 0 && (
+          <ul className="text-xs text-ink-300 space-y-0.5">
+            {winVoices.map((v) => (
+              <li key={v.id}>
+                {v.name} <span className="text-ink-600">({v.language})</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-[10px] text-ink-600">
+          Pick “Windows natural voice” under a build’s Narration voice to use one of these — no download needed here.
+        </p>
       </div>
 
       <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-3">

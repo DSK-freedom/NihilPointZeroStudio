@@ -11,11 +11,19 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { app } from 'electron'
 import { runFfmpeg } from '../video/ffmpeg'
+import { getSettings } from '../store'
+import {
+  DEFAULT_PIPER_VOICE_ID,
+  PIPER_VOICES,
+  findPiperVoice,
+  piperConfigUrl,
+  piperModelFileName,
+  piperModelUrl,
+  resolvePiperVoiceId,
+  type PiperVoice
+} from './piperVoices'
 
 const BIN_URL = 'https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip'
-const VOICE_URL =
-  'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/low/en_US-lessac-low.onnx'
-const VOICE_JSON_URL = `${VOICE_URL}.json`
 
 function piperRoot(): string {
   const dir = join(app.getPath('userData'), 'piper')
@@ -25,13 +33,32 @@ function piperRoot(): string {
 function piperExe(): string {
   return join(piperRoot(), 'piper', 'piper.exe')
 }
-function voiceModel(): string {
-  return join(piperRoot(), 'en_US-lessac-low.onnx')
+
+/** On-disk path of a given voice's model (voices live side by side in the piper folder). */
+function voiceModelPath(voiceId: string): string {
+  const v = findPiperVoice(resolvePiperVoiceId(voiceId))
+  return join(piperRoot(), piperModelFileName(v as PiperVoice))
 }
 
-/** True once the binary + voice model are present in the data folder. */
+/** The voice the user picked in Settings, falling back to the bundled default. */
+function activeVoiceId(): string {
+  return resolvePiperVoiceId(getSettings().piperVoiceId)
+}
+
+/** True when the engine is installed AND that specific voice's model is present. */
+export function isPiperVoiceInstalled(voiceId: string): boolean {
+  return existsSync(piperExe()) && existsSync(voiceModelPath(voiceId))
+}
+
+/** True once the engine + the ACTIVE voice are ready to narrate. */
 export function isPiperInstalled(): boolean {
-  return existsSync(piperExe()) && existsSync(voiceModel())
+  return isPiperVoiceInstalled(activeVoiceId())
+}
+
+/** Which catalogue voices are downloaded, for the Settings list. */
+export function installedPiperVoiceIds(): string[] {
+  if (!existsSync(piperExe())) return []
+  return PIPER_VOICES.filter((v) => existsSync(join(piperRoot(), piperModelFileName(v)))).map((v) => v.id)
 }
 
 async function downloadFile(url: string, dest: string, onFrac?: (frac: number) => void): Promise<void> {
@@ -77,19 +104,28 @@ function extractZip(zipPath: string, destDir: string): Promise<void> {
   })
 }
 
-/** Downloads + installs Piper into the data folder. Reports coarse progress. */
-export async function downloadPiper(onProgress?: (stage: string) => void): Promise<void> {
+/**
+ * Downloads + installs one catalogue voice into the data folder. The ~30 MB engine is
+ * shared across all voices and is only fetched once (first ever voice download);
+ * downloading a second voice afterwards just adds its model, so switching between an
+ * English and an Urdu voice never re-downloads the engine.
+ */
+export async function downloadPiper(voiceId: string, onProgress?: (stage: string) => void): Promise<void> {
+  const v = findPiperVoice(resolvePiperVoiceId(voiceId)) as PiperVoice
   const root = piperRoot()
-  const zip = join(root, 'piper.zip')
-  onProgress?.('Downloading natural-voice engine… 0%')
-  await downloadFile(BIN_URL, zip, (f) => onProgress?.(`Downloading natural-voice engine… ${Math.round(f * 100)}%`))
-  onProgress?.('Unpacking voice engine…')
-  await extractZip(zip, root)
-  onProgress?.('Downloading voice… 0%')
-  await downloadFile(VOICE_URL, voiceModel(), (f) => onProgress?.(`Downloading voice… ${Math.round(f * 100)}%`))
-  await downloadFile(VOICE_JSON_URL, `${voiceModel()}.json`)
-  onProgress?.('Natural voice installed.')
-  if (!isPiperInstalled()) throw new Error('Install finished but the voice files are missing — try again.')
+  if (!existsSync(piperExe())) {
+    const zip = join(root, 'piper.zip')
+    onProgress?.('Downloading natural-voice engine… 0%')
+    await downloadFile(BIN_URL, zip, (f) => onProgress?.(`Downloading natural-voice engine… ${Math.round(f * 100)}%`))
+    onProgress?.('Unpacking voice engine…')
+    await extractZip(zip, root)
+  }
+  const modelPath = voiceModelPath(v.id)
+  onProgress?.(`Downloading ${v.label}… 0%`)
+  await downloadFile(piperModelUrl(v), modelPath, (f) => onProgress?.(`Downloading ${v.label}… ${Math.round(f * 100)}%`))
+  await downloadFile(piperConfigUrl(v), `${modelPath}.json`)
+  onProgress?.(`${v.label} installed.`)
+  if (!isPiperVoiceInstalled(v.id)) throw new Error('Install finished but the voice files are missing — try again.')
 }
 
 /**
@@ -126,10 +162,10 @@ export function chunkForPiper(text: string, maxChars = 600): string[] {
   return chunks
 }
 
-/** Runs Piper once on a single-line chunk, writing one WAV. */
-function piperOnce(line: string, outWavPath: string): Promise<void> {
+/** Runs Piper once on a single-line chunk, writing one WAV, using the given voice model. */
+function piperOnce(line: string, outWavPath: string, modelPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const p = spawn(piperExe(), ['--model', voiceModel(), '--output_file', outWavPath])
+    const p = spawn(piperExe(), ['--model', modelPath, '--output_file', outWavPath])
     let err = ''
     p.stderr.on('data', (d) => (err = (err + d.toString()).slice(-500)))
     p.on('error', reject)
@@ -140,18 +176,19 @@ function piperOnce(line: string, outWavPath: string): Promise<void> {
   })
 }
 
-/** Synthesizes `text` to a WAV using Piper. Requires isPiperInstalled(). */
+/** Synthesizes `text` to a WAV using the user's ACTIVE Piper voice. Requires isPiperInstalled(). */
 export async function synthesizeWithPiper(text: string, outWavPath: string): Promise<void> {
   if (!isPiperInstalled()) {
     throw new Error('Natural voice not installed. Download it in Settings first.')
   }
+  const modelPath = voiceModelPath(activeVoiceId())
   const chunks = chunkForPiper(text)
   if (chunks.length === 0) {
     throw new Error('Nothing to narrate — the script was empty after cleanup.')
   }
   // Single chunk: synthesize straight to the target, no concat needed.
   if (chunks.length === 1) {
-    await piperOnce(chunks[0], outWavPath)
+    await piperOnce(chunks[0], outWavPath, modelPath)
     return
   }
   // Multiple chunks: render each to its own WAV, then concat losslessly into one track.
@@ -160,7 +197,7 @@ export async function synthesizeWithPiper(text: string, outWavPath: string): Pro
     const parts: string[] = []
     for (let i = 0; i < chunks.length; i++) {
       const part = join(work, `part-${String(i).padStart(4, '0')}.wav`)
-      await piperOnce(chunks[i], part)
+      await piperOnce(chunks[i], part, modelPath)
       parts.push(part)
     }
     // concat demuxer: identical-format WAVs join with a stream copy (no re-encode).

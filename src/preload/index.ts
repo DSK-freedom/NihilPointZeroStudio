@@ -21,6 +21,7 @@ const api = {
     setMvsepToken: (key: string) => ipcRenderer.invoke(IPC.settingsSetMvsepToken, key),
     setDemucsCmd: (cmd: string) => ipcRenderer.invoke(IPC.settingsSetDemucsCmd, cmd),
     setFaceAnimCmd: (cmd: string) => ipcRenderer.invoke(IPC.settingsSetFaceAnimCmd, cmd),
+    setPiperVoice: (voiceId: string) => ipcRenderer.invoke(IPC.settingsSetPiperVoice, voiceId),
     ollamaStatus: () => ipcRenderer.invoke(IPC.ollamaStatus)
   },
   ideas: {
@@ -316,6 +317,21 @@ const api = {
       actions: import('../shared/types').DirectorAction[]
     ): Promise<import('../shared/types').VideoJob> => ipcRenderer.invoke(IPC.directorExecute, videoId, actions)
   },
+  weekly: {
+    // "Plan my week": one video per topic, then shorts + posting text for each.
+    // Long-running; progress streams over the shared agent progress channel.
+    planRun: (
+      topics: string[],
+      opts?: {
+        style?: import('../shared/types').VideoStyle
+        resolution?: import('../shared/types').VideoResolution
+        aiVisuals?: boolean
+        shortsPerVideo?: number
+      }
+    ): Promise<{
+      report: { topic: string; ok: boolean; videoId?: string; shorts: number; postingText?: string; error?: string }[]
+    }> => ipcRenderer.invoke(IPC.weeklyPlanRun, topics, opts)
+  },
   agent: {
     // Turn a plain-English command into a validated plan of steps (no changes yet).
     interpret: (command: string): Promise<import('../shared/types').AgentPlan> =>
@@ -468,9 +484,20 @@ const api = {
       ipcRenderer.invoke(IPC.youtubePublish, videoId)
   },
   voice: {
-    // Natural narration voice (Piper) — optional one-time download into the data folder.
+    // Windows NATURAL voices (WinRT) — the best free narration, and the only route to
+    // the Urdu voices (Asad/Uzma) once the Windows Urdu speech pack is installed.
+    winNaturalList: (): Promise<{ id: string; name: string; language: string }[]> =>
+      ipcRenderer.invoke(IPC.voiceWinNaturalList),
+    winNaturalPreview: (voiceId: string, sample?: string): Promise<{ ok: boolean; wavBase64?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.voiceWinNaturalPreview, voiceId, sample),
+    openSpeechSettings: (): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.voiceOpenSpeechSettings),
+    // Natural narration voice (Piper) — optional per-voice download into the data folder.
+    // The catalogue includes real Urdu (Pakistan) neural voices alongside English ones.
+    piperCatalogue: (): Promise<
+      { id: string; label: string; language: string; approxMB: number; installed: boolean }[]
+    > => ipcRenderer.invoke(IPC.voicePiperCatalogue),
     piperStatus: (): Promise<{ installed: boolean }> => ipcRenderer.invoke(IPC.voicePiperStatus),
-    piperDownload: (): Promise<{ installed: boolean }> => ipcRenderer.invoke(IPC.voicePiperDownload),
+    piperDownload: (voiceId: string): Promise<{ installed: boolean }> => ipcRenderer.invoke(IPC.voicePiperDownload, voiceId),
     onPiperProgress: (cb: (stage: string) => void) => {
       const listener = (_e: unknown, stage: string): void => cb(stage)
       ipcRenderer.on(IPC.voicePiperProgress, listener)

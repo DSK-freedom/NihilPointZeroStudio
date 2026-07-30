@@ -14,6 +14,7 @@ import type {
   ScriptPad,
   VideoJob
 } from '../shared/types'
+import { DEFAULT_PIPER_VOICE_ID, resolvePiperVoiceId } from './voice/piperVoices'
 
 interface PersistedSettings {
   activeProvider: LLMProviderId
@@ -29,6 +30,7 @@ interface PersistedSettings {
   demucsCmd: string
   faceAnimCmd: string
   youtubeChannelId: string
+  piperVoiceId: string
 }
 
 const DEFAULT_SETTINGS: PersistedSettings = {
@@ -46,7 +48,8 @@ const DEFAULT_SETTINGS: PersistedSettings = {
   mvsepTokenEnc: null,
   demucsCmd: '',
   faceAnimCmd: '',
-  youtubeChannelId: 'UCLJDgGkwHZgrIfeiAWAwe2Q'
+  youtubeChannelId: 'UCLJDgGkwHZgrIfeiAWAwe2Q',
+  piperVoiceId: DEFAULT_PIPER_VOICE_ID
 }
 
 /**
@@ -148,8 +151,18 @@ export function getSettings(): ProviderSettings {
     hasMvsepToken: !!s.mvsepTokenEnc,
     demucsCmd: s.demucsCmd || '',
     faceAnimCmd: s.faceAnimCmd || '',
-    youtubeChannelId: s.youtubeChannelId || ''
+    youtubeChannelId: s.youtubeChannelId || '',
+    piperVoiceId: resolvePiperVoiceId(s.piperVoiceId)
   }
+}
+
+/** Persists the user's chosen Piper voice. An unknown/invalid id resolves to the default
+ * rather than being saved verbatim, so a bad value can never silently break narration. */
+export function setPiperVoiceId(voiceId: string): ProviderSettings {
+  const s = readSettings()
+  s.piperVoiceId = resolvePiperVoiceId(voiceId)
+  writeSettings(s)
+  return getSettings()
 }
 
 export function setActiveProvider(provider: LLMProviderId): ProviderSettings {

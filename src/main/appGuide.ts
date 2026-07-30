@@ -43,7 +43,10 @@ button. Best used right after "📱 Cut into vertical shorts" so uploading is co
 • ✦ AI COMMAND — type what you want in plain words ("write a 1-minute script about gold
   and build it in 1080p"); it plans validated steps and runs them after you approve. It
   can create scripts, videos, thumbnails, images, music, ideas, PSX analysis and scenes —
-  it can never delete anything.
+  it can never delete anything. The "📦 Batch" section (one topic per line) makes many
+  videos at once; ticking "🌙 Overnight plan" also cuts Shorts and writes posting text for
+  every video — pick topics before bed, wake up to publish-ready material, not just raw
+  builds. One failure never stops the rest.
 • 🎬 SCENE STUDIO — paste/write a script (use [SECTION HEADERS] or [bracketed shot
   directions]), click "Plan scenes", then "▶ Generate all scenes". Failed scenes retry
   automatically. Each scene: edit its prompt, "↻ Regenerate", "⬇ Save" the image, or
@@ -56,16 +59,23 @@ button. Best used right after "📱 Cut into vertical shorts" so uploading is co
   (paste a dps.psx.com.pk link) to ground the script in real numbers.
 • SCRIPT PAD — a scratchpad for drafting; other tabs (Scene Studio, Video Studio) can
   pull from it with their "Use Script Pad" buttons.
-• VIDEO STUDIO — the main builder: script → narrated video. Choose narration voice (your
-  own recording, Natural/Piper, or Windows voice), visual engine (AI visuals is the free
-  default), Look (clean/news/cinematic/bold), style, resolution up to 8K, format 16:9 /
-  9:16 / 1:1, background music, captions (.srt or burned-in), and export/save-as. Built
-  videos are listed here. The AI Director (in this tab) takes plain-word instructions
-  about cutting/keeping parts or adding music/SFX. Every video in the list also has
-  "📱 Make Shorts": pick how many, click, and the app listens to the video offline,
-  picks the strongest moments (hooks, numbers, questions), and cuts vertical 9:16 clips
-  with big burned-in captions — ready for YouTube Shorts / TikTok / Reels. The clips
-  appear in the same list, and it explains WHY it picked each moment.
+• VIDEO STUDIO — the main builder: script → narrated video. Choose narration voice: your
+  own recording, ★ Windows natural voice (free, offline, includes real Urdu — Asad/Uzma —
+  once installed via Windows' own Speech settings, one click from this picker), Natural
+  voice (Piper — free, offline, own downloadable voices including two real Urdu neural
+  voices, picked and installed in Settings), or the robotic built-in Windows voice. Visual
+  engine (AI visuals is the free default), Look (clean/news/cinematic/bold), style,
+  resolution up to 8K, format 16:9 / 9:16 / 1:1, background music, captions (.srt or
+  burned-in), and export/save-as. Built videos are listed here. The AI Director (in this
+  tab) takes plain-word instructions about cutting/keeping parts or adding music/SFX.
+  Every video in the list also has "📱 Make Shorts": pick how many, click, and the app
+  listens to the video offline, picks the strongest moments (hooks, numbers, questions),
+  and cuts vertical 9:16 clips with big burned-in captions — ready for YouTube Shorts /
+  TikTok / Reels. The clips appear in the same list, and it explains WHY it picked each
+  moment. "🏷 Posting text" (YouTube/TikTok) writes a ready-to-paste title, description
+  and hashtags for any video or short, with Copy buttons — and "▶ Publish to YouTube" now
+  uses this SAME engine automatically (Shorts get Shorts-appropriate text), copies it to
+  the clipboard, and opens the upload page.
 • 🎞 STORYBOARD DIRECTOR — shot-by-shot filmmaking. AUTO mode: paste a script and it
   plans timed beats (visual + narration + captions + transitions). GUIDED mode: write
   your own pointers, one per line, like "0-15s: I arrive in a Ferrari, VO: 'welcome'" —
@@ -97,9 +107,14 @@ button. Best used right after "📱 Cut into vertical shorts" so uploading is co
   OpenAI (paid keys). "🩺 Run full check" (top of the page) LIVE-tests everything —
   internet, the free AI, the free image service, Ollama + whether your chosen model is
   installed, and whether a saved Anthropic/OpenAI key is actually ACCEPTED (a wrong key
-  shows RED here; this is the first thing to try when answers feel weak). Model names are cleaned of stray spaces automatically. Also:
-  YouTube API key, AI Horde key (faster photo scenes), demucs/faceAnim commands, and the
-  Photo Beautify tool.
+  shows RED here; this is the first thing to try when answers feel weak). Model names are
+  cleaned of stray spaces automatically. Natural narration voices live here too: pick and
+  download Piper voices (English + two real Urdu neural voices — no Windows setup
+  needed), and see/refresh which Windows natural voices (incl. Urdu Asad/Uzma) are
+  installed, with a one-click link to add more via Windows' own Speech settings. A free
+  YouTube Data API key here makes Ideas & Trends use REAL YouTube view/competition data
+  instead of AI guesses (optional — ideas still work without it). Also: AI Horde key
+  (faster photo scenes), demucs/faceAnim commands, and the Photo Beautify tool.
 
 STANDARD WORKFLOWS
 1) Idea → video (fast): AI Command → "write a script about X and build a video" → Run.

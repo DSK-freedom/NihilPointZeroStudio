@@ -17,6 +17,7 @@ import { getOllamaStatus, ollamaChatStream, type ChatTurn } from './llm/ollama'
 import { buildAdvisorSystemPrompt } from './prompts'
 import { APP_GUIDE } from './appGuide'
 import { getAvailableUpdate, tagDate } from './updateCheck'
+import { listWinNaturalVoices, synthesizeWithWinNatural } from './voice/winNatural'
 import { runHealthCheck } from './health'
 import { generateIdeasFlow, generateScriptFlow } from './services'
 import { synthesizeSpeechToFile } from './voiceover'
@@ -42,8 +43,9 @@ import { renderGraftPreview, renderGraftVideo, runGraftTool, sanitizeGraftRegion
 import type { GraftRegion } from '../shared/types'
 import { buildEnhanceArgs } from './video/enhance'
 import { generateSceneImage, planScenes } from './scene'
-import { downloadPiper, isPiperInstalled } from './voice/piper'
-import { buildUploadUrl, generatePublishMeta } from './youtube'
+import { downloadPiper, installedPiperVoiceIds, isPiperInstalled, isPiperVoiceInstalled } from './voice/piper'
+import { PIPER_VOICES, resolvePiperVoiceId } from './voice/piperVoices'
+import { buildUploadUrl } from './youtube'
 import { generateFromPhoto } from './image/horde'
 import { generateVideoPlan } from './director/planner'
 import { downloadTrack, searchMusic } from './data/freeMusic'
@@ -118,6 +120,7 @@ import {
   setActiveProvider,
   setApiKey,
   setModel,
+  setPiperVoiceId,
   setYouTubeApiKey,
   videosDir
 } from './store'
@@ -751,6 +754,7 @@ export function registerIpcHandlers(): void {
           aspect: req.aspect,
           template: req.template,
           narrationVoice: req.narrationVoice,
+          winVoiceId: req.winVoiceId,
           musicPath: req.musicPath,
           soundEffects: req.soundEffects,
           engine: req.engine,
@@ -1245,9 +1249,11 @@ export function registerIpcHandlers(): void {
    * Uses the video's own title/script as grounding so it describes THIS clip, and
    * degrades to a usable non-AI fallback rather than failing the click.
    */
-  ipcMain.handle(IPC.videoPostMeta, async (_e, videoId: string, platform: 'youtube' | 'tiktok', vertical?: boolean) => {
-    const job = listVideos().find((j) => j.id === videoId)
-    if (!job) throw new Error('Video not found — build it again first.')
+  async function draftPostingText(
+    job: VideoJob,
+    platform: 'youtube' | 'tiktok',
+    vertical?: boolean
+  ): Promise<{ title: string; description: string; hashtags: string[] }> {
     // The saved script isn't part of VideoJob, so the title is the grounding text.
     const source = job.title.slice(0, 2500)
     const prompt =
@@ -1287,15 +1293,22 @@ export function registerIpcHandlers(): void {
       // A busy free model must not cost the user the feature — hand back the fallback.
       return fallback
     }
+  }
+
+  ipcMain.handle(IPC.videoPostMeta, async (_e, videoId: string, platform: 'youtube' | 'tiktok', vertical?: boolean) => {
+    const job = listVideos().find((j) => j.id === videoId)
+    if (!job) throw new Error('Video not found — build it again first.')
+    return draftPostingText(job, platform, vertical)
   })
 
-  ipcMain.handle(IPC.videoMakeShorts, async (e, videoId: string, count: number) => {
+  /** Core shorts engine, reusable by the button handler AND the overnight plan. */
+  async function cutShortsForVideo(
+    videoId: string,
+    count: number,
+    notify: (m: string) => void
+  ): Promise<{ jobs: VideoJob[]; moments: { title: string; reason: string; startSec: number; endSec: number }[] }> {
     const src = listVideos().find((j) => j.id === videoId)
     if (!src) throw new Error('Video not found — build it again first.')
-    const notify = (m: string): void => {
-      if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, m)
-    }
-    logActivity('user', 'Started making shorts from a video', src.title)
     notify('Listening to the video to find the best moments (offline)…')
     const audioSrc = src.narrationPath && existsSync(src.narrationPath) ? src.narrationPath : src.path
     const segments = await transcribeFileToSegments(audioSrc)
@@ -1331,6 +1344,14 @@ export function registerIpcHandlers(): void {
     }
     logActivity('ai', `Made ${jobs.length} vertical short(s) — now in Video Studio`, src.title)
     return { jobs, moments: moments.map((m) => ({ title: m.title, reason: m.reason, startSec: m.startSec, endSec: m.endSec })) }
+  }
+
+  ipcMain.handle(IPC.videoMakeShorts, async (e, videoId: string, count: number) => {
+    const src = listVideos().find((j) => j.id === videoId)
+    if (src) logActivity('user', 'Started making shorts from a video', src.title)
+    return cutShortsForVideo(videoId, count, (m) => {
+      if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, m)
+    })
   })
 
   // Brand kit: overlay a logo watermark in a corner. New video, original kept.
@@ -1443,32 +1464,137 @@ export function registerIpcHandlers(): void {
     return job
   })
 
-  // Natural voice (Piper): status + one-time opt-in download into the portable data folder.
+  // Natural voice (Piper): status of the ACTIVE voice, and an opt-in per-voice download
+  // into the portable data folder (English + Urdu voices are all in the catalogue).
   ipcMain.handle(IPC.voicePiperStatus, () => ({ installed: isPiperInstalled() }))
-  ipcMain.handle(IPC.voicePiperDownload, async (e) => {
-    await downloadPiper((stage) => {
+  ipcMain.handle(IPC.voicePiperCatalogue, () => {
+    const installedIds = new Set(installedPiperVoiceIds())
+    return PIPER_VOICES.map((v) => ({ ...v, installed: installedIds.has(v.id) }))
+  })
+  ipcMain.handle(IPC.voicePiperDownload, async (e, voiceId: string) => {
+    const id = resolvePiperVoiceId(voiceId)
+    await downloadPiper(id, (stage) => {
       if (!e.sender.isDestroyed()) e.sender.send(IPC.voicePiperProgress, stage)
     })
-    logActivity('user', 'Installed the natural narration voice (Piper)')
-    return { installed: isPiperInstalled() }
+    logActivity('user', 'Installed a natural narration voice', id)
+    return { installed: isPiperVoiceInstalled(id) }
   })
+  ipcMain.handle(IPC.settingsSetPiperVoice, (_e, voiceId: string) => setPiperVoiceId(voiceId))
 
   ipcMain.handle(IPC.settingsSetYouTubeChannel, (_e, id: string) => setYouTubeChannelId(id))
 
-  // Assisted YouTube publish: generate description+tags, copy to clipboard, open the
+  // Assisted YouTube publish: generate title/description/hashtags with the SAME engine
+  // as the "🏷 Posting text" panel (draftPostingText), copy to clipboard, open the
   // upload page, and reveal the file to drag in. Free, no OAuth, no upload limits.
   ipcMain.handle(IPC.youtubePublish, async (_e, videoId: string) => {
     const src = listVideos().find((j) => j.id === videoId)
     if (!src) throw new Error('Video not found — build it again first.')
-    const meta = await generatePublishMeta(src.title)
-    const clip = `TITLE:\n${src.title}\n\nDESCRIPTION:\n${meta.description}\n\nTAGS:\n${meta.tags.join(', ')}`
+    // A 9:16 clip is a Short — same detection the Posting-text panel uses — so Shorts get
+    // Shorts-appropriate posting text automatically, with no extra step for the user.
+    const vertical = /short/i.test(src.title)
+    const meta = await draftPostingText(src, 'youtube', vertical)
+    const clip = `TITLE:\n${meta.title}\n\nDESCRIPTION:\n${meta.description}\n\nHASHTAGS:\n${meta.hashtags.map((h) => `#${h}`).join(' ')}`
     clipboard.writeText(clip)
     const url = buildUploadUrl(getYouTubeChannelId())
     await shell.openExternal(url)
     shell.showItemInFolder(src.path)
     logActivity('user', 'Prepared a YouTube upload', src.title)
-    return { title: src.title, description: meta.description, tags: meta.tags, uploadUrl: url }
+    return { title: meta.title, description: meta.description, tags: meta.hashtags, uploadUrl: url }
   })
+
+  // ---- Windows NATURAL voices (free, offline; the only route to Urdu Asad/Uzma) ----
+  ipcMain.handle(IPC.voiceWinNaturalList, () => listWinNaturalVoices())
+
+  // Speaks one short line so the user can HEAR a voice before committing to it.
+  ipcMain.handle(IPC.voiceWinNaturalPreview, async (_e, voiceId: string, sample?: string) => {
+    const dir = mkdtempSync(join(tmpdir(), 'npz-voice-preview-'))
+    const wav = join(dir, 'preview.wav')
+    try {
+      await synthesizeWithWinNatural(sample?.trim() || 'This is how your narration will sound.', wav, voiceId)
+      // Hand back the bytes so the renderer can play it without a file:// round trip.
+      return { ok: true as const, wavBase64: readFileSync(wav).toString('base64') }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Preview failed' }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  // Opens Windows' own speech/language settings, where free voices (incl. Urdu) install.
+  ipcMain.handle(IPC.voiceOpenSpeechSettings, async () => {
+    await shell.openExternal('ms-settings:speech')
+    return { ok: true }
+  })
+
+  /**
+   * "Plan my week": pick N topics, walk away. Writes a script and builds a video for each
+   * (reusing the batch engine), then — new — cuts shorts and drafts posting text for every
+   * finished video, so the morning result is publish-ready rather than raw.
+   * Failures never abort the run: each topic reports its own outcome.
+   */
+  ipcMain.handle(
+    IPC.weeklyPlanRun,
+    async (
+      e,
+      topics: string[],
+      opts?: { style?: VideoStyle; resolution?: import('../shared/types').VideoResolution; aiVisuals?: boolean; shortsPerVideo?: number }
+    ) => {
+      // Same cap as the plain Batch path (runBatch itself also caps at 25) — the overnight
+      // checkbox must not silently process fewer topics than the shared "up to 25" hint says.
+      const list = (Array.isArray(topics) ? topics : []).map((t) => String(t).trim()).filter(Boolean).slice(0, 25)
+      if (!list.length) throw new Error('Add at least one topic (one per line).')
+      const say = (stage: string): void => {
+        if (!e.sender.isDestroyed()) e.sender.send(IPC.agentProgress, stage)
+      }
+      logActivity('user', `Overnight plan started — ${list.length} topic(s)`, list.join(' · '))
+
+      const built = await runBatch(list, {
+        style: opts?.style,
+        resolution: opts?.resolution,
+        aiVisuals: !!opts?.aiVisuals,
+        stockApiKey: getStockConfig().pixabayKey,
+        onProgress: say
+      })
+
+      const shortsWanted = Math.max(0, Math.min(5, opts?.shortsPerVideo ?? 2))
+      const report: { topic: string; ok: boolean; videoId?: string; shorts: number; postingText?: string; error?: string }[] = []
+      for (const r of built) {
+        const entry = { topic: r.topic, ok: !!r.ok, videoId: r.video?.id, shorts: 0 } as (typeof report)[number]
+        if (!r.ok || !r.video) {
+          entry.error = r.error ?? 'build failed'
+          report.push(entry)
+          continue
+        }
+        if (shortsWanted > 0) {
+          try {
+            say(`Cutting shorts for “${r.video.title}”…`)
+            const cut = await cutShortsForVideo(r.video.id, shortsWanted, say)
+            entry.shorts = cut.jobs.length
+          } catch {
+            /* shorts are a bonus — a failure here must not sink the video */
+          }
+        }
+        try {
+          say(`Writing posting text for “${r.video.title}”…`)
+          const meta = await draftPostingText(r.video, 'youtube', false)
+          // Same '#' prefix as youtubePublish and the Posting-text panel — draftPostingText
+          // stores hashtags WITHOUT the symbol, so every consumer must add it consistently.
+          entry.postingText = `TITLE:\n${meta.title}\n\nDESCRIPTION:\n${meta.description}\n\nHASHTAGS:\n${meta.hashtags.map((h) => `#${h}`).join(' ')}`
+        } catch {
+          /* posting text is a bonus too */
+        }
+        report.push(entry)
+      }
+
+      const okCount = report.filter((r) => r.ok).length
+      logActivity(
+        'ai',
+        `Overnight plan finished — ${okCount}/${report.length} video(s) built, ${report.reduce((n, r) => n + r.shorts, 0)} short(s) cut`,
+        report.map((r) => `${r.ok ? '✓' : '✗'} ${r.topic}`).join(' · ')
+      )
+      return { report }
+    }
+  )
 
   // Batch: make a video per topic (write script → build), streaming per-topic progress.
   ipcMain.handle(

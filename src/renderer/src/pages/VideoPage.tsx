@@ -1263,8 +1263,12 @@ export default function VideoPage() {
               <div className="mt-3 space-y-2">
                 {jobs.map((job) => (
                   <div key={job.id} className="rounded-md border border-ink-700 bg-ink-800 p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex items-start gap-2">
+                    {/* flex-wrap + a basis on the text column: the button row used to be
+                        shrink-0, so on a narrow panel it kept its full width and squeezed
+                        the title/path column to about one character — which made the path
+                        (break-all) render one letter per line as an endless vertical strip. */}
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="flex min-w-0 flex-1 basis-64 items-start gap-2">
                         {jobs.length > 1 && (
                           <input
                             type="checkbox"
@@ -1280,10 +1284,10 @@ export default function VideoPage() {
                           {job.hasCustomVoice ? 'With your recorded voice' : 'Narrated (Windows voice)'} ·{' '}
                           {new Date(job.createdAt).toLocaleString()}
                         </div>
-                        <p className="text-[10px] text-ink-600 mt-1 break-all">{job.path}</p>
+                        <p className="text-[10px] text-ink-600 mt-1 truncate" title={job.path}>{job.path}</p>
                         </div>
                       </div>
-                      <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                      <div className="flex flex-wrap justify-end gap-1.5">
                         <button
                           onClick={() => window.api.video.reveal(job.path)}
                           className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors"

@@ -901,9 +901,10 @@ export default function SettingsPage() {
                 />
                 <span className="text-[11px] text-ink-300">
                   <b className="text-ink-100">Pollinations — free key, NO phone number.</b> Sign up at{' '}
-                  <b>enter.pollinations.ai</b> (GitHub or email), create a key, paste it below. Registered users get a
-                  small <b>daily Pollen grant that renews every day</b>; the default wan-fast model costs ~0.05 Pollen
-                  per 5-second scene. This is the route to use where Puter’s phone verification doesn’t work.
+                  <b>enter.pollinations.ai</b> (GitHub or email), create a key, paste the <b>SECRET (sk_…) one</b>{' '}
+                  below. Free Pollen comes from that dashboard’s <b>Quests tab</b> — claim the rewards (they’re
+                  retroactive; “Create your first API key” alone pays 0.25 = five 5-second scenes on the default
+                  wan-fast model). This is the route to use where Puter’s phone verification doesn’t work.
                 </span>
               </label>
               <label className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${aiFreeProvider === 'puter' ? 'border-gold-500 bg-gold-500/5' : 'border-ink-700'}`}>

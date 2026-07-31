@@ -67,10 +67,11 @@ REAL AI VIDEO — WHAT'S NEW, AND WHAT'S STILL TRUE  (being straight with you)
    NEW: Video Studio now has "REAL AI video — free cloud" — real moving video per
    scene, not a photo slideshow. TWO free routes (pick in Settings -> AI Video):
    • Pollinations (recommended here): sign up at enter.pollinations.ai with GitHub
-     or email — NO phone number — create a free key and paste it into Settings.
-     You get a small amount of free "Pollen" EVERY DAY; a 5-second scene costs about
-     0.05, so that's several real-motion scenes daily, renewing each morning. A
-     "Test key" button in Settings shows your balance without spending anything.
+     or email — NO phone number — create a free key and paste the SECRET (sk_…) one
+     into Settings. Free "Pollen" comes from that dashboard's QUESTS tab: claim the
+     rewards you already qualify for (e.g. "Create your first API key" pays 0.25 —
+     about five 5-second scenes). A "Test key" button in Settings shows your balance
+     without spending anything.
    • Puter (Google's Veo): no key at all — a sign-in window pops up during the first
      build. Heads-up: Puter's verification rejects some countries' phone numbers
      (Pakistani numbers included) — if their sign-up won't finish, use Pollinations.

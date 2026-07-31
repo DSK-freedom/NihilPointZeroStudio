@@ -3,7 +3,7 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-31 07:34
+## Build: v0.1.1 · 2026-07-31 07:57
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
@@ -17,10 +17,11 @@ blocked the whole free-cloud tier here. So the tier now has two routes (pick in 
 AI Video):
 - **Pollinations (recommended on this PC):** sign up free at **enter.pollinations.ai**
   with GitHub or email — **no phone number** — create a key (pk_/sk_) and paste it into
-  Settings. Registered users get a small **daily Pollen grant that renews every day**; the
-  default wan-fast model costs ~0.05 Pollen per 5-second scene, so that's several
-  real-motion scenes every day. A **"Test key" button** shows your balance without
-  spending anything. The key is stored encrypted, like every other key.
+  Settings. Free Pollen is **claimed from the dashboard's Quests tab** (retroactive rewards —
+  "Create your first API key" alone pays 0.25); the default wan-fast model costs ~0.05 Pollen
+  per 5-second scene, so one small claim is several real-motion scenes. A **"Test key"
+  button** shows your balance without spending anything. The key is stored encrypted, like
+  every other key.
 - **Puter (Google Veo):** unchanged — no key, a sign-in window pops up during the first
   build. Use it where their phone verification works.
 Both routes fall back per scene to AI stills with the reason in the build log.
@@ -29,7 +30,7 @@ Live-tested the same day with a real account (thank you): **use the SECRET key (
 — pk_ keys are often created with an empty model allowlist and every generation gets
 refused. The "Test key" button now checks the key the right way for both kinds, warns
 when a key has no models enabled, and says plainly when the Pollen balance is 0 (free
-Pollen comes from the Quests/tier section on enter.pollinations.ai and renews daily).
+Pollen is claimed from the Quests tab on enter.pollinations.ai — rewards are retroactive).
 
 ### 🛡 Updates no longer fight Windows Smart App Control
 Smart App Control blocks each freshly built (unsigned) setup.exe as an unknown file —
@@ -144,7 +145,7 @@ fix that is wrong.
 
 **Update (2026-07-31): there IS now real AI motion video here — through the cloud, not this
 PC's hardware.** The new "REAL AI video — free cloud" tier generates real moving video per
-scene. Two free routes: a Pollinations key (free daily Pollen, signup with GitHub/email —
+scene. Two free routes: a Pollinations key (free Quest Pollen, signup with GitHub/email —
 no phone number — the route that works here) or a free Puter account (their phone
 verification rejects Pakistani numbers). Up to 5 real-motion scenes per build, minutes per
 scene; full details in the 2026-07-31 entries above. And the local tier is now fully built
@@ -371,7 +372,7 @@ numbers** — if a figure can't be derived, it says so.
 - **Needs internet** (keys already built in, nothing to sign up for): AI writing/ideas/advisor,
   AI images & visuals, "put me in a scene", online music removal.
 - **REAL AI video — free cloud** — needs internet + one free sign-up: a Pollinations key
-  (enter.pollinations.ai, GitHub/email, no phone — free Pollen renews DAILY) or a Puter
+  (enter.pollinations.ai, GitHub/email, no phone — free Quest Pollen, claimed on their dashboard) or a Puter
   sign-in (window appears on the first build; their phone verification rejects some
   countries' numbers). Small allowances; up to 5 real-motion scenes per build (adjustable),
   the rest use AI stills; minutes per scene. If it can't run, the build falls back to the

@@ -197,7 +197,7 @@ VIDEO LOOK (engine) — what makes the visuals. Five tiers:
                                 filmed motion.
    REAL AI video — free cloud - free, online. REAL moving video per scene — not a
                                 slideshow. Two free routes, chosen in Settings ->
-                                AI Video: a free Pollinations key (daily Pollen,
+                                AI Video: a free Pollinations key (Quest Pollen,
                                 signup by GitHub/email — NO phone number) or a free
                                 Puter account (Google Veo, sign-in window; their
                                 phone verification rejects some countries' numbers,
@@ -418,7 +418,7 @@ FREE + INTERNET (keys built in, nothing to sign up for): AI writing/ideas/adviso
    AI Command, AI images/visuals, thumbnails-with-AI-background, put-me-in-a-scene,
    online music removal.
 FREE + INTERNET + ONE FREE SIGN-UP: REAL AI video — free cloud. Either a free
-   Pollinations key (daily Pollen, no phone — best here) or a free Puter sign-in; allowances are small
+   Pollinations key (Quest Pollen, no phone — best here) or a free Puter sign-in; allowances are small
    and monthly. See §18.
 FREE + ONE-TIME SETUP (optional; both already done on this PC): Natural voice (Piper)
    download; offline Demucs music separation (Python).
@@ -673,13 +673,12 @@ ROUTE 1 — POLLINATIONS (recommended on this PC; NO phone number):
   * Sign up free at enter.pollinations.ai with GitHub or email, create a key, and
     paste the SECRET key (sk_…) into Settings -> AI Video. (The pk_ "app" key is
     often created with no models allowed — the sk_ key is the one that works.)
-  * Free Pollen comes from the Quests/tier section of that dashboard and renews
-    DAILY. The "Test key" button shows your balance and warns if it is 0.
-  * Registered users get a small amount of free "Pollen" EVERY DAY — it renews
-    daily. The default video model (wan-fast) costs about 0.05 Pollen for a
-    5-second scene, so the daily grant is several real-motion scenes, every day.
+  * Free Pollen is CLAIMED from that dashboard's QUESTS tab. Quests are
+    retroactive — if you already qualify, just claim: "Create your first API key"
+    alone pays 0.25 Pollen, and the default video model (wan-fast) costs about
+    0.05 Pollen for a 5-second scene, so that one claim is ~five real-motion scenes.
   * The "Test key" button checks your key and shows your Pollen balance without
-    spending anything.
+    spending anything — and warns you plainly when the balance is 0.
 
 ROUTE 2 — PUTER (Google's Veo; no key at all):
   * A sign-in window pops up during the first build; sign into a free Puter

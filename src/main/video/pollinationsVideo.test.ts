@@ -36,10 +36,10 @@ describe('buildPollinationsVideoUrl', () => {
 })
 
 describe('classifyPollinationsError', () => {
-  it('explains the daily-Pollen 402 in plain English', () => {
+  it('explains the out-of-Pollen 402 in plain English, pointing at Quests', () => {
     const v = classifyPollinationsError(402)
     expect(v).toContain('Pollen is used up')
-    expect(v).toContain('renews every day')
+    expect(v).toContain('Quests tab')
   })
 
   it('points a 401 at Settings', () => {

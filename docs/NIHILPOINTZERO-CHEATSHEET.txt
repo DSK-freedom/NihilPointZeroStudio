@@ -29,7 +29,7 @@ Hands-on: Video Studio -> pick/paste a script -> set Look/Voice/Format/Resolutio
 
 ------------------------------  KEY CHOICES WHEN BUILDING  ---------------------------------------
 ENGINE (Video look) Style presets (free, offline) · Photo slideshow (AI images) (free, online, no key) ·
-                    REAL AI video — free cloud (two free routes: Pollinations key = free DAILY Pollen,
+                    REAL AI video — free cloud (two free routes: Pollinations key = free Quest Pollen,
                     no phone number — or Puter sign-in; up to 5 scenes/build get real motion, rest =
                     AI stills; minutes per scene) · AI footage (cloud, paid, your key) · REAL AI
                     video — local GPU (ComfyUI; needs NVIDIA — greyed out on this PC until the card exists)
@@ -72,8 +72,8 @@ Charts .......... live PSX by symbol (line+SMA/RSI) OR import your OHLC file (ca
 ------------------------------  FREE / INTERNET / SETUP  -----------------------------------------
 FREE + OFFLINE ...... building, edits, YOUR voice + Natural voice, captions, music, trim, watermark, export
 FREE + INTERNET ..... AI writing/images/visuals, put-me-in-scene, online music removal (keys built in),
-                      REAL AI video — free cloud (free Pollinations key with daily Pollen — no phone —
-                      or a free Puter sign-in; both small allowances)
+                      REAL AI video — free cloud (free Pollinations key + claimable Quest Pollen — no
+                      phone — or a free Puter sign-in; both small allowances)
 ALREADY SET UP ...... Natural voice (Piper) + offline Demucs installed on THIS PC; keys baked in
 
 ------------------------------  IF STUCK  -------------------------------------------------------
@@ -89,8 +89,8 @@ AI stops answering ...... the old free online AI went PAID (their change). The a
                           exact error + time, or nihilpointzero-data\logs\ai-errors.log
 Want real AI motion ..... pick "REAL AI video — free cloud". Easiest here: Settings -> AI Video ->
                           Pollinations route -> get a free key at enter.pollinations.ai (GitHub/email,
-                          NO phone) -> paste the SECRET key (sk_…) + "Test key". Free Pollen comes from
-                          the Quests/tier section there and renews DAILY (~a few 5s scenes/day).
+                          NO phone) -> paste the SECRET key (sk_…) + "Test key". Free Pollen is CLAIMED
+                          from the Quests tab there (retroactive; first claim ≈ five 5s scenes).
                           (Puter route also exists but its phone verification rejects Pakistani numbers.)
                           Up to 5 scenes/build, minutes each; runs out -> AI stills, reason in the build
                           log — nothing breaks. LOCAL AI video still needs an NVIDIA card this PC doesn't

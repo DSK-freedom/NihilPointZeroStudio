@@ -4,8 +4,10 @@
  * Why this exists: the Puter route needs a Puter account sign-in, and Puter's
  * verification does not accept phone numbers from every country (it rejected a
  * Pakistani number in practice, 2026-07-31). Pollinations registration is a
- * developer key from enter.pollinations.ai (GitHub/email — NO phone), and
- * registered users get a small DAILY Pollen grant that renews every day.
+ * developer key from enter.pollinations.ai (GitHub/email — NO phone). Free Pollen
+ * comes from the dashboard's QUESTS tab (verified live 2026-07-31: "Tiers have
+ * stopped" — the old daily tier grants became claimable Quest Pollen; quests are
+ * retroactive, e.g. "Create your first API key" pays 0.25 the moment it's claimed).
  *
  * Contract, verified live against gen.pollinations.ai/openapi.json (2026-07-31):
  *   GET https://gen.pollinations.ai/video/{prompt}?model=...&width=...&height=...
@@ -47,7 +49,7 @@ export function buildPollinationsVideoUrl(opts: {
 /** Turns an HTTP failure into the plain-English reason for the build log. Pure + tested. */
 export function classifyPollinationsError(status: number, body?: string): string {
   if (status === 401) return 'the Pollinations key is missing or invalid — check Settings → AI Video'
-  if (status === 402) return 'your free daily Pollen is used up for now (it renews every day)'
+  if (status === 402) return 'your Pollen is used up — claim more from the Quests tab on enter.pollinations.ai'
   if (status === 403) return 'this Pollinations key is not allowed to use that video model'
   if (status === 429) return 'Pollinations is rate-limiting — too many requests at once'
   if (status >= 500) return `Pollinations had a problem on their end (HTTP ${status})`
@@ -96,8 +98,8 @@ export async function checkPollinationsKey(key: string): Promise<{ ok: boolean; 
         ok: true,
         balance,
         detail:
-          'Key works ✓ but your Pollen balance is 0 — real-motion scenes will fall back to stills until it refills. ' +
-          'Check the Quests/tier section on enter.pollinations.ai for free daily Pollen.'
+          'Key works ✓ but your Pollen balance is 0 — real-motion scenes will fall back to stills until you have some. ' +
+          'Free Pollen: open the Quests tab on enter.pollinations.ai and CLAIM completed quests (they are retroactive).'
       }
     }
     return {

@@ -16,6 +16,7 @@ import { app } from 'electron'
 import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from 'fs'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
+import { ffprobeIsPlayable } from './video/ffmpeg'
 import { appendVideo, listVideos, logActivity, videosDir } from './store'
 import type { StrandedReport, VideoJob } from '../shared/types'
 
@@ -99,26 +100,45 @@ function knownFileNames(): Set<string> {
 }
 
 /**
+ * Keeps only files that actually PLAY. A build killed part-way leaves a huge mp4 with
+ * no index — 10.7 GB and 2.3 GB of exactly that were found on a real machine. Offering
+ * those as "recovered videos" would be handing the user corpses and calling them work.
+ * Capped so a pathological folder can't spawn hundreds of probes.
+ */
+async function playableOnly(dir: string, names: string[]): Promise<string[]> {
+  const out: string[] = []
+  for (const n of names.slice(0, 40)) {
+    if (await ffprobeIsPlayable(join(dir, 'videos', n))) out.push(n)
+  }
+  return out
+}
+
+/**
  * Everything finished that the app cannot currently show you, from BOTH causes:
  *  - inPlace  — the file is right there in the active folder, but the app's list lost
  *    track of it (14 GB of real videos were in exactly this state on 2026-08-01).
  *  - elsewhere — the file lives in a data folder the app stopped using.
  * Read-only and never throws.
  */
-export function scanStranded(activeDir = app.getPath('userData')): StrandedReport {
+export async function scanStranded(activeDir = app.getPath('userData')): Promise<StrandedReport> {
   const empty: StrandedReport = { dir: null, inPlace: 0, elsewhere: 0, videoCount: 0, bytes: 0, size: '0 KB' }
   // The E2E harness runs against a throwaway data home; it must never look at — let
   // alone offer to copy — the real user's folders.
   if (process.env.NPZ_E2E_USERDATA) return empty
   try {
     const known = knownFileNames()
-    const localNames = videoFilesIn(activeDir).filter((n) => !known.has(n.toLowerCase()))
+    const localNames = await playableOnly(
+      activeDir,
+      videoFilesIn(activeDir).filter((n) => !known.has(n.toLowerCase()))
+    )
     let bytes = totalBytes(activeDir, localNames)
 
     let dir: string | null = null
     let elsewhere = 0
     for (const other of otherDataDirs(activeDir)) {
-      const names = videoFilesIn(other).filter((n) => !known.has(n.toLowerCase()) && !localNames.includes(n))
+      const candidates = videoFilesIn(other).filter((n) => !known.has(n.toLowerCase()) && !localNames.includes(n))
+      if (!candidates.length) continue
+      const names = await playableOnly(other, candidates)
       if (!names.length) continue
       dir = other
       elsewhere = names.length
@@ -161,8 +181,10 @@ function titleFor(fileName: string, searchDirs: string[]): string {
  * data folder and lists them in the app. The source folder is left untouched — the
  * user decides whether to delete it, never this code.
  */
-export function importStranded(activeDir = app.getPath('userData')): { imported: number; skipped: number; bytes: number } {
-  const report = scanStranded(activeDir)
+export async function importStranded(
+  activeDir = app.getPath('userData')
+): Promise<{ imported: number; skipped: number; bytes: number }> {
+  const report = await scanStranded(activeDir)
   if (!report.videoCount) return { imported: 0, skipped: 0, bytes: 0 }
   const dstVideos = videosDir()
   const known = knownFileNames()
@@ -207,10 +229,11 @@ export function importStranded(activeDir = app.getPath('userData')): { imported:
     }
   }
 
+  // Only ever touch files that genuinely play (scanStranded already proved it).
   // 1) Already here, just unlisted — instant, nothing is copied.
-  for (const name of videoFilesIn(activeDir)) adopt(name)
+  for (const name of await playableOnly(activeDir, videoFilesIn(activeDir))) adopt(name)
   // 2) Sitting in a folder the app stopped using — copied in, originals untouched.
-  if (report.dir) for (const name of videoFilesIn(report.dir)) adopt(name, report.dir)
+  if (report.dir) for (const name of await playableOnly(report.dir, videoFilesIn(report.dir))) adopt(name, report.dir)
 
   if (imported) {
     logActivity(

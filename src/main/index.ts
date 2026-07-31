@@ -142,8 +142,9 @@ if (!gotLock) {
       // that really happened (1.15 GB of finished videos). Say so in the Activity Log
       // so it is discoverable without opening Settings. Quiet when there is nothing.
       setTimeout(() => {
+        void (async () => {
         try {
-          const s = scanStranded()
+          const s = await scanStranded()
           if (s.videoCount > 0) {
             logActivity(
               'ai',
@@ -156,6 +157,7 @@ if (!gotLock) {
         } catch {
           /* a failed look must never bother the user */
         }
+        })()
       }, 45_000)
 
       // Weekly QUIET health check: the manual "Run full check" only helps when the

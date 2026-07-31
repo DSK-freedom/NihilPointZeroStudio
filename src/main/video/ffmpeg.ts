@@ -219,6 +219,31 @@ export function ffprobeHasAudio(file: string): Promise<boolean> {
   })
 }
 
+/**
+ * True only when the file is a REAL, finished, playable video.
+ *
+ * An mp4 that ffmpeg was killed part-way through (Stop pressed, crash, power cut)
+ * keeps its bytes but never gets its `moov` index written — ffprobe reports
+ * "moov atom not found" and no player can open it. Two such files were found on a
+ * real machine at 10.7 GB and 2.3 GB. Anything offering the user "recovered videos"
+ * must check this, or it hands them multi-gigabyte corpses and calls them work.
+ */
+export function ffprobeIsPlayable(file: string): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const proc = spawn(ffprobePath, [
+      '-v', 'error', '-select_streams', 'v:0',
+      '-show_entries', 'format=duration:stream=codec_type', '-of', 'csv=p=0', file
+    ])
+    let out = ''
+    proc.stdout.on('data', (d) => (out += d.toString()))
+    proc.on('error', () => resolve(false))
+    proc.on('exit', (code) => {
+      const seconds = parseFloat((/\d+(\.\d+)?/.exec(out) ?? ['0'])[0])
+      resolve(code === 0 && out.includes('video') && seconds > 0)
+    })
+  })
+}
+
 /** Returns the media duration in seconds via ffprobe. */
 export function ffprobeDuration(file: string): Promise<number> {
   return new Promise<number>((resolve, reject) => {

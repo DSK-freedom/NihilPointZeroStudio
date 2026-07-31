@@ -52,6 +52,10 @@ export default function SceneStudioPage(): React.JSX.Element {
   const [template, setTemplate] = useState<VideoTemplate>('cinematic')
   const [fast, setFast] = useState(true)
   const [soundEffects, setSoundEffects] = useState(true)
+  // Video look for the final build: your generated stills (classic), or REAL AI motion
+  // per scene — free cloud (Puter) or local GPU (ComfyUI). Motion failures fall back to
+  // the stills automatically, so the build never breaks.
+  const [motion, setMotion] = useState<'stills' | 'ai-free-video' | 'ai-local'>('stills')
   const [photoStrength, setPhotoStrength] = useState(0.5)
 
   // Autosave the script + settings (not the generated images, which are files).
@@ -271,8 +275,10 @@ export default function SceneStudioPage(): React.JSX.Element {
       const job = await window.api.video.build({
         title: title.trim() || 'Video',
         body,
+        // The generated stills always ride along: with a REAL-motion engine they are the
+        // per-scene fallback; with 'stills' they ARE the video (classic behavior).
         images: imagePaths,
-        engine: 'presets',
+        engine: motion === 'stills' ? 'presets' : motion,
         style,
         resolution,
         aspect,
@@ -347,6 +353,14 @@ export default function SceneStudioPage(): React.JSX.Element {
               {VIDEO_STYLES.map((s) => (
                 <option key={s} value={s} className="capitalize">{s}</option>
               ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-1" title="Real AI motion generates actual video per scene; any failure falls back to your stills — the build never breaks.">
+            Video look
+            <select value={motion} onChange={(e) => setMotion(e.target.value as 'stills' | 'ai-free-video' | 'ai-local')} className="rounded bg-ink-800 border border-ink-700 px-2 py-1">
+              <option value="stills">Your stills (Ken-Burns) — default</option>
+              <option value="ai-free-video">REAL AI video — free cloud (Puter sign-in)</option>
+              <option value="ai-local">REAL AI video — local GPU (ComfyUI)</option>
             </select>
           </label>
           <label className="flex items-center gap-1">

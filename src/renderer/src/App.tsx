@@ -1,5 +1,6 @@
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
+import ErrorBoundary from './components/ErrorBoundary'
 import FallbackBanner from './components/FallbackBanner'
 import UpdateBanner from './components/UpdateBanner'
 import AssistantWidget from './components/AssistantWidget'
@@ -28,11 +29,15 @@ import ActivityLogPage from './pages/ActivityLogPage'
 import { StudioProvider } from './store/StudioContext'
 
 export default function App() {
+  // Keyed on the route so a crashed tab clears itself once you navigate away,
+  // and so one bad page can never blank the sidebar / the whole window again.
+  const { pathname } = useLocation()
   return (
     <StudioProvider>
       <div className="flex h-screen w-screen overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-y-auto">
+          <ErrorBoundary label={pathname.replace('/', '') || 'Today'} resetKey={pathname}>
           <Routes>
             <Route path="/" element={<TodayPage />} />
             <Route path="/ideas" element={<IdeasPage />} />
@@ -53,6 +58,7 @@ export default function App() {
             <Route path="/activity" element={<ActivityLogPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
+          </ErrorBoundary>
         </main>
         <FallbackBanner />
         <UpdateBanner />

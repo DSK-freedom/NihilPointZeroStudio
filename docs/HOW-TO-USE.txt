@@ -9,7 +9,7 @@ WHAT'S IN THIS FOLDER
    NIHILPOINTZERO-OS-portable.exe   -> the program (double-click to run)
    NIHILPOINTZERO-OS-setup.exe      -> OPTIONAL one-click INSTALLER (recommended for
                                         daily use on THIS PC: opens in ~2 seconds
-                                        instead of ~60-90, and taskbar pins are SAFE).
+                                        instead of ~40-60, and taskbar pins are SAFE).
                                         It finds and uses this same data folder — your
                                         work shows up in both versions.
    nihilpointzero-data\             -> ALL your work (videos, scripts, settings, the
@@ -31,7 +31,7 @@ STUCK AT ANY POINT? ASK THE APP ITSELF
 FIRST TIME YOU RUN IT
    1. Double-click NIHILPOINTZERO-OS-portable.exe — ONCE. (Or use the "NIHILPOINTZERO-OS"
       shortcut on your Desktop — it points straight at this exe.)
-   2. The first launch takes ~60-90 seconds with no window showing (it's unpacking).
+   2. The first launch takes ~40-60 seconds with no window showing (it's unpacking).
       WAIT. Do not double-click again.
    3. If Windows says "Windows protected your PC": More info -> Run anyway (it's safe,
       just unsigned).
@@ -63,13 +63,23 @@ IF THE AI STOPS ANSWERING  (READ THIS — it was a real bug, now fixed)
    • For the best free setup: keep Ollama installed and running. No key, no internet
      needed, nothing to pay.
 
-WHAT THIS STUDIO CANNOT DO ON THIS PC  (being straight with you)
-   Real AI "motion video" and "talking photo" models (LTX-Video, Wan 2.2, CogVideoX,
+REAL AI VIDEO — WHAT'S NEW, AND WHAT'S STILL TRUE  (being straight with you)
+   NEW: Video Studio now has "REAL AI video — free cloud" — real moving video per
+   scene (Google's Veo model, through a free service called Puter), not a photo
+   slideshow. The honest catches: you sign into a free Puter account once (a sign-in
+   window pops up during the first build); the free allowance is small and monthly;
+   only up to 5 scenes per build get real motion (the rest use AI stills — adjustable
+   in Settings -> AI Video); and each real-motion scene takes minutes. When the
+   allowance runs out, scenes fall back to AI still images and the build log says
+   why. Nothing breaks.
+   STILL TRUE: LOCAL AI "motion video" and "talking photo" models (LTX-Video, Wan 2.2,
    SadTalker, LivePortrait) need a DEDICATED NVIDIA graphics card. This laptop's
-   graphics are built into the processor, so those models cannot run here at all — not
-   even slowly. Settings shows your card and says so plainly.
-   What you CAN make, all free: photo slideshows from AI-generated images (16 styles),
-   real stock footage, your own footage and recordings, narrated in natural voices.
+   graphics are built into the processor, so those cannot run here at all — not even
+   slowly. The option is now visible but greyed out ("Requires NVIDIA GPU — not
+   detected on this system"), and you can set it all up in Settings -> AI Video
+   today — it unlocks by itself the day this PC has an NVIDIA card.
+   Also free: photo slideshows from AI images (16 styles), real stock footage, your
+   own footage and recordings, narrated in natural voices.
 
 THE ONE RULE
    Keep the .exe and the "nihilpointzero-data" folder TOGETHER. To move the studio to
@@ -82,8 +92,16 @@ THREE WAYS TO MAKE A VIDEO — pick one, all explained in the GUIDE
    • Most control : 🎞 Storyboard Director -> direct it shot-by-shot (length, scene,
                     narration, motion, your photo/clip per shot) -> ✂ Timeline Editor to
                     fine-tune.
-   • Hands-on     : Video Studio -> paste a script, pick Look/Voice/Format/Resolution ->
-                    Build.
+   • Hands-on     : Video Studio -> paste a script, pick the Video look (engine) plus
+                    Look/Voice/Format/Resolution -> Build.
+
+PUT YOURSELF IN THE VIDEO
+   🎥 Presenter Studio (sidebar) makes YOU the presenter, three ways: Real Video
+   (upload a video of yourself narrating — the app cuts to theme b-roll + AI scenes
+   on your voice), Photo (your photo presents), or ✨ Living Picture (grafts the
+   moving part of your video onto your best picture). Your own footage/photo is
+   never AI-generated. Need footage? ⏺ Recorder captures your webcam OR your screen
+   right inside the app (up to 8K) and saves it into Video Studio.
 
 GET AROUND FAST
    Press Ctrl-K anywhere, type a tab name, Enter. Every text box has a 🎤 mic (talk
@@ -100,5 +118,6 @@ WHERE TO LOOK NEXT
 
 Everything core is FREE and works offline. The smart-AI parts (writing, images,
 "put me in a scene", online music removal) are also free but need internet — the keys
-are already built in, nothing to sign up for. Enjoy.
+are already built in, nothing to sign up for. (One exception: "REAL AI video — free
+cloud" asks you to sign into a free Puter account, once.) Enjoy.
 ===============================================================================

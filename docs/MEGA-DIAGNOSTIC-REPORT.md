@@ -3,11 +3,53 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-30 16:24
+## Build: v0.1.1 · 2026-07-31 05:59
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
+
+## New in this build (2026-07-31)
+
+### 🎬 REAL AI video — free cloud (no API key)
+A new tier in Video Studio's "Video look (engine)" list. It generates **real moving video
+per scene** — Google's Veo model, through a free service called Puter — not a photo
+slideshow. The honest catches, stated plainly:
+- You sign into a **free Puter account** once — a sign-in window pops up during the first
+  build. No key to paste, nothing to pay.
+- The free allowance is **small and monthly**. When it runs out, scenes automatically fall
+  back to AI still images and the build log says why. Nothing breaks.
+- By default only up to **5 scenes per build** get real motion (adjustable in Settings →
+  AI Video, "Real-motion scenes per build") — this protects the free allowance. The rest
+  of the scenes use AI stills.
+- Each real-motion scene takes **minutes** to generate.
+
+Also available in Scene Studio ("Video look"), Storyboard Director (the "Scenes:"
+selector) and Presenter Studio (the AI-scene selector — your own footage/photo is never
+AI-generated).
+
+### 🟢 REAL AI video — local GPU (ComfyUI) — built, and waiting for hardware
+The "AI motion video (local GPU)" tier is now a real integration with **ComfyUI**, the
+standard local AI video server (default address `http://127.0.0.1:8188`). The hard truth
+has NOT changed: **this PC (Intel UHD, no NVIDIA card) cannot run it — not slowly, not at
+all.** What has changed: the option is now deliberately VISIBLE but greyed out —
+"Requires NVIDIA GPU — not detected on this system" — and everything can be configured in
+Settings → AI Video today, so it unlocks by itself the day the PC has an NVIDIA card.
+Settings shows which model fits which card: 8GB → AnimateDiff / Wan 2.1 (1.3B) · 12GB →
+LTX-Video / LTX-2 · 16GB → **LTX-2.3 (recommended)** · 24GB+ → Wan 2.2 / HunyuanVideo 1.5.
+Advanced users can point it at their own ComfyUI workflow file (exported via
+"Save (API format)", with a `{{PROMPT}}` placeholder).
+
+### Every AI video engine now falls back safely
+If a real-video engine can't run (offline, allowance used up, no server), the build
+automatically continues as the photo slideshow and the status log states the reason.
+**A build never breaks because of these engines.**
+
+### The Known Issues panel now also records interface crashes
+It used to log only AI service failures. Now if a tab crashes, the crash is contained to
+that tab — the rest of the studio keeps working, with a plain-English message and a
+"Try this tab again" button — and the failure is written to the same log
+(Settings → Known Issues), so it's provable instead of a mystery.
 
 ## New in this build (2026-07-30, later)
 
@@ -60,16 +102,23 @@ and whether you must credit the artist** — credit-free tracks are listed first
   the Captions button. Chapter markers did not exist at all before now. Both are now under one
   visible switch, and chapters come with a copy button for your description.
 
-### "Real video generation" — the honest answer
+### "Real video generation" — the honest answer (updated 2026-07-31)
 You asked for real AI motion video (LTX-Video, Wan 2.2, CogVideoX) and talking photos
-(SadTalker, LivePortrait). **These cannot run on this laptop.** Not slowly — not at all.
+(SadTalker, LivePortrait). **Local models cannot run on this laptop.** Not slowly — not at all.
 
 They need a *dedicated NVIDIA graphics card*. This PC has Intel UHD Graphics built into the
 processor, which shares system memory and has no CUDA cores. The lightest of those models
 wants 6GB of dedicated video memory; there is none here. Anyone who tells you a setting will
 fix that is wrong.
 
-What was built instead:
+**Update (2026-07-31): there IS now real AI motion video here — through the cloud, not this
+PC's hardware.** The new "REAL AI video — free cloud" tier generates real moving video per
+scene (Google's Veo model via a free Puter account — one sign-in on the first build, a small
+monthly allowance, up to 5 real-motion scenes per build, minutes per scene; full details in
+the 2026-07-31 entry above). And the local tier is now fully built (ComfyUI) and waiting:
+greyed out today, it unlocks by itself the day this PC has an NVIDIA card.
+
+What was built at the time (all still true):
 - **A real hardware check** that detects your graphics card at startup and says plainly what
   can and cannot run, *before* you start a build — no silent failure, no hang, no garbage.
 - **The slideshow is now labelled honestly** as "Photo slideshow (AI images)" and described as
@@ -272,6 +321,12 @@ numbers** — if a figure can't be derived, it says so.
   Safe validated actions only — it creates/edits, **never deletes**.
 - Script / idea / thumbnail generation; AI Command & AI Director
 - 🎞 Storyboard Director (shot-by-shot) + ✂ Timeline Editor (real NLE)
+- **🎥 Presenter Studio** — YOU present, three modes: Real Video (upload your narration
+  video; the app cuts to theme b-roll + AI scenes on your voice), Photo (your photo
+  presents), ✨ Living Picture (the moving part of your video grafted onto your best
+  picture). Your own footage/photo is never AI-generated.
+- **⏺ Recorder** — webcam AND screen recording in-app, up to 8K, with noise suppression
+  and OBS virtual camera support; recordings land in Video Studio.
 - Looks (Clean/News/Cinematic/Bold), 16:9 / 9:16 / 1:1, up to 8K
 - Voice: your own recording, Natural (Piper), or Windows
 - Music synth + DJ mixer (auto-duck + limiter), captions (.srt + burn-in), trim, stitch, export
@@ -282,6 +337,13 @@ numbers** — if a figure can't be derived, it says so.
 ## Real, but needs internet or a one-time setup
 - **Needs internet** (keys already built in, nothing to sign up for): AI writing/ideas/advisor,
   AI images & visuals, "put me in a scene", online music removal.
+- **REAL AI video — free cloud** — needs internet + a one-time free Puter sign-in (the window
+  appears on the first build). Small monthly allowance; up to 5 real-motion scenes per build
+  (adjustable), the rest use AI stills; minutes per scene. If it can't run, the build falls
+  back to the slideshow with the reason logged — it never breaks.
+- **REAL AI video — local GPU (ComfyUI)** — real and fully configurable in Settings → AI Video,
+  but it needs an NVIDIA card this PC doesn't have; visible but greyed out until the hardware
+  exists.
 - **Put me in a scene** — free, but the queue can be slow and the generated look **approximates**
   you; your true face is preserved by compositing your actual photo/clip, not by faking a face.
 - **Natural voice (Piper)** — a one-time ~80 MB download (already done on this PC).

@@ -43,6 +43,9 @@ export default function StoryboardPage(): React.JSX.Element {
   const [beats, setBeats] = useState<StoryboardBeat[]>([])
   const [photoPath, setPhotoPath] = useState<string | null>(null)
   const [beautifyStrength, setBeautifyStrength] = useState(0.6)
+  // Scene motion: classic animated stills, or REAL AI video per beat (free cloud / local
+  // GPU). Failures fall back to the still for that beat — a render never breaks over this.
+  const [motion, setMotion] = useState<'stills' | 'ai-free-video' | 'ai-local'>('stills')
   const [beautyPreview, setBeautyPreview] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [progress, setProgress] = useState<string | null>(null)
@@ -187,7 +190,11 @@ export default function StoryboardPage(): React.JSX.Element {
     const doc: StoryboardDoc = { title: title || 'Storyboard film', style, width: dims.w, height: dims.h, fps, language, beats }
     setBusy('Rendering your film…'); setProgress(null); setRenderedPath(null); setRenderedTimeline(null)
     try {
-      const res = await window.api.storyboard.render(doc, { photoPath: photoPath ?? undefined, beautifyStrength })
+      const res = await window.api.storyboard.render(doc, {
+        photoPath: photoPath ?? undefined,
+        beautifyStrength,
+        motionEngine: motion === 'stills' ? undefined : motion
+      })
       if (res.ok && res.video) {
         setRenderedPath(res.video.path)
         setRenderedTimeline(res.timeline ?? null)
@@ -237,6 +244,16 @@ export default function StoryboardPage(): React.JSX.Element {
           </select>
           <select value={style} onChange={(e) => setStyle(e.target.value as VideoStyle)} className="rounded-md border border-ink-700 bg-ink-950 px-2 py-1.5 text-sm text-ink-200" title="Visual style">
             {VIDEO_STYLES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select
+            value={motion}
+            onChange={(e) => setMotion(e.target.value as 'stills' | 'ai-free-video' | 'ai-local')}
+            className="rounded-md border border-ink-700 bg-ink-950 px-2 py-1.5 text-sm text-ink-200"
+            title="Real AI motion generates actual video per shot; any failure falls back to the animated still — the render never breaks."
+          >
+            <option value="stills">Scenes: animated stills (default)</option>
+            <option value="ai-free-video">Scenes: REAL AI video — free cloud</option>
+            <option value="ai-local">Scenes: REAL AI video — local GPU</option>
           </select>
           {mode === 'auto' && (
             <label className="text-xs text-ink-400">Target length

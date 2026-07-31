@@ -44,6 +44,11 @@ export default function SettingsPage() {
   const [aiCloudKey, setAiCloudKey] = useState('')
   const [aiLocalEndpoint, setAiLocalEndpoint] = useState('')
   const [aiHasCloudKey, setAiHasCloudKey] = useState(false)
+  const [aiLocalKind, setAiLocalKind] = useState<'comfyui' | 'generic'>('comfyui')
+  const [aiComfyWorkflow, setAiComfyWorkflow] = useState('')
+  const [aiFreeModel, setAiFreeModel] = useState('')
+  const [aiFreeCap, setAiFreeCap] = useState(5)
+  const [aiFreeStatus, setAiFreeStatus] = useState<{ ok: boolean; detail: string } | null>(null)
   const [pixabayKey, setPixabayKey] = useState('')
   const [hasPixabay, setHasPixabay] = useState(false)
   const [hardware, setHardware] = useState<HardwareReport | null>(null)
@@ -64,7 +69,16 @@ export default function SettingsPage() {
       setAiCloudModel(c.cloudModel)
       setAiLocalEndpoint(c.localEndpoint)
       setAiHasCloudKey(c.hasCloudKey)
+      setAiLocalKind(c.localKind)
+      setAiComfyWorkflow(c.comfyWorkflowPath)
+      setAiFreeModel(c.freeCloudModel)
+      setAiFreeCap(c.freeCloudSceneCap)
     })
+    // Live pill for the free-cloud video tier (reachability only; sign-in happens at build time).
+    window.api.ai
+      .engineStatus()
+      .then((s) => setAiFreeStatus({ ok: s.freeCloudAvailable, detail: s.freeCloudDetail }))
+      .catch(() => {})
     window.api.stock.getConfig().then((c) => setHasPixabay(c.hasPixabay))
     window.api.voice.piperStatus().then((s) => setPiperInstalled(s.installed))
     window.api.voice.piperCatalogue().then(setPiperVoices)
@@ -108,7 +122,7 @@ export default function SettingsPage() {
   }
 
   /** Picking a voice also selects it as the active Piper voice for narration. */
-  async function usePiperVoice(voiceId: string): Promise<void> {
+  async function applyPiperVoice(voiceId: string): Promise<void> {
     const s = await window.api.settings.setPiperVoice(voiceId)
     setSettings(s)
   }
@@ -126,6 +140,10 @@ export default function SettingsPage() {
       cloudEndpoint: aiCloudEndpoint || undefined,
       cloudModel: aiCloudModel || undefined,
       localEndpoint: aiLocalEndpoint || undefined,
+      localKind: aiLocalKind,
+      comfyWorkflowPath: aiComfyWorkflow || undefined,
+      freeCloudModel: aiFreeModel || undefined,
+      freeCloudSceneCap: Math.min(30, Math.max(1, Math.round(aiFreeCap) || 5)),
       ...(aiCloudKey ? { cloudApiKey: aiCloudKey } : {})
     })
     setAiCloudKey('')
@@ -614,7 +632,7 @@ export default function SettingsPage() {
                   name="piperVoice"
                   checked={settings?.piperVoiceId === v.id}
                   disabled={!v.installed}
-                  onChange={() => void usePiperVoice(v.id)}
+                  onChange={() => void applyPiperVoice(v.id)}
                   className="accent-gold-500"
                 />
                 {v.label}
@@ -832,11 +850,118 @@ export default function SettingsPage() {
       <div className="mt-8 rounded-lg border border-ink-700 bg-ink-900 p-4">
         <h2 className="text-lg font-medium text-ink-100">AI Video engines (optional)</h2>
         <p className="text-ink-400 text-sm mt-1">
-          The free “Style presets” engine needs nothing here and always works offline. These settings only power the two
-          optional AI-footage engines in the Video Generator. Leave blank to keep using the free engine.
+          The free “Style presets” and “Photo slideshow” engines need nothing here and always work. These settings
+          power the three REAL-motion engines in the Video Generator: free cloud (no key), your own local GPU, and a
+          paid provider. The two free real-motion engines fall back to the slideshow automatically when they can’t
+          run; the paid engine stops with a clear error instead (so it never spends your money on a guess).
         </p>
 
         <div className="mt-4 space-y-4">
+          <div className="rounded-md border border-ink-700 bg-ink-800 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm text-ink-100">🎬 REAL AI video — free cloud (Puter, no API key)</div>
+              {aiFreeStatus && (
+                <span className={`text-[10px] shrink-0 ${aiFreeStatus.ok ? 'text-emerald-400' : 'text-amber-400/80'}`}>
+                  {aiFreeStatus.ok ? '✓ Reachable' : '✗ Unreachable'}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-ink-500">
+              Real generated motion (Google Veo through Puter) with no developer key. Straight truth about “free”: you
+              sign into a <b>free Puter account</b> — a sign-in window pops up during the first build, and it may ask
+              again after you restart the app — and generation draws on that account’s <b>small free monthly
+              allowance</b>. When it runs out, scenes fall back to AI stills and the build log says so. That’s why
+              there is a per-build cap below.
+            </p>
+            {aiFreeStatus && !aiFreeStatus.ok && <p className="text-[11px] text-amber-400/80">{aiFreeStatus.detail}</p>}
+            <input
+              value={aiFreeModel}
+              onChange={(e) => setAiFreeModel(e.target.value)}
+              placeholder="Model (default google/veo-3.1-fast)"
+              className="w-full rounded-md bg-ink-900 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
+            />
+            <label className="flex items-center gap-2 text-[11px] text-ink-400">
+              Real-motion scenes per build (rest use AI stills):
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={aiFreeCap}
+                onChange={(e) => setAiFreeCap(Number(e.target.value))}
+                className="w-20 rounded-md bg-ink-900 border border-ink-700 px-2 py-1 text-sm text-ink-100 outline-none focus:border-gold-500"
+              />
+            </label>
+          </div>
+
+          <div className="rounded-md border border-ink-700 bg-ink-800 p-3 space-y-2">
+            <div className="text-sm text-ink-100">🟢 REAL AI video — local GPU (ComfyUI)</div>
+            {hardware && !hardware.gpu.hasCuda ? (
+              <div className="rounded-md border border-amber-600/40 bg-amber-950/20 p-2">
+                <p className="text-[11px] text-amber-300 font-medium">Requires NVIDIA GPU — not detected on this system</p>
+                <p className="text-[11px] text-ink-400 mt-1">
+                  This PC has {hardware.gpu.name} — these models cannot run on it, not even slowly. You can still
+                  configure everything below now; the engine unlocks by itself the day this PC (or a future one) has a
+                  dedicated NVIDIA card.
+                </p>
+              </div>
+            ) : hardware ? (
+              <p className="text-[11px] text-emerald-400/90">
+                {hardware.gpu.name} ({hardware.gpu.vramGB}GB) detected.
+                {(() => {
+                  const fits = hardware.models.filter(
+                    (m) => m.verdict.canRun && !['sadtalker', 'liveportrait'].includes(m.id)
+                  )
+                  const best = fits.sort((a, b) => b.minVramGB - a.minVramGB)[0]
+                  return best ? ` Recommended model for this card: ${best.label}.` : ''
+                })()}
+              </p>
+            ) : null}
+            <p className="text-[11px] text-ink-500">
+              Free per video and fully private, on your own graphics card. One-time setup: install{' '}
+              <b>ComfyUI</b> (comfy.org), download a video model that fits your card’s memory — 8GB: AnimateDiff or
+              Wan 2.1 (1.3B) · 12GB: LTX-Video / LTX-2 · 16GB: <b>LTX-2.3 (recommended)</b> · 24GB+: Wan 2.2 or
+              HunyuanVideo 1.5 — then start ComfyUI and the app finds it at the address below.
+            </p>
+            <div className="flex gap-2">
+              <select
+                value={aiLocalKind}
+                onChange={(e) => setAiLocalKind(e.target.value as 'comfyui' | 'generic')}
+                className="rounded-md bg-ink-900 border border-ink-700 px-2 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
+              >
+                <option value="comfyui">ComfyUI (recommended)</option>
+                <option value="generic">Custom server (legacy /generate contract)</option>
+              </select>
+              <input
+                value={aiLocalEndpoint}
+                onChange={(e) => setAiLocalEndpoint(e.target.value)}
+                placeholder={aiLocalKind === 'comfyui' ? 'ComfyUI URL (default http://127.0.0.1:8188)' : 'Server URL (default http://127.0.0.1:7860)'}
+                className="flex-1 rounded-md bg-ink-900 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
+              />
+            </div>
+            {aiLocalKind === 'comfyui' && (
+              <>
+                <input
+                  value={aiComfyWorkflow}
+                  onChange={(e) => setAiComfyWorkflow(e.target.value)}
+                  placeholder="Workflow file path (optional — blank = built-in LTX starter)"
+                  className="w-full rounded-md bg-ink-900 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
+                />
+                <p className="text-[10px] text-ink-600">
+                  The built-in starter workflow targets LTX video models. If your install uses different model files,
+                  export YOUR working workflow in ComfyUI via “Save (API format)”, replace the prompt text with{' '}
+                  {'{{PROMPT}}'} (also available: {'{{WIDTH}} {{HEIGHT}} {{FRAMES}} {{SEED}}'}), and paste the file’s
+                  path here. Swapping to Wan or Hunyuan later is just a different workflow file — no app update needed.
+                </p>
+              </>
+            )}
+            {aiLocalKind === 'generic' && (
+              <p className="text-[10px] text-ink-600">
+                Legacy contract for a server you built yourself: GET /health, POST /generate{' '}
+                {'{ prompt, seconds, width, height }'} → video bytes or a URL.
+              </p>
+            )}
+          </div>
+
           <div className="rounded-md border border-ink-700 bg-ink-800 p-3 space-y-2">
             <div className="text-sm text-ink-100">💳 Cloud AI footage (paid — your key)</div>
             <p className="text-[11px] text-ink-500">
@@ -863,21 +988,7 @@ export default function SettingsPage() {
               placeholder={aiHasCloudKey ? 'API key saved — type to replace' : 'API key'}
               className="w-full rounded-md bg-ink-900 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
             />
-          </div>
-
-          <div className="rounded-md border border-ink-700 bg-ink-800 p-3 space-y-2">
-            <div className="text-sm text-ink-100">🟢 Local AI footage (free — needs a GPU)</div>
-            <p className="text-[11px] text-ink-500">
-              Free per video, but you must run a local text-to-video server on a capable GPU (e.g. ComfyUI/AnimateDiff or
-              Stable Video Diffusion). This is not portable and won’t run on weak devices. Enter your server’s base URL.
-              Contract: GET /health, POST /generate {'{ prompt, seconds, width, height }'} → video bytes or a URL.
-            </p>
-            <input
-              value={aiLocalEndpoint}
-              onChange={(e) => setAiLocalEndpoint(e.target.value)}
-              placeholder="Local server URL (default http://127.0.0.1:7860)"
-              className="w-full rounded-md bg-ink-900 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
-            />
+            <p className="text-[10px] text-ink-600">Your key is stored locally, encrypted, and never leaves this PC except to call your provider.</p>
           </div>
 
           <button

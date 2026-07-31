@@ -26,7 +26,9 @@ import type { TimelineDoc } from '../../shared/types'
 import { ffprobeVideoSize } from './ffmpeg'
 import { generateCloudFootage } from './aiCloud'
 import { estimateReadingSeconds, writeSilentTrack } from './silentTrack'
-import { generateLocalFootage } from './aiLocal'
+import { detectLocal, generateLocalClip } from './aiLocal'
+import { generatePuterClip, puterSceneCap } from './puter'
+import { assembleSceneBackground, generateMotionSceneAssets, type MotionClipGenerator } from './videoEngine'
 import { extractCards, extractScenePrompts } from './render'
 import { generateImage, sceneImagePrompt } from '../image'
 import type { LookEngine, VideoStyle } from '../../shared/types'
@@ -134,30 +136,115 @@ export async function buildVideoFromScript(
 
     const engine = options.engine ?? 'presets'
     // AI engines generate footage from a prompt, then we lay the narration over it.
-    // They throw an instructive error if not configured/detected — the free preset
-    // engine (default) always works offline.
+    // The REAL-motion tiers (ai-free-video, ai-local) degrade gracefully per scene to
+    // AI stills and never fail the build; the paid ai-cloud tier keeps its original
+    // contract (throws instructive setup errors). The free preset engine (default)
+    // always works offline.
     let aiFootage: string | undefined
     // FREE per-scene AI visuals: generate a unique image per script section and animate
     // them. Keyless/no-install; needs internet. Any failure falls back to the animated
     // look below so the build never breaks.
     let aiImages: string[] | undefined
+
+    // Scene prompts shared by every per-scene engine: prefer the writer's OWN
+    // [bracketed cinematic directions] so visuals FOLLOW the script shot-for-shot;
+    // only when the script has none are scenes derived from the prose. Explicit shots
+    // are honoured up to 30; prose-derived scenes scale to length (~1 per 45s, 4–16).
+    const deriveScenes = (): string[] => {
+      const bracketed = extractScenePrompts(body)
+      return bracketed.length
+        ? bracketed.slice(0, 30)
+        : extractCards(body, title).slice(0, Math.min(16, Math.max(4, Math.round(durationSec / 45))))
+    }
+
     if (engine === 'ai-cloud') {
       onProgress?.('Generating AI footage (cloud)…')
       aiFootage = await generateCloudFootage({ title, body, durationSec, style: options.style, resolution: options.resolution })
-    } else if (engine === 'ai-local') {
-      onProgress?.('Generating AI footage (local GPU)…')
-      aiFootage = await generateLocalFootage({ title, body, durationSec, style: options.style, resolution: options.resolution })
+    } else if (engine === 'ai-free-video' || engine === 'ai-local') {
+      const style = options.style ?? 'cinematic'
+      const scenes = deriveScenes()
+      const layout = computeLayout(options.resolution, options.aspect)
+      const isCloudFree = engine === 'ai-free-video'
+      const secondsPerScene = Math.max(2, durationSec / Math.max(1, scenes.length))
+      // Generation size: models generate best around 720p-class frames; the final
+      // render upscales to the chosen resolution. Long side 1280, short side scaled
+      // by the project aspect (16:9 → 1280×720, 9:16 → 720×1280), snapped to /32.
+      const snap32 = (n: number): number => Math.max(256, Math.round(n / 32) * 32)
+      const genW = snap32(layout.w >= layout.h ? 1280 : (1280 * layout.w) / layout.h)
+      const genH = snap32(layout.w >= layout.h ? (1280 * layout.h) / layout.w : 1280)
+
+      // Local tier: check the server ONCE up front so the user gets one clear reason
+      // instead of N per-scene failures. (The free-cloud tier is checked per scene —
+      // its failure modes, like the allowance running out, only appear when generating.)
+      let motionCap = isCloudFree ? puterSceneCap() : Infinity
+      if (!isCloudFree && !(await detectLocal())) {
+        motionCap = 0
+        onProgress?.(
+          '⚠ Local AI video server not detected (Settings → AI Video explains the ComfyUI setup) — this build uses AI stills instead.'
+        )
+      }
+      if (motionCap > 0) {
+        onProgress?.(
+          isCloudFree
+            ? `REAL AI video (free cloud): ${scenes.length} scenes — real motion for up to ${Math.min(motionCap, scenes.length)} of them…`
+            : `REAL AI video (local GPU): generating ${scenes.length} scene clips…`
+        )
+      }
+      const generator: MotionClipGenerator = isCloudFree
+        ? (s) => generatePuterClip({ prompt: s.prompt, signal: renderSessionSignal(), onStatus: onProgress })
+        : (s) => generateLocalClip({ ...s, signal: renderSessionSignal(), onStatus: onProgress })
+      let seam: Awaited<ReturnType<typeof generateMotionSceneAssets>>
+      try {
+        seam = await generateMotionSceneAssets(generator, {
+          scenes,
+          title,
+          style,
+          secondsPerScene,
+          width: genW,
+          height: genH,
+          scratch,
+          motionCap,
+          // The caller's own images (e.g. Scene Studio's curated stills) are the
+          // preferred per-scene fallback — never silently discarded for fresh ones.
+          fallbackImages: options.images,
+          engineLabel: isCloudFree ? 'free cloud' : 'local GPU',
+          signal: renderSessionSignal(),
+          onProgress
+        })
+      } catch (err) {
+        // A user Stop must surface as the friendly canonical cancel, not a failure.
+        if (err instanceof Error && err.message === 'stopped') throwIfCancelled()
+        throw err
+      }
+      const { assets, motionCount, stoppedReason } = seam
+      const firstStill = assets.find((a) => a.kind === 'image')
+      if (firstStill) options.onPreview?.(firstStill.path)
+      if (motionCount > 0) {
+        // totalSeconds (not secondsPerScene × count): even if a scene was dropped,
+        // the assembled background must cover the whole narration — render.ts uses
+        // -shortest, so a short background would truncate the video.
+        aiFootage = await assembleSceneBackground({ assets, layout, totalSeconds: durationSec, scratch, onProgress })
+        onProgress?.(
+          motionCount === scenes.length
+            ? `✓ All ${scenes.length} scenes are REAL generated motion (${isCloudFree ? 'free cloud' : 'local GPU'}).`
+            : `✓ ${motionCount}/${scenes.length} scenes got REAL generated motion; the rest are AI stills.`
+        )
+      }
+      if (!aiFootage) {
+        const stills = assets.filter((a) => a.kind === 'image').map((a) => a.path)
+        if (stills.length) {
+          aiImages = stills
+          onProgress?.(
+            `⚠ No real AI motion this time${stoppedReason ? ` — ${stoppedReason}` : ''} — built as a photo slideshow instead.`
+          )
+        } else {
+          onProgress?.('⚠ Real AI video and AI stills both unavailable — using the animated look instead.')
+        }
+      }
     } else if (engine === 'ai-free') {
       const style = options.style ?? 'cinematic'
-      // Prefer the writer's OWN [bracketed cinematic directions] as the scene prompts so the
-      // images FOLLOW the script shot-for-shot. Only when the script has none do we derive
-      // scenes from the prose. Explicit shots are honoured up to 30 (each is an intended
-      // distinct image); prose-derived scenes scale to length (~1 per 45s, 4–16).
-      const bracketed = extractScenePrompts(body)
-      const scenes = bracketed.length
-        ? bracketed.slice(0, 30)
-        : extractCards(body, title).slice(0, Math.min(16, Math.max(4, Math.round(durationSec / 45))))
-      if (bracketed.length) {
+      const scenes = deriveScenes()
+      if (extractScenePrompts(body).length) {
         onProgress?.(`Found ${scenes.length} scene directions in your script — generating one image each…`)
       }
       const made: string[] = []
@@ -220,10 +307,14 @@ export async function buildVideoFromScript(
       musicPath: options.musicPath,
       soundEffects: options.soundEffects,
       style: options.style,
-      backgroundVideo: stockBg,
-      // Background priority: AI cloud/local footage clip → free per-scene AI images →
-      // the user's own images. Each goes through the Ken-Burns slideshow path.
-      images: aiFootage ? [aiFootage] : (aiImages ?? options.images),
+      // Real footage IS the background video (AI cloud/local clip or the assembled
+      // per-scene motion background); stock B-roll applies only to presets. It must
+      // NEVER ride through `images` — that path is the Ken-Burns zoompan built for
+      // stills, and feeding it an MP4 explodes every video frame into d more frames
+      // (the same class of frame-explosion bug documented in makeSlideshow).
+      backgroundVideo: aiFootage ?? stockBg,
+      // Still images: free per-scene AI images → the user's own images.
+      images: aiImages ?? options.images,
       onProgress,
       onPreview: options.onPreview
     })

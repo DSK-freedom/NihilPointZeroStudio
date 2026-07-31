@@ -28,6 +28,11 @@ IF A CHANGE DOESN'T SHOW ... check the BUILD BADGE. If it's old: you launched a 
 Hands-on: Video Studio -> pick/paste a script -> set Look/Voice/Format/Resolution -> 🎬 Build Video
 
 ------------------------------  KEY CHOICES WHEN BUILDING  ---------------------------------------
+ENGINE (Video look) Style presets (free, offline) · Photo slideshow (AI images) (free, online, no key) ·
+                    REAL AI video — free cloud (free Puter sign-in; small monthly allowance; up to 5
+                    scenes/build get real motion, rest = AI stills; minutes per scene) · AI footage
+                    (cloud, paid, your key) · REAL AI video — local GPU (ComfyUI; needs NVIDIA —
+                    greyed out on this PC until the card exists)
 LOOK (template) .. Clean (plain) · News (lower-thirds) · Cinematic (graded+grain+bars) · Bold (punchy)
 FORMAT (shape) ... 16:9 YouTube · 9:16 Shorts/Reels/TikTok · 1:1 square
 VOICE ............ Your own (🎙 Voice studio = best) · Natural (Piper, installed) · Windows (basic)
@@ -47,6 +52,12 @@ Download as ..... YouTube / MP4 / H.265 / MOV / WebM   ·   Trim = cut   ·   Sa
 🎞 Storyboard Director . direct SHOT BY SHOT: Auto (paste script, AI decides) OR Guided (write beats). Per shot:
    seconds + scene + narration + caption + motion + crossfade + SUBJECT (AI scene / your photo / your clip / AI person)
    + SOUNDS (music/SFX/your audio, each with gain+fades). Beautify slider for your photo. -> renders + opens in Timeline
+🎥 Presenter Studio . YOU present, 3 modes: Real Video (upload your narration video -> it cuts to theme
+   b-roll + AI scenes on your voice) · Photo (your photo presents) · ✨ Living Picture (grafts your video's
+   moving part onto your best picture). Its AI scenes can use REAL AI video (free cloud) — your own
+   footage/photo is never AI-generated.
+⏺ Recorder ...... record your webcam OR your screen in-app (up to 8K, noise suppression, OBS virtual
+   camera works) -> saved into Video Studio, ready as your Presenter narration video
 ✂ Timeline Editor . line up clips, crossfades, timed text, separate audio track w/ gain+fades, live waveform -> one MP4
 📦 Batch (AI Command) . paste many topics (1 per line) -> a video for each
 Sound Studio (DJ) . make music-only tracks, mix over video, auto-duck + peak limiter (no clipping), "📊 Show waveform"
@@ -60,7 +71,8 @@ Charts .......... live PSX by symbol (line+SMA/RSI) OR import your OHLC file (ca
 
 ------------------------------  FREE / INTERNET / SETUP  -----------------------------------------
 FREE + OFFLINE ...... building, edits, YOUR voice + Natural voice, captions, music, trim, watermark, export
-FREE + INTERNET ..... AI writing/images/visuals, put-me-in-scene, online music removal (keys built in)
+FREE + INTERNET ..... AI writing/images/visuals, put-me-in-scene, online music removal (keys built in),
+                      REAL AI video — free cloud (one free Puter sign-in; small monthly allowance)
 ALREADY SET UP ...... Natural voice (Piper) + offline Demucs installed on THIS PC; keys baked in
 
 ------------------------------  IF STUCK  -------------------------------------------------------
@@ -74,8 +86,13 @@ PSX portal down ......... the app now shows your last SAVED data with an amber "
 AI stops answering ...... the old free online AI went PAID (their change). The app now falls back to
                           Ollama on your own PC automatically. See Settings -> "Known Issues" for the
                           exact error + time, or nihilpointzero-data\logs\ai-errors.log
-No AI motion video ...... needs a dedicated NVIDIA card; this PC's graphics are inside the processor.
-                          Use "Photo slideshow (AI images)" or stock footage. Settings shows your card.
+Want real AI motion ..... pick "REAL AI video — free cloud" (free Puter sign-in on the first build; small
+                          monthly allowance; up to 5 scenes/build, minutes each; runs out -> AI stills,
+                          reason in the build log — nothing breaks). LOCAL AI video still needs an NVIDIA
+                          card this PC doesn't have — the option is visible but greyed out; you can
+                          pre-configure it in Settings -> AI Video for a future PC.
+A tab crashes ........... contained to that tab — the rest keeps working. Click "Try this tab again".
+                          The crash is logged in Settings -> "Known Issues" so it's provable.
 Robotic voice ........... use 🎙 Voice studio or the Natural voice
 Work "gone" on new PC ... you copied only the .exe — copy the WHOLE folder
 

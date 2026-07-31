@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canRunModel, describeGpu, looksIntegrated, VIDEO_MODELS, type GpuInfo } from './gpu'
+import { canRunModel, describeGpu, looksIntegrated, recommendVideoModel, VIDEO_MODELS, type GpuInfo } from './gpu'
 
 const model = (id: string) => VIDEO_MODELS.find((m) => m.id === id)!
 
@@ -59,6 +59,36 @@ describe('canRunModel', () => {
   it('never claims a non-NVIDIA card works, however much memory it reports', () => {
     const bigIntegrated: GpuInfo = { ...intelUhd, vramGB: 32 }
     expect(canRunModel(bigIntegrated, model('cogvideox-2b')).canRun).toBe(false)
+  })
+})
+
+describe('recommendVideoModel', () => {
+  it('recommends nothing on this machine (no CUDA)', () => {
+    expect(recommendVideoModel(intelUhd)).toBeNull()
+  })
+
+  it('recommends nothing on an integrated chip even with a big reported memory', () => {
+    expect(recommendVideoModel({ ...intelUhd, vramGB: 32 })).toBeNull()
+  })
+
+  it('recommends the LTX tier for a 12GB card', () => {
+    expect(recommendVideoModel(rtx3060)?.id).toBe('ltx-video')
+  })
+
+  it('recommends LTX-2.3 for a 16GB card', () => {
+    const rtx4080: GpuInfo = { name: 'NVIDIA GeForce RTX 4080', vramGB: 16, hasCuda: true, integrated: false, totalRamGB: 64 }
+    expect(recommendVideoModel(rtx4080)?.id).toBe('ltx-2.3')
+  })
+
+  it('recommends a 24GB heavyweight for a 4090', () => {
+    const rtx4090: GpuInfo = { name: 'NVIDIA GeForce RTX 4090', vramGB: 24, hasCuda: true, integrated: false, totalRamGB: 64 }
+    expect(recommendVideoModel(rtx4090)?.minVramGB).toBe(24)
+  })
+
+  it('never recommends a talking-photo tool as the motion model', () => {
+    const tiny: GpuInfo = { name: 'NVIDIA GeForce RTX 3050', vramGB: 8, hasCuda: true, integrated: false, totalRamGB: 16 }
+    const rec = recommendVideoModel(tiny)
+    expect(rec && ['sadtalker', 'liveportrait'].includes(rec.id)).toBe(false)
   })
 })
 

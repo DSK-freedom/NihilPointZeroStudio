@@ -32,6 +32,9 @@ export default function PresenterPage(): React.JSX.Element {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [style, setStyle] = useState<VideoStyle>('cinematic')
+  // AI scene beats: classic animated stills, or REAL AI video (free cloud / local GPU).
+  // Your own footage/photo beats are never AI-generated; failures fall back to stills.
+  const [motion, setMotion] = useState<'stills' | 'ai-free-video' | 'ai-local'>('stills')
   const [presenterPath, setPresenterPath] = useState('')
   const [graftPhotoPath, setGraftPhotoPath] = useState('')
   const [region, setRegion] = useState<GraftRegion>(DEFAULT_REGION)
@@ -105,7 +108,8 @@ export default function PresenterPage(): React.JSX.Element {
         presenterPath,
         graftPhotoPath: mode === 'graft' ? graftPhotoPath : undefined,
         graftRegion: mode === 'graft' ? region : undefined,
-        style
+        style,
+        motionEngine: motion === 'stills' ? undefined : motion
       })
       if (res.ok) { setNote('Presenter video built ✓ — open Video Studio to preview, voice-check, export, or the Timeline to fine-tune.'); toast('Presenter video built ✓', 'success') }
       else setError(res.error ?? 'Build failed.')
@@ -144,6 +148,16 @@ export default function PresenterPage(): React.JSX.Element {
         <label className="ml-auto text-xs text-ink-400">Look</label>
         <select value={style} onChange={(e) => setStyle(e.target.value as VideoStyle)} className="rounded-md border border-ink-700 bg-ink-950 px-2 py-1 text-sm text-ink-200">
           {VIDEO_STYLES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select
+          value={motion}
+          onChange={(e) => setMotion(e.target.value as 'stills' | 'ai-free-video' | 'ai-local')}
+          className="rounded-md border border-ink-700 bg-ink-950 px-2 py-1 text-sm text-ink-200"
+          title="Applies to the AI scene beats only — your own footage/photo stays untouched. Failures fall back to animated stills; the build never breaks."
+        >
+          <option value="stills">AI scenes: animated stills</option>
+          <option value="ai-free-video">AI scenes: REAL video — free cloud</option>
+          <option value="ai-local">AI scenes: REAL video — local GPU</option>
         </select>
       </div>
 

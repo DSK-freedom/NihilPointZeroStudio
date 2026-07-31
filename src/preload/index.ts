@@ -108,6 +108,8 @@ const api = {
       style?: import('../shared/types').VideoStyle
       everyN?: number
       windowsVoice?: boolean
+      /** REAL generated motion for the AI scene beats (free cloud or local GPU). */
+      motionEngine?: 'ai-free-video' | 'ai-local'
     }): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; error?: string }> =>
       ipcRenderer.invoke(IPC.presenterBuild, params),
     // One composited "living picture" frame for the graft region controls (instant feedback).
@@ -134,11 +136,14 @@ const api = {
   hardware: {
     check: (): Promise<import('../shared/types').HardwareReport> => ipcRenderer.invoke(IPC.hardwareCheck)
   },
-  // Known Issues panel: the AI failure log (read-only — this panel never deletes it).
+  // Known Issues panel: the failure log. Append + read only — nothing here deletes it.
   aiErrors: {
     list: (limit?: number): Promise<import('../shared/types').AiErrorEntry[]> =>
       ipcRenderer.invoke(IPC.aiErrorsList, limit),
-    reveal: (): Promise<void> => ipcRenderer.invoke(IPC.aiErrorsReveal)
+    reveal: (): Promise<void> => ipcRenderer.invoke(IPC.aiErrorsReveal),
+    /** Called by ErrorBoundary when a tab crashes, so UI failures are provable too. */
+    recordUi: (x: { tab: string; message: string; stack?: string }): Promise<void> =>
+      ipcRenderer.invoke(IPC.aiErrorsRecordUi, x)
   },
   advisor: {
     send: (req: AdvisorRequest) => ipcRenderer.invoke(IPC.advisorSend, req),
@@ -262,7 +267,7 @@ const api = {
       ipcRenderer.invoke(IPC.storyboardPlan, params),
     render: (
       doc: import('../shared/types').StoryboardDoc,
-      opts?: { photoPath?: string; beautifyStrength?: number; windowsVoice?: boolean }
+      opts?: { photoPath?: string; beautifyStrength?: number; windowsVoice?: boolean; motionEngine?: 'ai-free-video' | 'ai-local' }
     ): Promise<{
       ok: boolean
       video?: import('../shared/types').VideoJob
@@ -430,8 +435,16 @@ const api = {
   },
   ai: {
     engineStatus: (): Promise<import('../shared/types').AiEngineStatus> => ipcRenderer.invoke(IPC.aiEngineStatus),
-    getConfig: (): Promise<{ cloudEndpoint: string; cloudModel: string; localEndpoint: string; hasCloudKey: boolean }> =>
-      ipcRenderer.invoke(IPC.aiGetConfig),
+    getConfig: (): Promise<{
+      cloudEndpoint: string
+      cloudModel: string
+      localEndpoint: string
+      localKind: 'comfyui' | 'generic'
+      comfyWorkflowPath: string
+      freeCloudModel: string
+      freeCloudSceneCap: number
+      hasCloudKey: boolean
+    }> => ipcRenderer.invoke(IPC.aiGetConfig),
     setConfig: (partial: import('../shared/types').AiVideoConfig): Promise<{ ok: boolean }> =>
       ipcRenderer.invoke(IPC.aiSetConfig, partial),
     // Fires when the chosen paid/local AI failed and the free AI answered instead

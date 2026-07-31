@@ -42,15 +42,26 @@ const ENGINE_INFO: Record<LookEngine, { label: string; badge: string; blurb: str
       'Generates a real AI image per scene, then pans and zooms across them. A moving photo slideshow — ' +
       'not filmed motion. Needs internet; no key or install.'
   },
+  'ai-free-video': {
+    label: 'REAL AI video — free cloud',
+    badge: '🟢 Free · online · no API key',
+    blurb:
+      'Real generated motion per scene (Google Veo via Puter) — not a slideshow. Needs a free Puter account: ' +
+      'a sign-in window appears on the first build (and may ask again after an app restart). The free allowance ' +
+      'is small, so a few scenes per build get real motion (adjustable in Settings) and the rest use AI stills. ' +
+      'Any failure falls back to the slideshow and says why — the build never breaks.'
+  },
   'ai-cloud': {
     label: 'AI footage (cloud)',
     badge: '💳 Paid · your key',
     blurb: 'Real AI-generated footage from a paid provider you supply a key for.'
   },
   'ai-local': {
-    label: 'AI motion video (local GPU)',
+    label: 'REAL AI video — local GPU (ComfyUI)',
     badge: '🟢 Free · needs NVIDIA GPU',
-    blurb: 'Real generated motion from a text prompt, on your own graphics card. Needs a dedicated NVIDIA card.'
+    blurb:
+      'Real generated motion on your own graphics card through a local ComfyUI server (LTX and friends). ' +
+      'Free per video, fully private. Needs a dedicated NVIDIA card + one-time setup in Settings → AI Video.'
   }
 }
 
@@ -100,16 +111,6 @@ export default function VideoPage() {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
 
-  // Persist the paste/write-your-own script editor so switching tabs never loses it.
-  // Skip restore when navigating in from "Send to Video Generator" (that flow supplies
-  // its own content). Memoized ref → no autosave save-loop.
-  const editorPersist = useMemo(() => ({ title, body }), [title, body])
-  useAutosave('video-editor', editorPersist, (v) => {
-    if (wantScriptPad) return
-    if (v.title != null) setTitle(v.title)
-    if (v.body != null) setBody(v.body)
-  })
-
   const [studioView, setStudioView] = useState<'build' | 'sound' | 'director'>('build')
   const [resolution, setResolution] = useState<VideoResolution>('1080p')
   const [aspect, setAspect] = useState<VideoAspect>('16:9')
@@ -127,6 +128,19 @@ export default function VideoPage() {
   // Falls back to the animated look automatically if the image service is unreachable.
   const [engine, setEngine] = useState<LookEngine>('ai-free')
   const [style, setStyle] = useState<VideoStyle>('cinematic')
+
+  // Persist the paste/write-your-own script editor AND the chosen engine/style so
+  // switching tabs never loses either (the engine used to silently reset to the
+  // default on every visit). Skip content restore when navigating in from "Send to
+  // Video Generator" (that flow supplies its own content). Memoized ref → no autosave loop.
+  const editorPersist = useMemo(() => ({ title, body, engine, style }), [title, body, engine, style])
+  useAutosave('video-editor', editorPersist, (v) => {
+    if (v.engine != null && v.engine in ENGINE_INFO) setEngine(v.engine)
+    if (typeof v.style === 'string' && v.style) setStyle(v.style as VideoStyle)
+    if (wantScriptPad) return
+    if (v.title != null) setTitle(v.title)
+    if (v.body != null) setBody(v.body)
+  })
   const [images, setImages] = useState<string[]>([])
   const [useStock, setUseStock] = useState(false)
   const [hasStockKey, setHasStockKey] = useState(false)
@@ -863,31 +877,52 @@ export default function VideoPage() {
                 {(Object.keys(ENGINE_INFO) as LookEngine[]).map((id) => {
                   const info = ENGINE_INFO[id]
                   const active = engine === id
+                  // The local tier is hardware-gated: VISIBLE but greyed without an NVIDIA
+                  // card, so the option is ready the day the hardware exists — never hidden.
+                  // A DETECTED server always wins the gate: it may be a remote/other-PC
+                  // ComfyUI, which works fine regardless of this machine's own GPU.
+                  const gpuMissing = id === 'ai-local' && !!hardware && !hardware.gpu.hasCuda && !aiStatus?.localDetected
                   const ready =
                     id === 'presets' ||
                     id === 'ai-free' ||
+                    (id === 'ai-free-video' && aiStatus?.freeCloudAvailable) ||
                     (id === 'ai-cloud' && aiStatus?.cloudConfigured) ||
                     (id === 'ai-local' && aiStatus?.localDetected)
+                  const statusLine =
+                    id === 'ai-free'
+                      ? '✓ Ready — just needs internet'
+                      : id === 'ai-free-video'
+                        ? ready
+                          ? '✓ Ready — free Puter sign-in on the first build'
+                          : (aiStatus?.freeCloudDetail ?? 'Checking the free video service…')
+                        : id === 'ai-cloud'
+                          ? ready
+                            ? '✓ Configured — ready'
+                            : 'Not set up yet — configure in Settings → AI Video'
+                          : id === 'ai-local'
+                            ? ready
+                              ? '✓ ComfyUI server detected — ready'
+                              : gpuMissing
+                                ? 'Requires NVIDIA GPU — not detected on this system'
+                                : 'Server not running — see Settings → AI Video for setup'
+                            : null
                   return (
                     <button
                       key={id}
                       onClick={() => setEngine(id)}
                       className={`w-full text-left rounded-md border px-3 py-2 transition-colors ${
                         active ? 'border-gold-500 bg-gold-500/5' : 'border-ink-700 hover:border-ink-500'
-                      }`}
+                      } ${gpuMissing ? 'opacity-60' : ''}`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm text-ink-100">{info.label}</span>
                         <span className="text-[10px] text-ink-400 shrink-0">{info.badge}</span>
                       </div>
                       <p className="text-[10px] text-ink-500 mt-0.5">{info.blurb}</p>
-                      {id !== 'presets' && id !== 'ai-free' && (
+                      {statusLine && (
                         <p className={`text-[10px] mt-0.5 ${ready ? 'text-emerald-400' : 'text-amber-400/80'}`}>
-                          {ready ? '✓ Configured — ready' : 'Not set up yet — configure in Settings → AI Video'}
+                          {statusLine}
                         </p>
-                      )}
-                      {id === 'ai-free' && (
-                        <p className="text-[10px] mt-0.5 text-emerald-400">✓ Ready — just needs internet</p>
                       )}
                     </button>
                   )
@@ -900,19 +935,34 @@ export default function VideoPage() {
                 </p>
               )}
               {/* Hardware honesty: say plainly, before a build is started, whether this PC
-                  can do AI motion video at all — instead of failing halfway through. */}
-              {engine === 'ai-local' && hardware && !hardware.gpu.hasCuda && (
+                  can do local AI motion video at all — instead of failing halfway through.
+                  Hidden when a server IS detected (it may be a remote/other-PC ComfyUI). */}
+              {engine === 'ai-local' && hardware && !hardware.gpu.hasCuda && !aiStatus?.localDetected && (
                 <div className="mt-1.5 rounded-md border border-amber-600/50 bg-amber-950/20 p-2">
-                  <div className="text-[11px] text-amber-300 font-medium">This PC can’t run AI motion video</div>
+                  <div className="text-[11px] text-amber-300 font-medium">
+                    Requires NVIDIA GPU — not detected on this system
+                  </div>
                   <p className="text-[10px] text-ink-300 mt-1 leading-relaxed">
-                    {hardware.models.find((m) => m.id === 'cogvideox-2b')?.verdict.message}
+                    {hardware.models.find((m) => m.id === 'ltx-video')?.verdict.message ?? hardware.summary}
                   </p>
-                  <button
-                    onClick={() => setEngine('ai-free')}
-                    className="mt-1.5 rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 text-[11px] font-medium px-2.5 py-1"
-                  >
-                    Use Photo slideshow instead
-                  </button>
+                  <p className="text-[10px] text-ink-400 mt-1 leading-relaxed">
+                    The option stays here (configure it in Settings → AI Video) so it unlocks the day this PC has
+                    the card. For real motion today, try “REAL AI video — free cloud” instead.
+                  </p>
+                  <div className="mt-1.5 flex gap-2">
+                    <button
+                      onClick={() => setEngine('ai-free-video')}
+                      className="rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 text-[11px] font-medium px-2.5 py-1"
+                    >
+                      Use free cloud real video
+                    </button>
+                    <button
+                      onClick={() => setEngine('ai-free')}
+                      className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-[11px] px-2.5 py-1"
+                    >
+                      Use Photo slideshow
+                    </button>
+                  </div>
                 </div>
               )}
               {engine === 'ai-free' && (
@@ -921,11 +971,19 @@ export default function VideoPage() {
                   service is busy it falls back to the animated look so the build never breaks.
                 </p>
               )}
+              {engine === 'ai-free-video' && (
+                <p className="text-[10px] text-emerald-400/90 mt-1.5">
+                  Honest expectations: each real-motion scene takes minutes to generate and draws on your free Puter
+                  allowance. The status log always says which scenes got real motion and why any fell back to stills.
+                </p>
+              )}
             </div>
 
-            {engine === 'ai-free' && (
+            {(engine === 'ai-free' || engine === 'ai-free-video' || engine === 'ai-local') && (
               <div>
-                <label className="text-xs text-ink-400">Visual style (guides the AI images)</label>
+                <label className="text-xs text-ink-400">
+                  Visual style (guides the AI {engine === 'ai-free' ? 'images' : 'video'})
+                </label>
                 <select
                   value={style}
                   onChange={(e) => setStyle(e.target.value as VideoStyle)}

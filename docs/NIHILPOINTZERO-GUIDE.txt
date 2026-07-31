@@ -10,13 +10,14 @@ CONTENTS
    3. The tabs (what each is for) + Ctrl-K + autosave
    4. Make a video — step by step
    5. The build choices: Look, Format (shape), Resolution
-   6. Voice — 3 ways (yours is best)
+   6. Voice — 4 ways (yours is best)
    7. Captions / subtitles
    8. Music & the DJ studio (make music, background, remove/replace, separate, waveform)
    9. Scene Studio (storyboard + put yourself in a scene + Beautify)
   9b. Storyboard Director (direct it shot by shot)
   9c. Timeline Editor (line clips up by hand)
   9d. Live PSX Data & NCCPL Analysis (real numbers → video)
+  9e. Presenter Studio (put YOU in the video) + the ⏺ Recorder
   10. Thumbnails · Logo/brand · Publish to YouTube · Batch
   11. Free vs Internet vs one-time Setup
   12. FAQ (the dumb questions)
@@ -25,6 +26,7 @@ CONTENTS
   15. Pro tips — get the best results
   16. Everything this studio can do (quick index)
   17. NEW: the AI outage, free music, the trim bar, and what this PC can't do
+  18. NEW: REAL AI video — free cloud today, local GPU when the hardware exists
 
 -------------------------------------------------------------------------------
 1. WHAT THIS IS / FIRST LAUNCH
@@ -88,6 +90,11 @@ Copy the folder to another PC and:
   🎞 Storyboard Director - direct a video SHOT BY SHOT: each shot has its own length,
                     its own image prompt, optional narration/caption, camera motion,
                     a crossfade, and you can drop YOUR photo into a shot. (See §9b.)
+  🎥 Presenter Studio - put YOU in the video, three ways: Real Video (upload a video of
+                    yourself narrating), Photo (your photo presents), or ✨ Living
+                    Picture (your video's motion grafted onto your best picture). (§9e.)
+  ⏺ Recorder      - record your webcam OR your screen inside the app (up to 8K, noise
+                    suppression, OBS virtual camera). Saves into Video Studio. (§9e.)
   ✂ Timeline Editor - a simple non-linear editor: line up video clips on a track, set
                     crossfades, add text overlays and a separate audio track. (See §9c.)
   Charts          - candlestick + SMA/RSI charts. Load LIVE PSX prices by symbol, or
@@ -100,9 +107,10 @@ Copy the folder to another PC and:
   Advisor         - a chat that knows your work.
   Library         - everything you saved.
   Activity Log    - history of actions.
-  Settings        - AI choice, keys, natural-voice download, music separation, your
-                    YouTube channel, phone access, and a "Setup health" panel (green
-                    dots = ready).
+  Settings        - AI choice, keys, natural-voice download, music separation, AI Video
+                    (the real-motion video engines, §18), your YouTube channel, phone
+                    access, a "Setup health" panel (green dots = ready), and the
+                    "Known Issues" log (AI failures AND tab crashes, provable).
 
   CTRL-K: press it anywhere, type a tab name, Enter — instant navigation.
   AUTOSAVE: your work saves itself and comes back after you close/reopen. A
@@ -181,6 +189,27 @@ show progress; the finished video lands on the right with all its tools.
 -------------------------------------------------------------------------------
 5. THE BUILD CHOICES
 -------------------------------------------------------------------------------
+VIDEO LOOK (engine) — what makes the visuals. Five tiers:
+   Style presets              - free, offline. Styled text, backgrounds and your own
+                                images. Always works, no key.
+   Photo slideshow (AI images) - free, online, no key. A real AI image per scene,
+                                panned and zoomed. A moving photo slideshow — not
+                                filmed motion.
+   REAL AI video — free cloud - free, online, NO API key. REAL moving video per scene
+                                (Google's Veo model, through a free service called
+                                Puter). You sign into a free Puter account once — a
+                                sign-in window pops up during the first build. The
+                                free allowance is small and monthly; up to 5 scenes
+                                per build get real motion (adjustable in Settings ->
+                                AI Video) and the rest use AI stills; each real-motion
+                                scene takes minutes. If it can't run, scenes fall back
+                                to AI stills and the build log says why. (See §18.)
+   AI footage (cloud)         - paid; real AI footage from a provider you supply your
+                                own key for.
+   REAL AI video — local GPU (ComfyUI) - free per video and fully private, but needs a
+                                dedicated NVIDIA card. On this PC it is visible but
+                                greyed out: "Requires NVIDIA GPU — not detected on
+                                this system". (See §18.)
 LOOK (template):
    Clean     - plain and fast.
    News      - crisp colour + sliding "lower-third" bars showing the section label.
@@ -252,6 +281,10 @@ Remove or swap the background music:
      of your real look. Free; uses internet; the queue can be slow (shows its place).
      Exact face likeness isn't guaranteed on free AI.
    - "🎬 Build video" stitches the approved scenes with narration, your Look, etc.
+   - "VIDEO LOOK" selector: the final build can use your generated stills (classic,
+     default) or REAL AI motion per scene — free cloud (free Puter sign-in) or local
+     GPU (needs NVIDIA). Same rules and honest catches as Video Studio's engine
+     list (§5, §18).
    - BEAUTIFY: a slider retouches your uploaded photo (skin-smooth + brighten + sharpen)
      on your REAL pixels — no invented face. This is a light retouch, not AI makeup.
 
@@ -279,8 +312,13 @@ Remove or swap the background music:
    speech is never cut off or overlapped), crossfades between shots, lays narration +
    captions + your sounds, and opens the finished film in the ✂ Timeline Editor so you can
    fine-tune anything.
-   HONEST LIMITS (free): AI scenes are STILLS with Ken-Burns motion, not real moving
-   footage. Your real face is kept by compositing your ACTUAL photo/clip — the app never
+   SCENES SELECTOR: by default AI scenes are animated stills, but the "Scenes:"
+   selector can switch them to REAL AI video — free cloud (free Puter sign-in, a few
+   scenes per build, minutes per scene) or local GPU (needs NVIDIA). See §18.
+   HONEST LIMITS (free): unless you pick a REAL-video engine above, AI scenes are
+   STILLS with Ken-Burns motion, not real moving footage — and even with the free
+   cloud engine, scenes past the per-build cap use AI stills.
+   Your real face is kept by compositing your ACTUAL photo/clip — the app never
    fabricates a fake video of your face. The background cutout uses a small free model that
    downloads once on first use; if it can't (offline), it falls back to your photo framed
    in the scene, so a render never breaks.
@@ -318,6 +356,35 @@ Charts tab also does live PSX now: type a symbol → a close-price line + SMA/RS
    script too.
 
 -------------------------------------------------------------------------------
+9e. PRESENTER STUDIO (put YOU in the video) + THE ⏺ RECORDER
+-------------------------------------------------------------------------------
+🎥 Presenter Studio makes YOU the presenter. Pick a mode, add your video (or photo)
+   and your script; the app intercuts you with theme b-roll and AI scenes, your voice
+   throughout. Three modes:
+   - REAL VIDEO (recommended): upload a video of yourself narrating. Your REAL voice
+     becomes the master track and your real face appears on the on-camera moments —
+     the rest cuts to theme b-roll + AI scenes timed to your voice. No fakery, real
+     sync.
+   - PHOTO: no video needed — your still photo appears (subtly moving, background-
+     removed into the scene) on the presenter beats; the natural voice narrates. Good
+     when you don't want to film yourself.
+   - ✨ LIVING PICTURE: add your narration VIDEO and a PICTURE where you look your
+     best. The moving part of the video (your mouth/face) is cut out, feather-edged
+     and composited onto the picture — so the picture speaks with your real voice
+     while keeping the look you chose. Position it with the sliders and check the
+     Preview. Free, offline, your own footage on your own picture — nothing invented,
+     no one else's face.
+   AI SCENES: a selector sets how the AI-scene beats move — animated stills (default),
+   REAL video — free cloud, or REAL video — local GPU (see §18). This only affects the
+   AI scenes; your own footage/photo is NEVER AI-generated.
+
+⏺ Recorder captures footage without leaving the app: your WEBCAM (with mic) or your
+   SCREEN, at 720p up to 8K, with noise suppression / echo cancellation / auto-gain
+   toggles. Using OBS? Start OBS's Virtual Camera and it appears in the camera picker
+   automatically. Recordings are transcoded to MP4 and saved into Video Studio, ready
+   to use anywhere — including as your Presenter Studio narration video.
+
+-------------------------------------------------------------------------------
 10. THUMBNAILS · LOGO/BRAND · PUBLISH · BATCH
 -------------------------------------------------------------------------------
 THUMBNAILS: Script Writer makes a 1280x720 thumbnail from a headline+style; in ✦ AI
@@ -348,6 +415,9 @@ FREE + OFFLINE (anywhere, forever): building/looks/shapes, your voice + Natural 
 FREE + INTERNET (keys built in, nothing to sign up for): AI writing/ideas/advisor/
    AI Command, AI images/visuals, thumbnails-with-AI-background, put-me-in-a-scene,
    online music removal.
+FREE + INTERNET + ONE FREE SIGN-IN: REAL AI video — free cloud. You sign into a free
+   Puter account once (the window appears on the first build); the allowance is small
+   and monthly. See §18.
 FREE + ONE-TIME SETUP (optional; both already done on this PC): Natural voice (Piper)
    download; offline Demucs music separation (Python).
 
@@ -396,6 +466,13 @@ Q: How do I use my own keys? A: Settings has fields (AI Horde for photos, MVSEP 
   with "sk-ant-api..." and is very long; copy ALL of it). If your provider is Ollama,
   make sure Ollama is installed and running. The full technical reason is kept in the
   Activity Log. If you see NO warning, your chosen AI answered normally.
+- A "real motion" scene came out as a still: the free cloud allowance ran out (it is
+  small and monthly), the per-build cap was reached, or the service couldn't be
+  reached — the build log says which. Falling back to AI stills is deliberate, so the
+  build never breaks.
+- A tab crashes / goes blank: the failure is contained to THAT tab — the rest of the
+  studio keeps working. You get a plain-English message and a "Try this tab again"
+  button, and the crash is written to Settings -> "Known Issues" so it's provable.
 - Multiple copies open / won't launch: close all "NIHILPOINTZERO-OS" in Task Manager,
   then open once.
 
@@ -445,8 +522,11 @@ Q: How do I use my own keys? A: Settings has fields (AI Horde for photos, MVSEP 
           🎞 Storyboard Director (shot-by-shot: length/scene/narration/caption/motion/crossfade +
           subject: AI scene / your photo composited / your clip / AI person + per-shot sounds)
   VISUALS:Looks (Clean/News/Cinematic/Bold) · animated titles + lower-thirds ·
-          Ken-Burns of your images · free AI per-scene images · Scene Studio storyboard
-          (reorder/add/remove, pause, regenerate) · put YOUR photo in a scene · photo Beautify
+          Ken-Burns of your images · free AI per-scene images · REAL AI video per scene
+          (free cloud, Puter — §18) · Scene Studio storyboard (reorder/add/remove,
+          pause, regenerate) · put YOUR photo in a scene · photo Beautify
+  PRESENT:🎥 Presenter Studio (Real Video / Photo / ✨ Living Picture — YOU present,
+          real footage only) · ⏺ Recorder (webcam or screen, up to 8K, OBS virtual camera)
   SHAPES: 16:9 · 9:16 (Shorts) · 1:1 · resolutions up to 8K
   VOICE:  your own recording (pause/redo/replace/add) · Natural (Piper) · Windows
   AUDIO:  generated music + SFX · free online music search · DJ timeline · create
@@ -540,7 +620,9 @@ Voice studio (under any finished video) no longer records only sound:
     speakers your microphone will also pick up the video's own sound.
   * A camera take can be saved straight into Video Studio (optionally cleaned up), or
     you can keep just its sound as the video's narration.
-No more hopping to a separate Recorder tab and re-uploading the file.
+For a quick voice-over-video take you never have to leave Voice studio. (The separate
+⏺ Recorder tab still exists and is for bigger captures — webcam or full-screen
+recording up to 8K; see §9e.)
 
 CAPTIONS AND YOUTUBE CHAPTERS - ONE SWITCH, OFF BY DEFAULT
 There is now a single tick-box in Video Studio: "Also make subtitles + YouTube
@@ -570,4 +652,60 @@ So instead of pretending, the app now:
     painterly pastoral, dark seinen), plus neon, minimal and infographic.
 If you ever run this on a PC with an NVIDIA card, the check notices and the motion
 video option becomes available on its own.
+
+UPDATE (2026-07-31): real AI motion video IS now possible here — through the free
+CLOUD tier, not this PC's hardware. The paragraphs above stay true for LOCAL models.
+See §18 for what's new and the honest catches.
+
+-------------------------------------------------------------------------------
+18. NEW (2026-07-31): REAL AI VIDEO — FREE CLOUD TODAY, LOCAL GPU WHEN THE
+    HARDWARE EXISTS
+-------------------------------------------------------------------------------
+
+REAL MOVING VIDEO, FREE, NO API KEY
+Video Studio's "Video look (engine)" list has a new tier: "REAL AI video — free
+cloud". It generates REAL moving video for each scene — Google's Veo model, through
+a free service called Puter — not a photo slideshow.
+
+The honest catches, stated plainly:
+  * You sign into a FREE Puter account once. A sign-in window pops up during the
+    first build. No key to paste, nothing to pay.
+  * The free allowance is SMALL and MONTHLY. When it runs out, scenes automatically
+    fall back to AI still images and the build log says why. Nothing breaks.
+  * By default only up to 5 scenes per build get real motion — this protects the
+    free allowance. The rest of the scenes use AI stills. Adjustable in Settings ->
+    AI Video ("Real-motion scenes per build").
+  * Each real-motion scene takes MINUTES to generate. Expect a slower build.
+
+Where it lives: Video Studio ("Video look (engine)") · Scene Studio ("Video look")
+· Storyboard Director ("Scenes:" selector) · Presenter Studio (the AI-scene
+selector — your own footage/photo is never AI-generated).
+
+THE LOCAL GPU TIER — REAL, BUILT, AND WAITING FOR HARDWARE
+"REAL AI video — local GPU (ComfyUI)" is now a real integration with ComfyUI, the
+standard local AI video server (default address http://127.0.0.1:8188).
+The hard truth has NOT changed: this PC (Intel graphics inside the processor, no
+NVIDIA card) cannot run it — not slowly, not at all.
+What HAS changed: instead of being hidden, the option is now VISIBLE but greyed
+out — "Requires NVIDIA GPU — not detected on this system" — and everything can be
+configured in Settings -> AI Video today, so it unlocks by itself the day this PC
+(or your next one) has an NVIDIA card. Settings also says which model fits which
+card:
+    8GB   -> AnimateDiff / Wan 2.1 (1.3B)
+    12GB  -> LTX-Video / LTX-2
+    16GB  -> LTX-2.3 (recommended)
+    24GB+ -> Wan 2.2 / HunyuanVideo 1.5
+Advanced: you can point it at your own ComfyUI workflow file — export it in ComfyUI
+via "Save (API format)" and put {{PROMPT}} where the prompt text goes.
+
+EVERY AI VIDEO ENGINE NOW FALLS BACK SAFELY
+If a real-video engine can't run — offline, allowance used up, no server — the build
+automatically continues as the photo slideshow and the status log states the reason.
+A build never breaks because of these engines.
+
+A CRASHED TAB CAN'T TAKE THE STUDIO DOWN — AND IT'S ON THE RECORD
+The "Known Issues" panel in Settings used to record only AI service failures. Now,
+if a tab crashes, the crash is contained to THAT tab: the rest of the studio keeps
+working, you get a plain-English message and a "Try this tab again" button, and the
+failure is written to the same Known Issues log — so it's provable, not a mystery.
 

@@ -291,31 +291,59 @@ export const VIDEO_STYLE_GROUPS: { family: string; styles: { id: VideoStyle; lab
 
 /**
  * Which engine renders the video's look:
- * - 'presets'  — free, offline style renderer (default). Styles text/backgrounds and
+ * - 'presets'       — free, offline style renderer (default). Styles text/backgrounds and
  *   your own images; does NOT fabricate AI footage.
- * - 'ai-free'  — FREE online AI visuals: generates a unique AI image per scene (keyless,
- *   no install; needs internet) and animates them. Falls back to the animated look if
- *   offline / the service is busy.
- * - 'ai-cloud' — paid cloud AI video footage; you supply an API key.
- * - 'ai-local' — free local AI footage; needs a capable GPU + local model server.
+ * - 'ai-free'       — FREE online AI visuals: generates a unique AI image per scene (keyless,
+ *   no install; needs internet) and animates them — a photo slideshow, not filmed motion.
+ *   Falls back to the animated look if offline / the service is busy.
+ * - 'ai-free-video' — REAL generated motion per scene from the free cloud (Google Veo via
+ *   Puter — no API key; the user signs into a free Puter account once). Every failure
+ *   (offline, allowance used up, sign-in declined) falls back per scene to the slideshow,
+ *   with the reason reported — the build never breaks.
+ * - 'ai-cloud'      — paid cloud AI video footage; you supply an API key.
+ * - 'ai-local'      — REAL generated motion on your own NVIDIA GPU through a local ComfyUI
+ *   server (LTX and friends). Visible (greyed) even without the GPU so the option is ready
+ *   the day the hardware exists; falls back to the slideshow when the server isn't there.
  */
-export type LookEngine = 'presets' | 'ai-free' | 'ai-cloud' | 'ai-local'
+export type LookEngine = 'presets' | 'ai-free' | 'ai-free-video' | 'ai-cloud' | 'ai-local'
 
-/** Optional configuration for the two AI-footage engines (stored locally). */
+/** Optional configuration for the AI-footage engines (stored locally). */
 export interface AiVideoConfig {
-  /** Cloud engine: your provider API key. */
+  /** Cloud engine: your provider API key (decrypted, in memory only — see cloudApiKeyEnc). */
   cloudApiKey?: string
+  /** Cloud engine key at rest — encrypted like every other key (store.ts migrates old plain values). */
+  cloudApiKeyEnc?: string
   /** Cloud engine: REST endpoint that accepts {prompt, seconds} and returns a video URL. */
   cloudEndpoint?: string
   cloudModel?: string
-  /** Local engine: base URL of your local generation server (default http://127.0.0.1:7860). */
+  /** Local engine: base URL of your local generation server (default depends on localKind). */
   localEndpoint?: string
+  /** Local engine kind: a real ComfyUI server (default) or the legacy generic /generate shim. */
+  localKind?: 'comfyui' | 'generic'
+  /**
+   * Path to a ComfyUI workflow file (exported in API format) with {{PROMPT}} {{WIDTH}}
+   * {{HEIGHT}} {{FRAMES}} {{SEED}} placeholders. Blank = the built-in LTX starter template.
+   */
+  comfyWorkflowPath?: string
+  /** Free-cloud engine: Puter model id (default 'google/veo-3.1-fast'). */
+  freeCloudModel?: string
+  /**
+   * Free-cloud engine: at most this many scenes get REAL generated motion per build
+   * (default 5) — protects the small free Puter allowance; the rest use AI stills.
+   */
+  freeCloudSceneCap?: number
 }
 
 /** Live status of the AI engines, for the UI badges. */
 export interface AiEngineStatus {
   cloudConfigured: boolean
   localDetected: boolean
+  /** True when the free-cloud video service (Puter) is reachable right now. */
+  freeCloudAvailable: boolean
+  /** One-line plain-English detail for the free-cloud pill (why it is/isn't available). */
+  freeCloudDetail: string
+  /** Which local server kind the status was checked against. */
+  localKind: 'comfyui' | 'generic'
   cloudEndpoint?: string
   localEndpoint?: string
 }

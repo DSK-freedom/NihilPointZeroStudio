@@ -114,14 +114,35 @@ export interface VideoModelSpec {
   note: string
 }
 
-/** The open-source motion-video / talking-head models, with their real requirements. */
+/** The open-source motion-video / talking-head models, with their real requirements.
+ * Tiers follow the mid-2026 landscape: 8GB entry models, LTX-2 at 12GB, LTX-2.3 at
+ * 16GB (native 4K + sound, the recommended local model), and the 24GB heavyweights. */
 export const VIDEO_MODELS: VideoModelSpec[] = [
   { id: 'cogvideox-2b', label: 'CogVideoX-2B', minVramGB: 6, note: 'Lowest requirement of the motion-video models.' },
-  { id: 'ltx-video', label: 'LTX-Video', minVramGB: 12, note: 'Good speed/quality balance.' },
-  { id: 'wan-2.2', label: 'Wan 2.2', minVramGB: 12, note: 'Highest quality, heaviest.' },
+  { id: 'animatediff', label: 'AnimateDiff', minVramGB: 8, note: 'Smallest modern footprint; roughest quality.' },
+  { id: 'wan-2.1-1.3b', label: 'Wan 2.1 (1.3B)', minVramGB: 8, note: 'Small and quick; rough.' },
+  { id: 'ltx-video', label: 'LTX-Video / LTX-2', minVramGB: 12, note: 'The speed champion — good quality balance.' },
+  { id: 'ltx-2.3', label: 'LTX-2.3', minVramGB: 16, note: 'Recommended: native 4K, generates sound too, vertical Shorts trained natively.' },
+  { id: 'wan-2.2', label: 'Wan 2.2', minVramGB: 24, note: 'Top quality when time isn\'t critical.' },
+  { id: 'hunyuanvideo-1.5', label: 'HunyuanVideo 1.5', minVramGB: 24, note: 'Top-quality alternative to Wan 2.2.' },
   { id: 'sadtalker', label: 'SadTalker (talking photo)', minVramGB: 6, note: 'Animates one photo into a talking head.' },
   { id: 'liveportrait', label: 'LivePortrait (talking photo)', minVramGB: 8, note: 'Higher-fidelity talking head.' }
 ]
+
+/** Motion models only (talking-photo tools recommend differently). */
+const MOTION_MODEL_IDS = new Set(['cogvideox-2b', 'animatediff', 'wan-2.1-1.3b', 'ltx-video', 'ltx-2.3', 'wan-2.2', 'hunyuanvideo-1.5'])
+
+/**
+ * The best motion-video model this GPU can actually run, or null when none can
+ * (no CUDA / not enough VRAM). Used by Settings → AI Video to recommend a model
+ * size the day real hardware shows up. Pure + tested.
+ */
+export function recommendVideoModel(gpu: GpuInfo): VideoModelSpec | null {
+  if (!gpu.hasCuda || gpu.vramGB <= 0) return null
+  const fits = VIDEO_MODELS.filter((m) => MOTION_MODEL_IDS.has(m.id) && m.minVramGB <= gpu.vramGB)
+  if (!fits.length) return null
+  return fits.sort((a, b) => b.minVramGB - a.minVramGB)[0]
+}
 
 export interface Verdict {
   canRun: boolean

@@ -86,7 +86,7 @@ async function checkFreeImages(): Promise<HealthCheck> {
  */
 async function checkPaidKey(provider: 'anthropic' | 'openai'): Promise<HealthCheck> {
   const label = provider === 'anthropic' ? 'Anthropic key' : 'OpenAI key'
-  let key: string | null = null
+  let key: string | null
   try {
     key = getDecryptedKey(provider)
   } catch {
@@ -157,7 +157,7 @@ function checkStockFootage(): HealthCheck {
 }
 
 function checkYouTubeKey(): HealthCheck {
-  let key: string | null = null
+  let key: string | null
   try {
     key = getYouTubeApiKey()
   } catch {

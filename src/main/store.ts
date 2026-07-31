@@ -514,19 +514,39 @@ function aiVideoConfigPath(): string {
   return join(dataDir(), 'ai-video.json')
 }
 
-/** Reads the optional AI-footage engine config (cloud key/endpoint, local endpoint). */
+/**
+ * Reads the AI-footage engine config. The cloud key is returned DECRYPTED in
+ * `cloudApiKey` for in-process use; at rest it lives encrypted in `cloudApiKeyEnc`
+ * like every other key in the app. A legacy file with a plain `cloudApiKey` (the one
+ * credential that historically skipped encrypt()) is migrated in place on first read.
+ */
 export function getAiVideoConfig(): AiVideoConfig {
   try {
-    return JSON.parse(readFileSync(aiVideoConfigPath(), 'utf-8'))
+    const raw = JSON.parse(readFileSync(aiVideoConfigPath(), 'utf-8')) as AiVideoConfig
+    if (raw.cloudApiKey && !raw.cloudApiKeyEnc) {
+      // One-time migration: encrypt the legacy plain key at rest.
+      raw.cloudApiKeyEnc = encrypt(raw.cloudApiKey)
+      const onDisk = { ...raw }
+      delete onDisk.cloudApiKey
+      atomicWrite(aiVideoConfigPath(), JSON.stringify(onDisk, null, 2))
+      return raw
+    }
+    if (raw.cloudApiKeyEnc) return { ...raw, cloudApiKey: decrypt(raw.cloudApiKeyEnc) || undefined }
+    return raw
   } catch {
     return {}
   }
 }
 
 export function setAiVideoConfig(partial: AiVideoConfig): AiVideoConfig {
-  const next = { ...getAiVideoConfig(), ...partial }
-  atomicWrite(aiVideoConfigPath(), JSON.stringify(next, null, 2))
-  return next
+  const current = getAiVideoConfig()
+  const next: AiVideoConfig = { ...current, ...partial }
+  // Never persist the decrypted form; encrypt any newly supplied key.
+  const onDisk = { ...next }
+  if (partial.cloudApiKey) onDisk.cloudApiKeyEnc = encrypt(partial.cloudApiKey)
+  delete onDisk.cloudApiKey
+  atomicWrite(aiVideoConfigPath(), JSON.stringify(onDisk, null, 2))
+  return { ...onDisk, cloudApiKey: onDisk.cloudApiKeyEnc ? decrypt(onDisk.cloudApiKeyEnc) || undefined : undefined }
 }
 
 function stockConfigPath(): string {

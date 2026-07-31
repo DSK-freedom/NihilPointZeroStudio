@@ -41,6 +41,9 @@ export const IPC = {
   activityClear: 'activity:clear',
   aiErrorsList: 'ai-errors:list',
   aiErrorsReveal: 'ai-errors:reveal',
+  // A tab crashed in the UI. Recorded into the same log so Known Issues shows
+  // interface failures alongside AI ones instead of them vanishing silently.
+  aiErrorsRecordUi: 'ai-errors:record-ui',
   musicSuggest: 'music:suggest',
   musicMoodSearch: 'music:mood-search',
   musicApplyRegion: 'music:apply-region',

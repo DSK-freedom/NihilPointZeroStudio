@@ -13,7 +13,6 @@ import { app } from 'electron'
 import { runFfmpeg } from '../video/ffmpeg'
 import { getSettings } from '../store'
 import {
-  DEFAULT_PIPER_VOICE_ID,
   PIPER_VOICES,
   findPiperVoice,
   piperConfigUrl,

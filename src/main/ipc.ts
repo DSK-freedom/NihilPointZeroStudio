@@ -63,7 +63,8 @@ import { generateVideoPlan } from './director/planner'
 import { downloadTrack, searchMusic } from './data/freeMusic'
 import { generatedAudioDir, getAiVideoConfig, getStockConfig, setAiVideoConfig, setStockKey, thumbnailsDir } from './store'
 import { isCloudConfigured } from './video/aiCloud'
-import { detectLocal } from './video/aiLocal'
+import { detectLocal, localEndpoint, localKind } from './video/aiLocal'
+import { detectPuter } from './video/puter'
 import type {
   AgentPlan,
   AiVideoConfig,
@@ -500,6 +501,16 @@ export function registerIpcHandlers(): void {
   // Known Issues panel. Read-only by design: the point of this log is to be provable
   // evidence of what failed, so nothing in the app may erase it.
   ipcMain.handle(IPC.aiErrorsList, (_e, limit?: number) => readAiErrors(limit ?? 100))
+  // Appending is allowed (the boundary needs it); erasing still is not.
+  ipcMain.handle(IPC.aiErrorsRecordUi, (_e, x: { tab?: string; message?: string; stack?: string }) => {
+    logAiError({
+      at: new Date().toISOString(),
+      provider: 'interface',
+      feature: String(x?.tab || 'unknown tab'),
+      message: String(x?.message || 'A tab stopped working'),
+      body: x?.stack ? String(x.stack) : undefined
+    })
+  })
   ipcMain.handle(IPC.aiErrorsReveal, () => {
     const file = aiErrorLogPath()
     if (existsSync(file)) shell.showItemInFolder(file)
@@ -951,11 +962,16 @@ export function registerIpcHandlers(): void {
   // Live status for the engine badges + saved config for the settings inputs.
   ipcMain.handle(IPC.aiEngineStatus, async () => {
     const cfg = getAiVideoConfig()
+    // Both live checks in parallel — each has its own short timeout.
+    const [localUp, freeCloud] = await Promise.all([detectLocal(), detectPuter()])
     return {
       cloudConfigured: isCloudConfigured(),
-      localDetected: await detectLocal(),
+      localDetected: localUp,
+      freeCloudAvailable: freeCloud.ok,
+      freeCloudDetail: freeCloud.detail,
+      localKind: localKind(),
       cloudEndpoint: cfg.cloudEndpoint,
-      localEndpoint: cfg.localEndpoint
+      localEndpoint: localEndpoint()
     }
   })
 
@@ -966,12 +982,19 @@ export function registerIpcHandlers(): void {
       cloudEndpoint: cfg.cloudEndpoint ?? '',
       cloudModel: cfg.cloudModel ?? '',
       localEndpoint: cfg.localEndpoint ?? '',
+      localKind: cfg.localKind ?? 'comfyui',
+      comfyWorkflowPath: cfg.comfyWorkflowPath ?? '',
+      freeCloudModel: cfg.freeCloudModel ?? '',
+      freeCloudSceneCap: cfg.freeCloudSceneCap ?? 5,
       hasCloudKey: !!cfg.cloudApiKey
     }
   })
 
   ipcMain.handle(IPC.aiSetConfig, (_e, partial: AiVideoConfig) => {
-    setAiVideoConfig(partial)
+    // The renderer can never write the encrypted-at-rest field directly.
+    const clean = { ...partial }
+    delete clean.cloudApiKeyEnc
+    setAiVideoConfig(clean)
     logActivity('user', 'Updated AI video engine settings')
     return { ok: true }
   })
@@ -1978,7 +2001,7 @@ export function registerIpcHandlers(): void {
 
   // Render a storyboard to a video. Returns the video job AND the TimelineDoc so the
   // user can keep editing the result in the Timeline editor.
-  ipcMain.handle(IPC.storyboardRender, async (e, doc: StoryboardDoc, opts?: { photoPath?: string; beautifyStrength?: number; windowsVoice?: boolean }) => {
+  ipcMain.handle(IPC.storyboardRender, async (e, doc: StoryboardDoc, opts?: { photoPath?: string; beautifyStrength?: number; windowsVoice?: boolean; motionEngine?: 'ai-free-video' | 'ai-local' }) => {
     const id = randomUUID()
     const outPath = join(videosDir(), `storyboard-${id.slice(0, 8)}.mp4`)
     let timeline
@@ -1987,6 +2010,7 @@ export function registerIpcHandlers(): void {
         photoPath: opts?.photoPath,
         beautifyStrength: opts?.beautifyStrength,
         windowsVoice: opts?.windowsVoice,
+        motionEngine: opts?.motionEngine,
         onProgress: (line) => {
           if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, line.trim().slice(0, 160))
         }
@@ -2031,6 +2055,7 @@ export function registerIpcHandlers(): void {
         style?: VideoStyle
         everyN?: number
         windowsVoice?: boolean
+        motionEngine?: 'ai-free-video' | 'ai-local'
       }
     ) => {
       if (!params.body?.trim()) return { ok: false, error: 'Paste your script first.' }
@@ -2104,6 +2129,7 @@ export function registerIpcHandlers(): void {
           photoPath,
           beautifyStrength: 0.4,
           windowsVoice: params.windowsVoice,
+          motionEngine: params.motionEngine,
           onProgress: (line) => emit(line)
         })
         const job: VideoJob = { id, title: doc.title, path: outPath, hasCustomVoice: realVoice, createdAt: new Date().toISOString() }

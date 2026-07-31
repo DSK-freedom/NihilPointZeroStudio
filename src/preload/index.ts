@@ -306,6 +306,15 @@ const api = {
     save: (title: string, body: string): Promise<import('../shared/types').ScriptPad> =>
       ipcRenderer.invoke(IPC.scriptpadSave, title, body)
   },
+  dataHome: {
+    /** Where this user's work is being kept right now. */
+    activeDir: (): Promise<string> => ipcRenderer.invoke(IPC.dataActiveDir),
+    /** Finished videos the app cannot currently show (unlisted here, or in another folder). */
+    strandedScan: (): Promise<import('../shared/types').StrandedReport> => ipcRenderer.invoke(IPC.dataStrandedScan),
+    /** Lists them in the app; anything in another folder is COPIED, never moved. */
+    strandedImport: (): Promise<{ imported: number; skipped: number; bytes: number }> =>
+      ipcRenderer.invoke(IPC.dataStrandedImport)
+  },
   audio: {
     // Read an audio file's bytes for WebAudio decoding (renderers can't fetch file://).
     // Only paths inside the app's data folder are served.

@@ -216,6 +216,25 @@ try {
     fail('DJ decks preload', `${err?.message ?? err}`)
   }
 
+  // ---- 2c) Settings must always be able to answer "where is my work kept?" — the
+  //      question nobody could answer when 1.15 GB of finished videos sat unseen in
+  //      a folder the app had stopped using.
+  try {
+    await win.evaluate(() => {
+      window.location.hash = '#/settings'
+    })
+    await win.waitForTimeout(900)
+    const text = await win.locator('main').innerText()
+    if (!/Where your work is kept/.test(text)) throw new Error('the "Where your work is kept" card is missing from Settings')
+    // It must show the REAL active folder — this run's isolated one, not a placeholder.
+    if (!text.includes(dataHome.split('\\').pop())) {
+      throw new Error('the card does not show the data folder actually in use')
+    }
+    console.log('  ✓ Settings: names the exact folder your work is kept in')
+  } catch (err) {
+    fail('Data-location card', `${err?.message ?? err}`)
+  }
+
   // ---- 3) Edge cases a real user hits: the app must stay alive and SAY something
   //         every time — silence or a crash is the failure being hunted here.
 

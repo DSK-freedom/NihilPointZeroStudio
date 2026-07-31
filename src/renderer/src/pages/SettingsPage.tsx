@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { confirmDialog } from '../components/Confirm'
+import { toast } from '../components/Toast'
 import type {
   AiErrorEntry,
   HardwareReport,
   HealthReport,
   LLMProviderId,
   OllamaStatus,
-  ProviderSettings
+  ProviderSettings,
+  StrandedReport
 } from '../../../shared/types'
 
 const providerLabel: Record<LLMProviderId, string> = {
@@ -58,6 +60,10 @@ export default function SettingsPage() {
   const [backupInfo, setBackupInfo] = useState<{ root: string; secondDir: string; purgeOnDelete: boolean } | null>(null)
   const [backupBusy, setBackupBusy] = useState<'backup' | 'restore' | 'orphans' | null>(null)
   const [backupNote, setBackupNote] = useState<string | null>(null)
+  // Where the app keeps this user's work, and any work stranded in another folder.
+  const [activeDir, setActiveDir] = useState('')
+  const [stranded, setStranded] = useState<StrandedReport | null>(null)
+  const [strandedBusy, setStrandedBusy] = useState(false)
   const [pixabayKey, setPixabayKey] = useState('')
   const [hasPixabay, setHasPixabay] = useState(false)
   const [hardware, setHardware] = useState<HardwareReport | null>(null)
@@ -92,6 +98,8 @@ export default function SettingsPage() {
       .then((s) => setAiFreeStatus({ ok: s.freeCloudAvailable, detail: s.freeCloudDetail }))
       .catch(() => {})
     window.api.backups.status().then(setBackupInfo).catch(() => {})
+    window.api.dataHome.activeDir().then(setActiveDir).catch(() => {})
+    window.api.dataHome.strandedScan().then(setStranded).catch(() => {})
     window.api.stock.getConfig().then((c) => setHasPixabay(c.hasPixabay))
     window.api.voice.piperStatus().then((s) => setPiperInstalled(s.installed))
     window.api.voice.piperCatalogue().then(setPiperVoices)
@@ -168,6 +176,25 @@ export default function SettingsPage() {
     setAiPollinKey('')
     setStatus('AI Video settings saved.')
     setTimeout(() => setStatus(null), 2500)
+  }
+
+  /** Copies videos out of a data folder the app isn't using. Never moves or deletes. */
+  async function bringStrandedIn(): Promise<void> {
+    setStrandedBusy(true)
+    try {
+      const r = await window.api.dataHome.strandedImport()
+      setStranded(await window.api.dataHome.strandedScan())
+      toast(
+        r.imported
+          ? `Brought in ${r.imported} video(s) — they're in Video Studio now. The other folder was left untouched.`
+          : 'Nothing new to bring in.',
+        r.imported ? 'success' : 'info'
+      )
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Could not bring those videos in.', 'error')
+    } finally {
+      setStrandedBusy(false)
+    }
   }
 
   async function backupNow(): Promise<void> {
@@ -416,6 +443,44 @@ export default function SettingsPage() {
           This list shows what is SET UP. It cannot tell whether a saved key is accepted — click
           &ldquo;🩺 Run full check&rdquo; above for the live truth. Green = ready. Amber = optional/needs setup.
         </p>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-3">
+        <div>
+          <div className="text-sm text-ink-100 font-medium">Where your work is kept</div>
+          <p className="text-[11px] text-ink-500 mt-0.5">
+            Everything you make — videos, scripts, library, settings — lives in{' '}
+            <span className="text-ink-300 break-all">{activeDir || '…'}</span>
+          </p>
+        </div>
+        {stranded && stranded.videoCount > 0 && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+            <p className="text-[11px] text-amber-200 leading-snug">
+              ⚠ Found <span className="font-medium">{stranded.videoCount} finished video(s)</span> ({stranded.size}) that
+              Video Studio is not showing you.
+              {stranded.inPlace > 0 && (
+                <>
+                  <br />• {stranded.inPlace} are already in your work folder — the app just lost track of them in its
+                  list. Adding them back is instant (nothing is copied).
+                </>
+              )}
+              {stranded.elsewhere > 0 && stranded.dir && (
+                <>
+                  <br />• {stranded.elsewhere} are in a folder this app no longer uses:{' '}
+                  <span className="text-amber-100/80 break-all">{stranded.dir}</span> — those get copied in.
+                </>
+              )}
+            </p>
+            <button
+              onClick={() => void bringStrandedIn()}
+              disabled={strandedBusy}
+              className="rounded-md border border-amber-400/60 hover:border-amber-300 disabled:opacity-40 text-amber-100 text-xs px-3 py-1.5"
+              title="Lists them in Video Studio. Anything in another folder is COPIED — nothing is ever moved or deleted."
+            >
+              {strandedBusy ? 'Recovering…' : '⬅ Show these in Video Studio (nothing is deleted)'}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-3">

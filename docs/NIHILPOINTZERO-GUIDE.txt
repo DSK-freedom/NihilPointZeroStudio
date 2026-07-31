@@ -154,6 +154,14 @@ Copy the folder to another PC and:
      If yes, a small blue notice appears with a "Show me the file" button that opens the
      studio folder with NIHILPOINTZERO-OS-setup.exe selected — one double-click updates.
      Offline? The check silently skips; it never blocks or nags.
+  📍 WHERE YOUR WORK IS KEPT (Settings, just above Backups): the app names the exact
+     folder holding your videos, scripts and settings — no more guessing. The app can
+     legitimately use one of three folders (next to the portable exe / the Desktop
+     studio folder / your private Windows folder), and work made while one was active
+     used to VANISH from view when another took over. Now the app looks for that and
+     tells you — in this card and in the Activity Log — with a one-click
+     "Bring them into the app" that COPIES those videos in. It never moves or deletes
+     anything; the other folder is left exactly as it was.
   💾 BACKUPS (Settings → Backups — and automatic): your work is copied to
      C:\Users\<you>\NihilPointZero-Backups (it moved there from Documents; the app moves
      the old folder for you automatically). The app backs up by itself at most once every

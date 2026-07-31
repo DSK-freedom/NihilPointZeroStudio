@@ -91,6 +91,12 @@ export const IPC = {
   // Read an audio file's bytes for WebAudio decoding (renderers can't fetch file://).
   // Guarded: only paths inside the app's own data folder are ever served.
   audioReadFile: 'audio:read-file',
+  // Where the app is keeping this user's work right now (shown in Settings).
+  dataActiveDir: 'data:active-dir',
+  // Finished videos sitting in a data folder the app is NOT using, and the one-click
+  // copy that brings them in. See main/strandedData.ts.
+  dataStrandedScan: 'data:stranded-scan',
+  dataStrandedImport: 'data:stranded-import',
   videoCaptions: 'video:captions',
   videoWatermark: 'video:watermark',
   settingsSetMvsepToken: 'settings:set-mvsep-token',

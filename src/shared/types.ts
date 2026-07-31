@@ -415,6 +415,25 @@ export interface VideoBuildRequest {
   textOverlays?: boolean
 }
 
+/**
+ * Finished videos the app cannot currently show — either sitting unlisted in the
+ * active work folder, or left behind in a data folder the app stopped using.
+ * See main/strandedData.ts.
+ */
+export interface StrandedReport {
+  /** The other data folder holding work, or null when there isn't one. */
+  dir: string | null
+  /** Videos already in the active folder that the app's list lost track of. */
+  inPlace: number
+  /** Videos sitting in that other folder. */
+  elsewhere: number
+  /** inPlace + elsewhere. */
+  videoCount: number
+  bytes: number
+  /** Human-readable size, e.g. "1.15 GB". */
+  size: string
+}
+
 /** Visual hand-off INTO a slideshow scene (ffmpeg xfade). 'cut' = instant switch. */
 export type SceneTransition =
   | 'cut'

@@ -24,6 +24,13 @@ TWO HELPERS FLOAT ON EVERY TAB:
   When an Expert answer mentions a tab, "→ Open <tab>" chips appear under it — one click
   jumps straight to that tab.
 
+WHERE WORK IS KEPT: Settings names the exact data folder in use. The app supports three
+(portable folder next to the exe / adopted Desktop studio folder / the default per-user
+folder), and work created while one was active becomes invisible when another takes over —
+so the app now scans the others for finished videos, reports them in Settings and the
+Activity Log, and offers a one-click COPY-them-in ("Bring them into the app"). It never
+moves or deletes the originals.
+
 OTHER GLOBAL FEATURES: on startup the app quietly checks for a newer published version and
 shows a small blue notice with a "Get the update" button (opens the studio folder with
 NIHILPOINTZERO-OS-setup.exe selected, or the download page if that copy is old). Backups live

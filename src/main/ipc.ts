@@ -47,6 +47,7 @@ import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateChe
 declare const __BUILD_TAG__: string
 import { listWinNaturalVoices, synthesizeWithWinNatural } from './voice/winNatural'
 import { runHealthCheck } from './health'
+import { importStranded, scanStranded } from './strandedData'
 import { generateIdeasFlow, generateScriptFlow } from './services'
 import { synthesizeSpeechToFile } from './voiceover'
 import { analyzeImportedFile, correlateFlowWithPrice, parseSpreadsheetFile } from './analysis'
@@ -1776,6 +1777,13 @@ export function registerIpcHandlers(): void {
     logActivity('user', `AI DJ laid a “${mood}” track under a video (decided from ${how})`, src.title)
     return { job, mood, how }
   })
+
+  // Where this user's work actually lives (portable folder / adopted Desktop studio /
+  // per-user folder). Shown in Settings so it is never a mystery.
+  ipcMain.handle(IPC.dataActiveDir, () => app.getPath('userData'))
+  // Work stranded in a data folder the app isn't using, and the copy-it-in action.
+  ipcMain.handle(IPC.dataStrandedScan, () => scanStranded())
+  ipcMain.handle(IPC.dataStrandedImport, () => importStranded())
 
   // Serve audio bytes to the renderer for WebAudio decoding — a sandboxed renderer
   // cannot fetch() file:// URLs. Guarded to the app's own data folder only.

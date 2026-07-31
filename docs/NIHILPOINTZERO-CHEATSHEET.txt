@@ -19,6 +19,9 @@ STUCK? ASK IT .... click 🎬 Producer (bottom-right of EVERY tab) and ask "how 
                     buttons set how long the answer is.
 JUMP ANYWHERE ..... press Ctrl-K, type a tab (e.g. "scene"), Enter
 AUTOSAVE .......... work saves itself ("Saved ✓" near the title) and survives restart
+WHERE'S MY WORK ... Settings -> "Where your work is kept" names the exact folder. If finished
+                    videos are ever found in a folder the app isn't using, it says so there and
+                    offers "Bring them into the app" (copies them in; deletes nothing).
 BACKUPS ........... automatic weekly copy to C:\Users\<you>\NihilPointZero-Backups. Lost something?
                     Settings -> Backups -> "Restore missing files" (never overwrites current work).
                     Optional second home (USB) + delete-sync (delete in app = gone from backup too).

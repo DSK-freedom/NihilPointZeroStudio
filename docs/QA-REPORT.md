@@ -43,6 +43,15 @@ reach you.
 
 ## Broken and NOW FIXED (this week, each verified by a real run)
 
+- **~15 GB of finished videos were invisible inside the app** (found 2026-08-01 by
+  auditing the real machine, not by reading code). Two separate causes: ~14 GB sat in
+  the active work folder but were missing from the app's video list, and 1.15 GB sat
+  in a data folder the app had stopped using. Nothing in the app had ever mentioned
+  either. Fixed by a detector that runs on every launch, reports both cases in
+  Settings and the Activity Log, and recovers them with one button — listing in-place
+  files instantly and COPYING (never moving) anything from another folder. 0-byte
+  files from interrupted builds are deliberately excluded.
+
 - **"Put me in the photo → Regenerate → error" (user-reported, twice)** — root cause
   found and pinned by tests: pressing ⏹ Stop on any build left a global "cancelled"
   flag on until the NEXT build began; the photo-scene's final conversion step saw the

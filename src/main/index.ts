@@ -2,6 +2,7 @@ import { app, BrowserWindow, shell } from 'electron'
 import { checkForUpdate } from './updateCheck'
 import { runAutoBackupIfDue } from './autoBackup'
 import { runHealthCheck } from './health'
+import { scanStranded } from './strandedData'
 import { getLastHealth, logActivity, setLastHealth } from './store'
 import { join } from 'path'
 import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs'
@@ -136,6 +137,26 @@ if (!gotLock) {
       setTimeout(() => {
         void runAutoBackupIfDue()
       }, 30_000)
+
+      // Work stranded in a data folder the app is NOT using is invisible in the UI —
+      // that really happened (1.15 GB of finished videos). Say so in the Activity Log
+      // so it is discoverable without opening Settings. Quiet when there is nothing.
+      setTimeout(() => {
+        try {
+          const s = scanStranded()
+          if (s.videoCount > 0) {
+            logActivity(
+              'ai',
+              `Found ${s.videoCount} finished video(s) (${s.size}) that Video Studio isn't showing`,
+              `They are NOT lost. Open Settings → "Where your work is kept" and press "Show these in Video Studio".` +
+                `${s.inPlace ? ` ${s.inPlace} are already in your work folder (the list just lost track of them).` : ''}` +
+                `${s.dir ? ` ${s.elsewhere} are in a folder the app no longer uses: ${s.dir}` : ''}`
+            )
+          }
+        } catch {
+          /* a failed look must never bother the user */
+        }
+      }, 45_000)
 
       // Weekly QUIET health check: the manual "Run full check" only helps when the
       // user remembers it. This runs the same live checks in the background, stores

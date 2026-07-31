@@ -9,6 +9,36 @@ The running app shows this in the sidebar (under "OS") as a gold badge. The badg
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
+## New in this build (2026-08-01 — lost-work detector + the recovered videos)
+
+### 📍 "Where is my work kept?" — and 14 GB of your videos the app wasn't showing you
+Two real problems found on your PC tonight, both invisible until someone went looking:
+
+1. **1.15 GB of finished videos** sat in a folder the app had stopped using. The app can
+   keep its data in one of three places (next to the portable exe, in the Desktop studio
+   folder, or in your private Windows folder) — work made while one was active silently
+   vanishes from view once another takes over.
+2. **~14 GB of finished videos were sitting right there in your own work folder** — but
+   missing from the app's list, so Video Studio never showed them. Including one 10.7 GB
+   video.
+
+Neither was ever announced. Now the app **looks for both on every launch**: Settings shows
+the exact folder your work is kept in, and if any finished video isn't being shown — for
+either reason — you get a plain-English notice there AND in the Activity Log, with one
+button: **"Show these in Video Studio"**. Videos already in your folder are listed
+instantly (nothing is copied); videos in another folder are COPIED in. Nothing is ever
+moved or deleted, and empty 0-byte files from interrupted builds are ignored rather than
+offered to you as if they were work. The ship gate now checks this card can always name
+the real folder.
+
+### 🎞 Your two recovered videos are in the app
+The "Pakistan ke Fiscal Federalism" pair (585 MB + 211 MB, with their narration) has been
+imported into Video Studio proper — so they are now listed, playable, backed up weekly,
+and covered by delete-sync like everything else. One script that existed nowhere in the
+app (4,609 words, the "stressed retail investor" piece) was recovered into your Library.
+Everything else in that Recovered-Videos folder was already in the app — checked file by
+file, not assumed.
+
 ## New in this build (2026-07-31, late night — your reported errors, fixed at the root)
 
 ### 🚫 "Build Video won't click" — the dead-button era is over

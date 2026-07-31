@@ -56,26 +56,57 @@ export function classifyPollinationsError(status: number, body?: string): string
 }
 
 /**
- * Validates a key WITHOUT spending any Pollen, via /account/balance. Returns the
- * balance so Settings can show it. Never throws.
+ * Validates a key WITHOUT spending any Pollen. Verified live 2026-07-31: the two key
+ * kinds behave differently — /account/balance answers pk_ keys but 403s perfectly
+ * valid sk_ keys, while /account/key answers BOTH and also reveals the key's model
+ * allowlist (pk_ keys are often created with an EMPTY allowlist, which 403s all
+ * generation). So: validity + permissions via /account/key, balance best-effort.
+ * Never throws.
  */
 export async function checkPollinationsKey(key: string): Promise<{ ok: boolean; balance?: number; detail: string }> {
   if (!key.trim()) return { ok: false, detail: 'No key saved yet — get a free one at enter.pollinations.ai (no phone needed).' }
+  const auth = { Authorization: `Bearer ${key.trim()}` }
   try {
-    const res = await fetch(`${BASE}/account/balance`, {
-      headers: { Authorization: `Bearer ${key.trim()}` },
-      signal: AbortSignal.timeout(10_000)
-    })
+    const res = await fetch(`${BASE}/account/key`, { headers: auth, signal: AbortSignal.timeout(10_000) })
     if (!res.ok) return { ok: false, detail: classifyPollinationsError(res.status, await res.text().catch(() => '')) }
-    const data = (await res.json()) as { balance?: number }
-    const balance = typeof data.balance === 'number' ? data.balance : undefined
+    const info = (await res.json()) as { valid?: boolean; type?: string; permissions?: { models?: string[] | null } }
+    if (!info.valid) return { ok: false, detail: 'Pollinations says this key is not valid — create a fresh one at enter.pollinations.ai.' }
+    // An empty models allowlist blocks ALL generation with 403 — warn before any build.
+    if (Array.isArray(info.permissions?.models) && info.permissions.models.length === 0) {
+      return {
+        ok: false,
+        detail:
+          `This ${info.type ?? ''} key has NO models enabled, so every generation is refused. ` +
+          'Use your SECRET key (sk_…) instead, or edit this key on enter.pollinations.ai and allow video models.'
+      }
+    }
+    // Balance is a bonus: it only answers some key types — a 403 here means nothing bad.
+    let balance: number | undefined
+    try {
+      const bal = await fetch(`${BASE}/account/balance`, { headers: auth, signal: AbortSignal.timeout(8_000) })
+      if (bal.ok) {
+        const data = (await bal.json()) as { balance?: number }
+        if (typeof data.balance === 'number') balance = data.balance
+      }
+    } catch {
+      /* balance is optional */
+    }
+    if (balance !== undefined && balance <= 0) {
+      return {
+        ok: true,
+        balance,
+        detail:
+          'Key works ✓ but your Pollen balance is 0 — real-motion scenes will fall back to stills until it refills. ' +
+          'Check the Quests/tier section on enter.pollinations.ai for free daily Pollen.'
+      }
+    }
     return {
       ok: true,
       balance,
       detail:
         balance !== undefined
           ? `Key works ✓ — ${balance.toFixed(2)} Pollen available (a 5s scene on wan-fast costs ~0.05).`
-          : 'Key works ✓'
+          : 'Key works ✓ (balance not readable for this key type — that is normal for sk_ keys).'
     }
   } catch {
     return { ok: false, detail: 'Could not reach Pollinations (offline?) — try again later.' }

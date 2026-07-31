@@ -923,7 +923,7 @@ export default function SettingsPage() {
                     type="password"
                     value={aiPollinKey}
                     onChange={(e) => setAiPollinKey(e.target.value)}
-                    placeholder={aiHasPollinKey ? 'Key saved — type to replace' : 'Pollinations key (pk_… or sk_…)'}
+                    placeholder={aiHasPollinKey ? 'Key saved — type to replace' : 'Pollinations SECRET key (sk_…) — pk_ keys often block video'}
                     className="flex-1 rounded-md bg-ink-900 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
                   />
                   <button

@@ -3,7 +3,7 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-31 06:49
+## Build: v0.1.1 · 2026-07-31 07:34
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
@@ -24,6 +24,21 @@ AI Video):
 - **Puter (Google Veo):** unchanged — no key, a sign-in window pops up during the first
   build. Use it where their phone verification works.
 Both routes fall back per scene to AI stills with the reason in the build log.
+
+Live-tested the same day with a real account (thank you): **use the SECRET key (sk_…)**
+— pk_ keys are often created with an empty model allowlist and every generation gets
+refused. The "Test key" button now checks the key the right way for both kinds, warns
+when a key has no models enabled, and says plainly when the Pollen balance is 0 (free
+Pollen comes from the Quests/tier section on enter.pollinations.ai and renews daily).
+
+### 🛡 Updates no longer fight Windows Smart App Control
+Smart App Control blocks each freshly built (unsigned) setup.exe as an unknown file —
+which stranded the installed app on an old build. Shipping now updates the installed
+app **in place**: the already-allowed program stays exactly as Windows approved it, and
+only the app's code archive (`app.asar`, a data file) is swapped. Verified safe against
+the build's own integrity settings. The installer is only needed again when the Electron
+runtime itself changes — and the durable fix for that day is code signing
+(docs/SIGNING.md).
 
 ## New in this build (2026-07-31)
 

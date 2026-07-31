@@ -89,7 +89,8 @@ AI stops answering ...... the old free online AI went PAID (their change). The a
                           exact error + time, or nihilpointzero-data\logs\ai-errors.log
 Want real AI motion ..... pick "REAL AI video — free cloud". Easiest here: Settings -> AI Video ->
                           Pollinations route -> get a free key at enter.pollinations.ai (GitHub/email,
-                          NO phone) -> paste + "Test key". Free Pollen renews DAILY (~a few 5s scenes/day).
+                          NO phone) -> paste the SECRET key (sk_…) + "Test key". Free Pollen comes from
+                          the Quests/tier section there and renews DAILY (~a few 5s scenes/day).
                           (Puter route also exists but its phone verification rejects Pakistani numbers.)
                           Up to 5 scenes/build, minutes each; runs out -> AI stills, reason in the build
                           log — nothing breaks. LOCAL AI video still needs an NVIDIA card this PC doesn't

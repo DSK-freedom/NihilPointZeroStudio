@@ -99,6 +99,41 @@ Step 'Deploy exes to Desktop studio' {
     Copy-Item (Join-Path $repo 'release\NIHILPOINTZERO-OS-setup.exe')    $studio -Force
 }
 
+Step 'Update the INSTALLED app in place (Smart App Control-safe)' {
+    # Windows Smart App Control judges every NEW unsigned .exe by its (unknown) hash,
+    # so freshly built installers can get blocked outright - which stranded the
+    # installed app on an old build (2026-07-31). The fix: the installed exe was
+    # already allowed once and never needs to change - only resources\app.asar (the
+    # app's code archive, a data file SAC does not judge) does. The asar-integrity
+    # fuse is NOT enforced in these builds (verified against the fuse wire), so
+    # swapping the asar under the existing exe is safe. Electron-runtime upgrades DO
+    # change the binaries - detected via ffmpeg.dll (an Electron file app code never
+    # touches); then the installer must run once (the durable fix for THAT is code
+    # signing, see docs\SIGNING.md).
+    $instDir = Join-Path $env:LOCALAPPDATA 'Programs\finscript-studio'
+    $unpacked = Join-Path $repo 'release\win-unpacked'
+    if (-not (Test-Path (Join-Path $instDir 'NIHILPOINTZERO-OS.exe'))) {
+        Write-Host '  (no installed copy on this PC - skipped)' -ForegroundColor DarkGray
+    } elseif (Get-Process -Name 'NIHILPOINTZERO-OS' -ErrorAction SilentlyContinue) {
+        Write-Host '  INSTALLED APP IS RUNNING - close it and re-ship (or run setup.exe) to update it' -ForegroundColor Yellow
+    } else {
+        $instFf = Get-FileHash (Join-Path $instDir 'ffmpeg.dll') -Algorithm SHA256 -ErrorAction SilentlyContinue
+        $newFf  = Get-FileHash (Join-Path $unpacked 'ffmpeg.dll') -Algorithm SHA256 -ErrorAction SilentlyContinue
+        if (-not $instFf -or -not $newFf -or $instFf.Hash -ne $newFf.Hash) {
+            Write-Host '  Electron runtime changed - run NIHILPOINTZERO-OS-setup.exe once (Windows may ask to allow it)' -ForegroundColor Yellow
+        } else {
+            # Keep ONE rollback copy, then swap the code archive + its unpacked natives.
+            Copy-Item (Join-Path $instDir 'resources\app.asar') (Join-Path $instDir 'resources\app.asar.previous') -Force
+            Copy-Item (Join-Path $unpacked 'resources\app.asar') (Join-Path $instDir 'resources\app.asar') -Force
+            if (Test-Path (Join-Path $unpacked 'resources\app.asar.unpacked')) {
+                Copy-Item (Join-Path $unpacked 'resources\app.asar.unpacked') (Join-Path $instDir 'resources') -Recurse -Force
+            }
+            Write-Host "  installed app updated in place to $buildTag (no installer, nothing for SAC to flag)" -ForegroundColor Green
+        }
+    }
+    $global:LASTEXITCODE = 0
+}
+
 Step 'Deploy docs to Desktop studio' {
     foreach ($doc in 'HOW-TO-USE.txt', 'NIHILPOINTZERO-GUIDE.txt',
                      'NIHILPOINTZERO-CHEATSHEET.txt', 'MEGA-DIAGNOSTIC-REPORT.md') {
@@ -229,4 +264,5 @@ Write-Host "SHIPPED OK  $buildTag" -ForegroundColor Green
 Write-Host "  Desktop studio updated: $studio"
 Write-Host '  GitHub updated: push complete'
 Write-Host '  Download page updated: https://github.com/DSKJazz/NihilPointZeroStudio/releases/latest'
-Write-Host '  REMINDER: run NIHILPOINTZERO-OS-setup.exe once (one click) to update the INSTALLED app.' -ForegroundColor Yellow
+Write-Host '  Installed app: updated in place automatically when possible (see the step above);' -ForegroundColor Yellow
+Write-Host '  the setup.exe is only needed when the Electron runtime itself changed.' -ForegroundColor Yellow

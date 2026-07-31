@@ -670,8 +670,11 @@ cloud". It generates REAL moving video for each scene — not a photo slideshow.
 There are two free ways to power it; pick one in Settings -> AI Video:
 
 ROUTE 1 — POLLINATIONS (recommended on this PC; NO phone number):
-  * Sign up free at enter.pollinations.ai with GitHub or email, create a key
-    (starts with pk_ or sk_), and paste it into Settings -> AI Video.
+  * Sign up free at enter.pollinations.ai with GitHub or email, create a key, and
+    paste the SECRET key (sk_…) into Settings -> AI Video. (The pk_ "app" key is
+    often created with no models allowed — the sk_ key is the one that works.)
+  * Free Pollen comes from the Quests/tier section of that dashboard and renews
+    DAILY. The "Test key" button shows your balance and warns if it is 0.
   * Registered users get a small amount of free "Pollen" EVERY DAY — it renews
     daily. The default video model (wan-fast) costs about 0.05 Pollen for a
     5-second scene, so the daily grant is several real-motion scenes, every day.

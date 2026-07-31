@@ -31,13 +31,25 @@ moved or deleted, and empty 0-byte files from interrupted builds are ignored rat
 offered to you as if they were work. The ship gate now checks this card can always name
 the real folder.
 
-### 🎞 Your two recovered videos are in the app
-The "Pakistan ke Fiscal Federalism" pair (585 MB + 211 MB, with their narration) has been
-imported into Video Studio proper — so they are now listed, playable, backed up weekly,
-and covered by delete-sync like everything else. One script that existed nowhere in the
-app (4,609 words, the "stressed retail investor" piece) was recovered into your Library.
-Everything else in that Recovered-Videos folder was already in the app — checked file by
-file, not assumed.
+### 🎞 The recovered folder — what was really in it (correction)
+The "Pakistan ke Fiscal Federalism" pair (585 MB + 211 MB) was imported into Video Studio,
+and an earlier version of this note called them playable. **They are not.** A later check
+with the video prober found both files were already broken *before* they were ever copied —
+identical corruption in all three places they existed, from a build that was interrupted on
+19 July. No player can open them; the copy was faithful, the source was dead.
+
+What IS recoverable from that video is real: its **70.5-minute narration audio is intact**,
+and its full script is in your Library. So it can be rebuilt rather than mourned.
+
+Genuinely rescued from that folder: one script that existed nowhere else in the app
+(4,609 words, the "stressed retail investor" piece), now in your Library. Everything else
+there was already in the app — checked file by file, not assumed.
+
+### 🩺 Corrupt videos are now detected, never offered as "recovered work"
+A build that gets interrupted (Stop, crash, power cut) leaves a full-size .mp4 that no
+player can open — the index at the end never got written. **Nine such files, 14.8 GB, were
+sitting in your work folder.** The recover feature above now runs every candidate through
+the video prober first, so it can only ever offer you files that genuinely play.
 
 ## New in this build (2026-07-31, late night — your reported errors, fixed at the root)
 

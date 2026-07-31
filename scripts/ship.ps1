@@ -101,7 +101,24 @@ Step 'Clear previous build artifacts' {
     }
 }
 
-Step 'Build (portable + installer)' { npm run dist:win }
+Step 'Build (portable + installer)' {
+    # Real-time antivirus keeps a lock on the freshly written setup.exe for a moment,
+    # and makensis dies with "Can't open output file" - three ships in one night died
+    # exactly there (2026-08-01). It is transient: deleting the half-written output and
+    # running again works. So do that automatically instead of failing the whole ship
+    # and making a human retry by hand. (Durable fix: an AV exclusion for
+    # %LOCALAPPDATA%\electron-builder\Cache and the release folder - a user-only action.)
+    $setup = Join-Path $repo 'release\NIHILPOINTZERO-OS-setup.exe'
+    foreach ($attempt in 1..3) {
+        npm run dist:win
+        if (-not $LASTEXITCODE) { break }
+        if ($attempt -eq 3) { throw 'FAILED: Build (portable + installer) - three attempts, see the log above' }
+        Write-Host "  build failed (attempt $attempt) - likely the antivirus lock on setup.exe; clearing it and retrying in 20s" -ForegroundColor Yellow
+        Remove-Item $setup -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 20
+    }
+    $global:LASTEXITCODE = 0
+}
 
 Step 'Deploy exes to Desktop studio' {
     Copy-Item (Join-Path $repo 'release\NIHILPOINTZERO-OS-portable.exe') $studio -Force

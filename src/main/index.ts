@@ -16,8 +16,17 @@ import { registerIpcHandlers } from './ipc'
 // the location is actually writable; otherwise we leave it at the default per-user
 // dir (always writable) so the app still runs. Must run before anything reads
 // getPath('userData').
+// E2E harness (scripts/e2e-smoke.mjs, the ship gate): a fully ISOLATED data home so
+// the click-through suite can NEVER touch real user data — it must win over both the
+// portable redirect and the Desktop-adoption below. Also silences the update check
+// and auto-backup (network/disk noise a test run must not produce).
+const e2eUserData = process.env.NPZ_E2E_USERDATA
+if (e2eUserData) app.setPath('userData', e2eUserData)
+
 const portableDir = process.env.PORTABLE_EXECUTABLE_DIR
-if (portableDir) {
+if (e2eUserData) {
+  /* isolated E2E data home already set above — skip all adoption logic */
+} else if (portableDir) {
   const candidate = join(portableDir, 'nihilpointzero-data')
   // Does the portable folder already hold this user's data? If so we MUST use it —
   // never strand videos/settings there and silently start fresh in %APPDATA%.
@@ -112,16 +121,20 @@ if (!gotLock) {
     registerIpcHandlers()
     createWindow()
 
-    // Quiet, delayed check for a newer shipped build (silent when offline/failing).
-    setTimeout(() => {
-      void checkForUpdate()
-    }, 8000)
+    // Quiet, delayed check for a newer shipped build (silent when offline/failing),
+    // and the weekly copy-only backup — both skipped under the E2E harness, which
+    // must not touch the network or write anything outside its isolated data home.
+    if (!e2eUserData) {
+      setTimeout(() => {
+        void checkForUpdate()
+      }, 8000)
 
-    // Weekly copy-only backup of the user's work (at most once every 7 days).
-    // Delayed well past first paint so it never competes with app startup.
-    setTimeout(() => {
-      void runAutoBackupIfDue()
-    }, 30_000)
+      // Weekly copy-only backup of the user's work (at most once every 7 days).
+      // Delayed well past first paint so it never competes with app startup.
+      setTimeout(() => {
+        void runAutoBackupIfDue()
+      }, 30_000)
+    }
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

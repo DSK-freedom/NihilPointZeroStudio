@@ -26,8 +26,9 @@ import { tmpdir } from 'os'
 
 const BASE = 'https://gen.pollinations.ai'
 export const DEFAULT_POLLINATIONS_VIDEO_MODEL = 'wan-fast'
-/** Cloud video generation is legitimately slow — generous, but never infinite. */
-const CLIP_TIMEOUT_MS = 10 * 60_000
+/** Pollinations' own ceiling for video jobs is 15 minutes (their 2026-07-28 news);
+ * measured live: a queued wan-fast clip can exceed 10. Match their ceiling. */
+const CLIP_TIMEOUT_MS = 15 * 60_000
 
 /** Builds the generation URL. Pure + tested. */
 export function buildPollinationsVideoUrl(opts: {

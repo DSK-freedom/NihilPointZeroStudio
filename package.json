@@ -6,9 +6,11 @@
   "private": true,
   "scripts": {
     "dev": "electron-vite dev",
+    "probe": "vite --config vite.probe.config.ts",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "test": "vitest run",
+    "test:e2e": "electron-vite build && node scripts/e2e-smoke.mjs",
     "lint": "eslint src",
     "dist:win": "electron-vite build && electron-builder --win",
     "ship": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ship.ps1"
@@ -40,6 +42,7 @@
     "eslint": "^10.7.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^29.1.1",
+    "playwright-core": "^1.62.1",
     "postcss": "^8.5.16",
     "tailwindcss": "^3.4.19",
     "typescript": "^6.0.3",

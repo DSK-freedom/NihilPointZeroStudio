@@ -3,7 +3,7 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-31 07:57
+## Build: v0.1.1 · 2026-07-31 09:13
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
@@ -31,6 +31,20 @@ Live-tested the same day with a real account (thank you): **use the SECRET key (
 refused. The "Test key" button now checks the key the right way for both kinds, warns
 when a key has no models enabled, and says plainly when the Pollen balance is 0 (free
 Pollen is claimed from the Quests tab on enter.pollinations.ai — rewards are retroactive).
+
+### 🚦 Nothing ships unless a machine has clicked through the whole app first
+New hard gate in the ship pipeline: before any build can go out, an automated harness
+launches the REAL app (in an isolated throwaway data home — it can never touch your
+work), opens **every single tab** — Today, Ideas & Trends, AI Command, Scene Studio,
+Script Writer, Script Pad, Video Studio, Storyboard Director, Presenter Studio,
+Recorder, Timeline Editor, Charts, Live PSX Data, NCCPL Analysis, Advisor, Library,
+Activity Log, Settings — verifies each renders alive with working controls and no
+crash screen, and then **builds an actual video by clicking the UI** (paste script →
+pick engine → Build → finished video appears), fully offline. If ANY of that fails,
+the ship stops. Straight talk about what this does and doesn't promise: it cannot
+stop a free online service from having a bad hour (those failures fall back with the
+reason logged), but "a tab is broken / a button does nothing" can no longer reach you
+in a shipped build.
 
 ### 🛡 Updates no longer fight Windows Smart App Control
 Smart App Control blocks each freshly built (unsigned) setup.exe as an unknown file —

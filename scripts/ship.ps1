@@ -23,6 +23,15 @@ function Step([string]$name, [scriptblock]$block) {
 
 Step 'Tests' { npm run test }
 
+Step 'UI click-through of the REAL app (every tab must respond, a video must build)' {
+    # Unit tests can all pass while a button in the UI is dead — that class of failure
+    # reached the user repeatedly. This launches the actual built app in an isolated
+    # data home, walks EVERY tab, and builds a real video through the UI, offline.
+    # Red here = the ship stops. A small app window appearing for a few minutes is
+    # this gate doing its job.
+    npm run test:e2e
+}
+
 # Build identity: the doc stamp carries version + date-time; the sidebar badge carries the
 # same PLUS the git hash. The hash can only be truthful if the ship commit exists BEFORE
 # the build, so the order is: stamp doc -> commit -> compute badge from HEAD -> build.

@@ -278,14 +278,33 @@ Video Studio -> "Sound Studio (DJ)":
    - "Apply mix -> new video": lay your sounds over a video's narration.
    - "📊 Show waveform": see the audio of the selected video (loud/quiet spots).
 
-Remove or swap the background music:
+Remove or swap the background music (and now the VOICE too):
    - Videos MADE IN THIS APP: the "🎵 Music" row -> Remove (keeps your voice) or
      Replace with a mood. Replace AUTO-DUCKS: the music dips whenever you speak.
-     Exact and instant, no internet.
+     Exact and instant, no internet. NEW: "Remove my voice (keep music)" does the
+     opposite — AI-separates the mixed audio and keeps only the music.
    - OUTSIDE videos (music already mixed in): "Remove music (AI separate)":
        Online = works out of the box (free, built in), needs internet.
        Local  = offline, best quality (Demucs, installed on this PC).
+     NEW: the same row also has "Keep music (online/local)" = remove the voice instead.
      Separation is an AI estimate — great for clear speech over music, not perfect.
+
+🎧 THE AI DJ (in the same "🎵 Music" row, one click):
+   - Leave the little box empty and press "Let the AI DJ pick & lay the music": the app
+     reads the video's OWN script (videos now remember their script), or listens to the
+     narration if there isn't one, judges the mood (English, Roman Urdu AND Urdu script),
+     composes a track sized to the video, and mixes it softly under your voice.
+   - Or type what you want ("lofi", "tense", "calm", "cinematic"…) and it obeys.
+   - Always a NEW copy — your original stays in the list.
+
+🧹 CLEAN COPY (the "🎛 Studio tools" row under each video):
+   - One click rebuilds the exact same video with NOTHING written on the picture —
+     no title, no section headings, no captions. Works for videos built from now on
+     (they remember their own recipe). Burned-caption copies never replaced your
+     original anyway — it is always still in the list.
+
+🎛 OPEN AUDIO IN DJ DECKS (same row): pulls the video's sound out and loads it onto
+   Deck A of the Dual decks (EQ, loops, hot cues, BPM, crossfader) in one click.
 
 -------------------------------------------------------------------------------
 9. SCENE STUDIO (storyboard + put yourself in a scene)
@@ -295,7 +314,15 @@ Remove or swap the background music:
    - "Generate all" makes an image per scene — watch them appear. ⏸ Pause / ▶ Resume.
    - STORYBOARD: reorder scenes (↑ ↓), remove (✕), or "＋ Add a scene". The order you
      see is the order the video is built in.
-   - Rewrite any scene's prompt and "↻ Regenerate this scene".
+   - Rewrite any scene's prompt and "↻ Regenerate this scene". If a regenerate fails,
+     the reason now shows in red ON the scene card (it used to hide behind the old image).
+   - ⏱ YOUR PACING (new): every scene card has "Stays … sec" (how long that image is on
+     screen) and "✨ Arrives by" (straight cut, fade, dissolve, slide from any side,
+     circle open). Leave them empty for automatic pacing. Set them and every image
+     shows exactly once, in your order, at your pace — the total is always stretched
+     to fit the narration, so speech never gets cut off.
+   - 🎬 VIDEO SETTINGS row (above the scenes): Style · Video look · Resolution ·
+     Format · Look — these decide the final built video.
    - "📎 Put me in (photo)": attach your picture and describe the scene ("me as an
      astronaut, spacesuit, on the moon"). Slider "Photo transform" — lower keeps more
      of your real look. Free; uses internet; the queue can be slow (shows its place).

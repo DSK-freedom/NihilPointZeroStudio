@@ -394,6 +394,12 @@ export interface VideoBuildRequest {
   style?: VideoStyle
   /** Optional user images (absolute paths) shown as a Ken-Burns slideshow background. */
   images?: string[]
+  /**
+   * Per-image pacing and hand-offs (Scene Studio). When present it WINS over `images`:
+   * every shot is shown exactly once, in order, with the user's seconds (scaled to fit
+   * the narration length) and the chosen visual transition into each shot.
+   */
+  imageShots?: ImageShot[]
   /** Use real stock footage (online) matched to the script (needs a saved Pixabay key). */
   useStock?: boolean
   /**
@@ -402,6 +408,41 @@ export interface VideoBuildRequest {
    * chapters the user did not ask for.
    */
   captionsAndChapters?: boolean
+  /**
+   * false = a CLEAN build: no title overlay, no section heading cards — nothing drawn
+   * over the picture ("clean copy" of an existing video). Default true.
+   */
+  textOverlays?: boolean
+}
+
+/** Visual hand-off INTO a slideshow scene (ffmpeg xfade). 'cut' = instant switch. */
+export type SceneTransition =
+  | 'cut'
+  | 'fade'
+  | 'slideleft'
+  | 'slideright'
+  | 'slideup'
+  | 'slidedown'
+  | 'circleopen'
+  | 'dissolve'
+export const SCENE_TRANSITIONS: { value: SceneTransition; label: string }[] = [
+  { value: 'cut', label: 'Straight cut' },
+  { value: 'fade', label: 'Fade' },
+  { value: 'dissolve', label: 'Dissolve' },
+  { value: 'slideleft', label: 'Slide from right' },
+  { value: 'slideright', label: 'Slide from left' },
+  { value: 'slideup', label: 'Slide from below' },
+  { value: 'slidedown', label: 'Slide from above' },
+  { value: 'circleopen', label: 'Circle open' }
+]
+
+/** One slideshow scene with user pacing: the image, how long it stays, how it arrives. */
+export interface ImageShot {
+  path: string
+  /** Desired seconds on screen — treated as a weight, scaled so the total matches the narration. */
+  seconds?: number
+  /** Visual transition INTO this shot (ignored for the first shot). */
+  transition?: SceneTransition
 }
 
 export interface VideoJob {
@@ -413,6 +454,18 @@ export interface VideoJob {
   /** Saved narration-only audio, so background music can later be removed/replaced
    * exactly (no AI un-mixing). Present for videos built after this feature shipped. */
   narrationPath?: string
+  /**
+   * The video's own recipe, remembered at build time (videos built after this
+   * shipped). It powers per-video features that must know the CONTENT and settings:
+   * the AI DJ reads `body` to pick fitting music, and "clean copy" rebuilds the
+   * same video without captions/title cards. Older jobs simply lack these.
+   */
+  body?: string
+  resolution?: VideoResolution
+  aspect?: VideoAspect
+  template?: VideoTemplate
+  engine?: LookEngine
+  style?: VideoStyle
 }
 
 /** How a cut is applied: keep only the selected range, or remove it (see main/video/trim.ts). */

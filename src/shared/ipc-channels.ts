@@ -83,6 +83,14 @@ export const IPC = {
   videoStitch: 'video:stitch',
   videoSetMusic: 'video:set-music',
   videoSeparateMusic: 'video:separate-music',
+  // 🎧 AI DJ: pick a mood from the video's own content (or the user's words) and lay
+  // a ducked music bed under the voice. Returns { job, mood, how }.
+  videoAiDj: 'video:ai-dj',
+  // Extract a video's audio to an MP3 (for loading into the DJ decks).
+  videoExtractAudio: 'video:extract-audio',
+  // Read an audio file's bytes for WebAudio decoding (renderers can't fetch file://).
+  // Guarded: only paths inside the app's own data folder are ever served.
+  audioReadFile: 'audio:read-file',
   videoCaptions: 'video:captions',
   videoWatermark: 'video:watermark',
   settingsSetMvsepToken: 'settings:set-mvsep-token',

@@ -4,7 +4,7 @@ import { join } from 'path'
 import { makeFfmpegProgressLogger, runFfmpeg } from './ffmpeg'
 import { chooseEncoderForJob, encoderLabel, isHardware, runEncodeWithFallback } from './encoder'
 import { finishingChain, templateFor, titleAlphaExpr, type VideoTemplate } from './templates'
-import type { VideoStyle } from '../../shared/types'
+import type { ImageShot, SceneTransition, VideoStyle } from '../../shared/types'
 
 export type VideoResolution = '1080p' | '1440p' | '4k' | '8k'
 export type { VideoStyle } from '../../shared/types'
@@ -355,6 +355,10 @@ export interface RenderOptions {
   template?: VideoTemplate
   /** Optional user image paths for a Ken-Burns slideshow background. */
   images?: string[]
+  /** Per-image pacing/transitions (wins over `images` when present — see shared types). */
+  imageShots?: ImageShot[]
+  /** false = clean build: no title overlay, no section cards (nothing drawn over the picture). */
+  textOverlays?: boolean
   /** A pre-rendered background video (e.g. assembled stock footage). Takes precedence. */
   backgroundVideo?: string
   /** Animated moving-gradient background (default true). Set false for a flat color. */
@@ -409,6 +413,10 @@ export function zoompanExpr(motion: KenBurnsMotion, frames: number, w: number, h
 export interface SlideshowShot {
   imageIndex: number
   motion: KenBurnsMotion
+  /** Visible seconds for this shot (custom pacing). Absent = equal split. */
+  seconds?: number
+  /** Visual transition INTO this shot from the previous one (custom pacing). */
+  transition?: SceneTransition
 }
 
 /**
@@ -429,6 +437,73 @@ export function planSlideshowShots(imageCount: number, durationSec: number): Sli
 }
 
 /**
+ * Plans shots from the USER's per-scene pacing (Scene Studio): every image exactly
+ * once, in order — no 12-shot cap, no round-robin. The user's seconds are WEIGHTS:
+ * they're scaled so the total exactly matches the narration length (so speech never
+ * gets cut off), with a small floor so no shot collapses to nothing. Pure + tested.
+ */
+export function planCustomShots(
+  wanted: { seconds?: number; transition?: SceneTransition }[],
+  durationSec: number
+): SlideshowShot[] {
+  const n = Math.max(1, wanted.length)
+  const dur = Math.max(1, durationSec)
+  const weights = wanted.map((w) => (w.seconds && w.seconds > 0 ? w.seconds : dur / n))
+  const total = weights.reduce((a, b) => a + b, 0) || 1
+  return wanted.map((w, i) => ({
+    imageIndex: i,
+    motion: KEN_BURNS_MOTIONS[i % KEN_BURNS_MOTIONS.length],
+    seconds: Math.max(0.8, (weights[i] / total) * dur),
+    transition: i === 0 ? undefined : w.transition
+  }))
+}
+
+/**
+ * Builds the ffmpeg filter graph for a slideshow with per-shot seconds and xfade
+ * transitions. Chained-xfade bookkeeping (all pure, so it's unit-testable):
+ * visible lengths v_i sum to the narration length; each shot's STREAM is v_i plus the
+ * overlap consumed by the transition into the NEXT shot (t_{i+1}); the k-th xfade
+ * starts at offset Σ_{j≤k} v_j. Net result length = Σv — speech and picture end together.
+ * 'cut' is a 1-frame fade (visually identical to a hard cut, keeps one code path).
+ */
+export function buildCustomSlideshowFilter(
+  shots: SlideshowShot[],
+  layout: Layout,
+  fps = 25
+): { filter: string; outLabel: string } {
+  const n = shots.length
+  const v = shots.map((s) => Math.max(0.8, s.seconds ?? 4))
+  // Transition INTO shot i (i>=1), clamped so it can't eat a whole shot.
+  const t = shots.map((s, i) => {
+    if (i === 0) return 0
+    const kind = s.transition ?? 'cut'
+    const want = kind === 'cut' ? 1 / fps : 0.5
+    return Math.min(want, 0.4 * Math.min(v[i - 1], v[i]))
+  })
+  const segs = shots.map((shot, i) => {
+    const streamLen = v[i] + (i < n - 1 ? t[i + 1] : 0)
+    const frames = Math.max(1, Math.round(streamLen * fps))
+    return (
+      `[${i}:v]scale=${layout.w}:${layout.h}:force_original_aspect_ratio=increase,` +
+      `crop=${layout.w}:${layout.h},setsar=1,${zoompanExpr(shot.motion, frames, layout.w, layout.h)}[s${i}]`
+    )
+  })
+  if (n === 1) return { filter: `${segs[0]}`, outLabel: '[s0]' }
+  const chains: string[] = []
+  let acc = 0 // Σ visible lengths so far = the next xfade's offset
+  let prev = 's0'
+  for (let i = 1; i < n; i++) {
+    acc += v[i - 1]
+    const kind = shots[i].transition && shots[i].transition !== 'cut' ? shots[i].transition : 'fade'
+    const dur = Math.max(1 / fps, t[i])
+    const out = i === n - 1 ? 'vout' : `x${i}`
+    chains.push(`[${prev}][s${i}]xfade=transition=${kind}:duration=${dur.toFixed(3)}:offset=${acc.toFixed(3)}[${out}]`)
+    prev = out
+  }
+  return { filter: `${segs.join(';')};${chains.join(';')}`, outLabel: '[vout]' }
+}
+
+/**
  * Renders a Ken-Burns slideshow of the given images to `outPath` at the layout size
  * for `dur` seconds. Each shot cover-scales, crops to frame, then applies a varied
  * camera move (see planSlideshowShots). Pure ffmpeg — no paid service.
@@ -437,8 +512,35 @@ export async function makeSlideshow(
   images: string[],
   layout: Layout,
   dur: number,
-  outPath: string
+  outPath: string,
+  custom?: { seconds?: number; transition?: SceneTransition }[]
 ): Promise<void> {
+  // USER-PACED path (Scene Studio per-scene seconds/transitions): every image once,
+  // in order, xfade transitions, total locked to the narration length.
+  if (custom && custom.length === images.length && custom.length > 0) {
+    const shots = planCustomShots(custom, dur)
+    const { filter, outLabel } = buildCustomSlideshowFilter(shots, layout)
+    const inputs: string[] = []
+    shots.forEach((shot) => inputs.push('-i', images[shot.imageIndex]))
+    await runFfmpeg([
+      '-y',
+      ...inputs,
+      '-filter_complex',
+      filter,
+      '-map',
+      outLabel,
+      '-c:v',
+      'libx264',
+      '-preset',
+      'veryfast',
+      '-pix_fmt',
+      'yuv420p',
+      '-r',
+      '25',
+      outPath
+    ])
+    return
+  }
   const shots = planSlideshowShots(images.length, dur)
   const n = shots.length
   const slot = Math.max(1, dur / n)
@@ -533,15 +635,22 @@ export async function renderVideo(opts: RenderOptions): Promise<void> {
       opts.animatedBg === false
         ? { kind: 'color', color: theme.bgColor }
         : { kind: 'animated', source: buildGradientSource(theme, layout.w, layout.h, dur) }
+    const slideshowImages = opts.imageShots?.length ? opts.imageShots.map((s) => s.path) : opts.images
     if (opts.backgroundVideo) {
       // Pre-assembled footage (e.g. stock B-roll) — use it directly.
       background = { kind: 'file', path: opts.backgroundVideo }
-    } else if (opts.images && opts.images.length) {
+    } else if (slideshowImages && slideshowImages.length) {
       // One corrupt/truncated image must not abort the whole build — fall back to the
       // animated gradient (the storyboard path already does this; the main path didn't).
       try {
         const bgPath = join(scratch, 'bg.mp4')
-        await makeSlideshow(opts.images, layout, dur, bgPath)
+        await makeSlideshow(
+          slideshowImages,
+          layout,
+          dur,
+          bgPath,
+          opts.imageShots?.length ? opts.imageShots.map((s) => ({ seconds: s.seconds, transition: s.transition })) : undefined
+        )
         background = { kind: 'file', path: bgPath }
       } catch (err) {
         opts.onProgress?.(`Slideshow failed (${err instanceof Error ? err.message : 'error'}) — using the animated look instead.`)
@@ -566,14 +675,21 @@ export async function renderVideo(opts: RenderOptions): Promise<void> {
     // textfile must be single-quoted with escaped colon, else "both text and
     // textfile". Timeline expressions are single-quoted so commas stay literal.)
     const tpl = templateFor(opts.template)
-    const titleAlpha = tpl.animateTitle ? `:alpha='${titleAlphaExpr()}'` : ''
-    chains.push(
-      `[0:v]drawtext=fontfile='${font}':textfile='${fileArg(titleFile)}':fontcolor=${theme.titleColor}:fontsize=${titleFont}:x=(w-tw)/2:y=${layout.titleY}${titleAlpha}[v0]`
-    )
-    chains.push(`[v0][wave]overlay=x=0:y=H-h-${layout.waveMargin}[v1]`)
+    // "Clean copy": nothing drawn over the picture — no title, no section cards.
+    // The waveform stays (it's decoration, not text) and the finishing look stays.
+    const showText = opts.textOverlays !== false
+    if (showText) {
+      const titleAlpha = tpl.animateTitle ? `:alpha='${titleAlphaExpr()}'` : ''
+      chains.push(
+        `[0:v]drawtext=fontfile='${font}':textfile='${fileArg(titleFile)}':fontcolor=${theme.titleColor}:fontsize=${titleFont}:x=(w-tw)/2:y=${layout.titleY}${titleAlpha}[v0]`
+      )
+      chains.push(`[v0][wave]overlay=x=0:y=H-h-${layout.waveMargin}[v1]`)
+    } else {
+      chains.push(`[0:v][wave]overlay=x=0:y=H-h-${layout.waveMargin}[v1]`)
+    }
 
     let prev = 'v1'
-    cards.forEach((card, i) => {
+    if (showText) cards.forEach((card, i) => {
       const cardFile = join(scratch, `card${i}.txt`)
       writeFileSync(cardFile, card, 'utf-8')
       const start = i * slot

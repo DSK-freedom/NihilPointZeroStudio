@@ -214,9 +214,15 @@ const api = {
       mode: 'remove' | 'replace',
       mood?: import('../shared/types').Mood
     ): Promise<import('../shared/types').VideoJob> => ipcRenderer.invoke(IPC.videoSetMusic, videoId, mode, mood),
-    // Remove music from an OUTSIDE video by AI separation (engine: 'online' MVSEP or 'local' Demucs).
-    separateMusic: (videoId: string, engine: 'online' | 'local'): Promise<import('../shared/types').VideoJob> =>
-      ipcRenderer.invoke(IPC.videoSeparateMusic, videoId, engine),
+    // AI-separate a video's audio and keep one side: 'voice' (music removed) or 'music' (voice removed).
+    separateMusic: (videoId: string, engine: 'online' | 'local', keep: 'voice' | 'music' = 'voice'): Promise<import('../shared/types').VideoJob> =>
+      ipcRenderer.invoke(IPC.videoSeparateMusic, videoId, engine, keep),
+    // 🎧 AI DJ: picks a mood from the video's own content (or your words) and lays a
+    // ducked music bed under the voice. Returns the new job + what it decided and why.
+    aiDj: (videoId: string, styleHint?: string): Promise<{ job: import('../shared/types').VideoJob; mood: string; how: string }> =>
+      ipcRenderer.invoke(IPC.videoAiDj, videoId, styleHint),
+    // Extracts the video's audio to an MP3 (for the DJ decks); returns the file path.
+    extractAudio: (videoId: string): Promise<string> => ipcRenderer.invoke(IPC.videoExtractAudio, videoId),
     // Auto-caption: transcribe narration → .srt; if burn=true also make a subtitled video.
     captions: (videoId: string, burn: boolean): Promise<{ srtPath: string; job?: import('../shared/types').VideoJob }> =>
       ipcRenderer.invoke(IPC.videoCaptions, videoId, burn),
@@ -301,6 +307,9 @@ const api = {
       ipcRenderer.invoke(IPC.scriptpadSave, title, body)
   },
   audio: {
+    // Read an audio file's bytes for WebAudio decoding (renderers can't fetch file://).
+    // Only paths inside the app's data folder are served.
+    readFile: (path: string): Promise<Uint8Array> => ipcRenderer.invoke(IPC.audioReadFile, path),
     // Generate a music bed / SFX; returns an absolute path playable via file://.
     generateMusic: (mood: import('../shared/types').Mood, durationSec: number, seed: number): Promise<string> =>
       ipcRenderer.invoke(IPC.audioGenerateMusic, mood, durationSec, seed),

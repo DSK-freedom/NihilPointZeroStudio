@@ -25,7 +25,7 @@ import { generatePuterClip, puterSceneCap } from './puter'
 import { generatePollinationsClip } from './pollinationsVideo'
 import { getAiVideoConfig } from '../store'
 import { cleanupClipTemp, normalizeClip } from './videoEngine'
-import { beginRenderSession, renderSessionSignal, throwIfCancelled } from './ffmpeg'
+import { beginRenderSession, endRenderSession, renderSessionSignal, throwIfCancelled } from './ffmpeg'
 import { compileStoryboardToTimeline, type ResolvedBeatAsset, type ResolvedBeatSound } from './storyboard'
 import { videosDir } from '../store'
 import type { Mood, SfxKind, StoryboardDoc, TimelineDoc } from '../../shared/types'
@@ -84,6 +84,19 @@ async function narrateBeat(text: string, wav: string, windowsVoice?: boolean): P
  * open it in the Timeline editor). Assets live durably under videos/storyboard/<projectId>.
  */
 export async function renderStoryboard(
+  projectId: string,
+  doc: StoryboardDoc,
+  outPath: string,
+  opts: StoryboardRenderOptions = {}
+): Promise<{ timeline: TimelineDoc }> {
+  try {
+    return await renderStoryboardInner(projectId, doc, outPath, opts)
+  } finally {
+    endRenderSession() // a Stop must not outlive the render it stopped
+  }
+}
+
+async function renderStoryboardInner(
   projectId: string,
   doc: StoryboardDoc,
   outPath: string,
@@ -350,6 +363,9 @@ export async function renderStoryboard(
     beats: doc.beats.map((b) => ({ ...b, durationSec: effDur[b.id] ?? b.durationSec }))
   }
   const timeline = compileStoryboardToTimeline(effDoc, assets)
+  // A Stop pressed after the last beat must stop HERE — renderTimeline opens a fresh
+  // session, which would otherwise erase the pending cancel and render anyway.
+  throwIfCancelled()
   onProgress?.('Assembling and rendering the final video…')
   await renderTimeline(timeline, outPath, (line) => onProgress?.(line))
   return { timeline }

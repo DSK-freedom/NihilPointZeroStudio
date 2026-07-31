@@ -51,7 +51,7 @@ interface DeckNodes {
   offset: number // seconds into the track at that moment
 }
 
-export default function DualDecks(): React.JSX.Element {
+export default function DualDecks({ initialFile }: { initialFile?: { path: string; name: string } } = {}): React.JSX.Element {
   const ctxRef = useRef<AudioContext | null>(null)
   const nodesRef = useRef<(DeckNodes | null)[]>([null, null])
   const [decks, setDecks] = useState<[DeckState, DeckState]>([{ ...FRESH }, { ...FRESH }])
@@ -165,25 +165,49 @@ export default function DualDecks(): React.JSX.Element {
     patchDeck(i, { playing: false })
   }
 
-  async function loadFile(i: number, file: File): Promise<void> {
-    patchDeck(i, { ...FRESH, name: `decoding ${file.name}…` })
+  async function loadBytes(i: number, name: string, bytes: ArrayBuffer): Promise<void> {
     try {
-      const bytes = await file.arrayBuffer()
       const buffer = await ctx().decodeAudioData(bytes)
       const mono = buffer.getChannelData(0)
       stopSource(i)
       nodes(i).offset = 0
       patchDeck(i, {
         ...FRESH,
-        name: file.name,
+        name,
         buffer,
         peaks: computePeaks(mono, 240),
         bpm: detectBpm(mono, buffer.sampleRate)
       })
     } catch {
-      patchDeck(i, { ...FRESH, name: `could not read ${file.name}` })
+      patchDeck(i, { ...FRESH, name: `could not read ${name}` })
     }
   }
+
+  async function loadFile(i: number, file: File): Promise<void> {
+    patchDeck(i, { ...FRESH, name: `decoding ${file.name}…` })
+    await loadBytes(i, file.name, await file.arrayBuffer())
+  }
+
+  // A track handed in from outside (e.g. "Open in DJ decks" on a built video) lands
+  // on Deck A automatically. Bytes come over IPC — a sandboxed renderer cannot
+  // fetch() file:// URLs (media elements can play them, but fetch is refused).
+  const loadedInitial = useRef<string | null>(null)
+  useEffect(() => {
+    if (!initialFile || loadedInitial.current === initialFile.path) return
+    loadedInitial.current = initialFile.path
+    void (async () => {
+      patchDeck(0, { ...FRESH, name: `loading ${initialFile.name}…` })
+      try {
+        const bytes = await window.api.audio.readFile(initialFile.path)
+        // Copy into a tight ArrayBuffer — decodeAudioData wants exactly the audio bytes.
+        const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+        await loadBytes(0, initialFile.name, buf)
+      } catch {
+        patchDeck(0, { ...FRESH, name: `could not read ${initialFile.name}` })
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFile?.path])
 
   // Crossfader + EQ + rate live-apply (cheap, every render is fine at this scale).
   useEffect(() => {

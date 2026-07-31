@@ -34,7 +34,10 @@ interface SoundSource {
 
 let clipSeq = 0
 
-export default function DjStationPage({ embedded = false }: { embedded?: boolean } = {}): React.JSX.Element {
+export default function DjStationPage({
+  embedded = false,
+  deckFile
+}: { embedded?: boolean; deckFile?: { path: string; name: string } } = {}): React.JSX.Element {
   const [jobs, setJobs] = useState<VideoJob[]>([])
   const [pack, setPack] = useState<PackItem[]>([])
   const [userFiles, setUserFiles] = useState<{ label: string; file: string }[]>([])
@@ -257,12 +260,12 @@ export default function DjStationPage({ embedded = false }: { embedded?: boolean
 
       {/* Live two-deck mixing — separate from the timeline below: decks are for
           performing/practicing by ear; the timeline is for placing sounds onto videos. */}
-      <details className={`${embedded ? '' : 'mt-6 '}rounded-lg border border-ink-800 bg-ink-950`}>
+      <details open={!!deckFile} className={`${embedded ? '' : 'mt-6 '}rounded-lg border border-ink-800 bg-ink-950`}>
         <summary className="cursor-pointer px-3 py-2 text-sm text-gold-400 select-none">
           🎛 Dual decks — mix two tracks live (EQ · loops · hot cues · crossfader · BPM)
         </summary>
         <div className="p-2">
-          <DualDecks />
+          <DualDecks initialFile={deckFile} />
         </div>
       </details>
 

@@ -6,6 +6,7 @@ import { isPiperInstalled, synthesizeWithPiper } from '../voice/piper'
 import { synthesizeWithWinNatural } from '../voice/winNatural'
 import {
   beginRenderSession,
+  endRenderSession,
   ffprobeDuration,
   makeFfmpegProgressLogger,
   renderSessionSignal,
@@ -58,6 +59,10 @@ export interface BuildVideoOptions {
   style?: VideoStyle
   /** Optional user image paths for a Ken-Burns slideshow background. */
   images?: string[]
+  /** Per-image pacing + visual transitions (Scene Studio) — wins over `images`. */
+  imageShots?: import('../../shared/types').ImageShot[]
+  /** false = clean build: no title overlay, no section cards drawn over the picture. */
+  textOverlays?: boolean
   /** Use real stock footage (online) matched to the script. */
   useStock?: boolean
   /** Pixabay API key for stock footage (required when useStock). */
@@ -330,6 +335,10 @@ export async function buildVideoFromScript(
       backgroundVideo: aiFootage ?? stockBg,
       // Still images: free per-scene AI images → the user's own images.
       images: aiImages ?? options.images,
+      // User pacing only applies to the user's OWN stills (Scene Studio) — AI-derived
+      // scenes have their own count/order, so per-image seconds wouldn't line up.
+      imageShots: aiImages || aiFootage || stockBg ? undefined : options.imageShots,
+      textOverlays: options.textOverlays,
       onProgress,
       onPreview: options.onPreview
     })
@@ -342,6 +351,7 @@ export async function buildVideoFromScript(
     }
     onProgress?.('Finalizing…')
   } finally {
+    endRenderSession() // a Stop must not outlive the build it stopped
     rmSync(scratch, { recursive: true, force: true })
   }
 }
@@ -429,14 +439,18 @@ export async function renderTimeline(
   onLog?: (line: string) => void
 ): Promise<void> {
   beginRenderSession() // don't inherit a Stop from a previous build
-  if (!doc.video.length) throw new Error('Add at least one video clip to the timeline before rendering.')
-  const total = videoTrackDuration(doc)
-  const encoder = await chooseEncoderForJob(doc.width, doc.height, total)
-  // Show a real percentage during the encode instead of raw ffmpeg stderr spam.
-  await runEncodeWithFallback(encoder, (encoderArgs) => buildTimelineArgs(doc, encoderArgs, outPath), {
-    onLog: makeFfmpegProgressLogger(total, onLog),
-    onNotice: onLog
-  })
+  try {
+    if (!doc.video.length) throw new Error('Add at least one video clip to the timeline before rendering.')
+    const total = videoTrackDuration(doc)
+    const encoder = await chooseEncoderForJob(doc.width, doc.height, total)
+    // Show a real percentage during the encode instead of raw ffmpeg stderr spam.
+    await runEncodeWithFallback(encoder, (encoderArgs) => buildTimelineArgs(doc, encoderArgs, outPath), {
+      onLog: makeFfmpegProgressLogger(total, onLog),
+      onNotice: onLog
+    })
+  } finally {
+    endRenderSession() // a Stop must not outlive the render it stopped
+  }
 }
 
 /** Beautifies (or roughens) one image to `out` using the pure, tested filter chain. */

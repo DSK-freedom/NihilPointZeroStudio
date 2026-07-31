@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { VideoAspect, VideoJob, VideoResolution, VideoStyle, VideoTemplate } from '../../../shared/types'
-import { VIDEO_STYLES, VIDEO_TEMPLATES } from '../../../shared/types'
+import type { SceneTransition, VideoAspect, VideoJob, VideoResolution, VideoStyle, VideoTemplate } from '../../../shared/types'
+import { SCENE_TRANSITIONS, VIDEO_STYLES, VIDEO_TEMPLATES } from '../../../shared/types'
 import MicButton, { appendDictation } from '../components/MicButton'
 import { useAutosave } from '../hooks/useAutosave'
 import { toast } from '../components/Toast'
@@ -26,6 +26,10 @@ interface Scene {
   photo?: string | null
   /** Live status/queue message (e.g. photo-scene queue position). */
   msg?: string
+  /** How long this scene stays on screen (a weight — the total is fitted to the narration). */
+  seconds?: number
+  /** How the picture ARRIVES at this scene (cut/fade/slide/…). Ignored for the first scene. */
+  transition?: SceneTransition
 }
 
 /** Pulls a whole-number percent out of a "Rendering 45% (…)" progress line, else null. */
@@ -229,6 +233,9 @@ export default function SceneStudioPage(): React.JSX.Element {
   /** Regenerate ONE scene with its (possibly edited) prompt — works even while paused. */
   async function regenerate(index: number): Promise<void> {
     await genOne(index, Math.floor(Math.random() * 9999))
+    // A single manual regenerate has no retry pass — if it failed, say so out loud.
+    const s = scenesRef.current.find((x) => x.index === index)
+    if (s?.status === 'error') toast(s.msg ?? 'Scene regenerate failed — try again.', 'error')
   }
 
   /** Attach a photo to a scene ("put me in this scene"). */
@@ -272,12 +279,19 @@ export default function SceneStudioPage(): React.JSX.Element {
     try {
       // Strip the file:// wrapper back to a plain path for the builder.
       const imagePaths = ready.map((s) => decodeURI((s.img as string).replace(/^file:\/\/\//, '').split('?')[0]))
+      // Did the user set any pacing? Then send per-scene shots: every scene exactly
+      // once, in order, with their seconds + transitions. Untouched = the classic
+      // varied Ken-Burns cut every ~6s.
+      const paced = ready.some((s) => (s.seconds && s.seconds > 0) || (s.transition && s.transition !== 'cut'))
       const job = await window.api.video.build({
         title: title.trim() || 'Video',
         body,
         // The generated stills always ride along: with a REAL-motion engine they are the
         // per-scene fallback; with 'stills' they ARE the video (classic behavior).
         images: imagePaths,
+        imageShots: paced
+          ? ready.map((s, i) => ({ path: imagePaths[i], seconds: s.seconds, transition: s.transition }))
+          : undefined,
         engine: motion === 'stills' ? 'presets' : motion,
         style,
         resolution,
@@ -346,6 +360,10 @@ export default function SceneStudioPage(): React.JSX.Element {
           />
           <MicButton onText={(t) => setDirection((prev) => appendDictation(prev, t))} className="px-3 py-2" />
         </div>
+        <div className="rounded-md border border-ink-800 bg-ink-950/60 px-3 py-2">
+        <div className="mb-1 text-[11px] font-medium tracking-wide text-gold-400">
+          🎬 VIDEO SETTINGS — style · video look · resolution · format · look (these apply to the final built video)
+        </div>
         <div className="flex flex-wrap items-center gap-3 text-xs text-ink-300">
           <label className="flex items-center gap-1">
             Style
@@ -403,6 +421,11 @@ export default function SceneStudioPage(): React.JSX.Element {
             Plan scenes
           </button>
         </div>
+        </div>
+        <p className="text-[10px] text-ink-500">
+          ⏱ Each scene card below has its own “Stays … sec” box and an “Arrives by” transition (fade, slide,
+          dissolve…). Leave them alone for automatic pacing — the total always stretches to fit the narration.
+        </p>
         <p className="text-[10px] text-ink-500">
           📎 “Put me in (photo)” on any scene uses your photo as the base (free image-to-image). It keeps your
           photo’s composition and follows the prompt (clothes, setting, style); exact face likeness varies. The free
@@ -469,6 +492,16 @@ export default function SceneStudioPage(): React.JSX.Element {
                     </span>
                   )}
                 </div>
+                {/* A failed REGENERATE used to be invisible when an older image was still on
+                    screen — only a 10px "✗ failed" badge with no reason. Say what went wrong. */}
+                {s.status === 'error' && s.img && s.msg && (
+                  <p className="mb-1 rounded border border-red-500/40 bg-red-950/30 px-2 py-1 text-[11px] leading-snug text-red-300">
+                    Couldn’t regenerate (the image above is your previous one): {s.msg}
+                  </p>
+                )}
+                {s.status === 'generating' && s.img && s.msg && (
+                  <p className="mb-1 text-[10px] text-gold-300/80">{s.msg}</p>
+                )}
                 <div className="flex items-center gap-2 mb-1 text-[10px]">
                   <button onClick={() => attachPhoto(s.index)} className="rounded border border-ink-700 px-2 py-0.5 text-ink-300 hover:border-gold-500">
                     📎 {s.photo ? 'Change photo' : 'Put me in (photo)'}
@@ -478,6 +511,40 @@ export default function SceneStudioPage(): React.JSX.Element {
                       <span className="text-emerald-400">photo attached</span>
                       <button onClick={() => patchScene(s.index, { photo: null })} className="text-ink-500 hover:text-red-300">remove</button>
                     </>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mb-1 text-[10px]">
+                  <label className="text-ink-500 flex items-center gap-1" title="How long this image stays on screen. Leave empty for automatic pacing. The total is always fitted to the narration, so speech never gets cut off.">
+                    ⏱ Stays
+                    <input
+                      type="number"
+                      min={1}
+                      max={120}
+                      step={0.5}
+                      value={s.seconds ?? ''}
+                      placeholder="auto"
+                      onChange={(e) =>
+                        patchScene(s.index, { seconds: e.target.value === '' ? undefined : Math.max(0.5, Number(e.target.value)) })
+                      }
+                      className="w-14 rounded bg-ink-950 border border-ink-800 px-1 py-0.5 text-[10px] text-ink-200"
+                    />
+                    sec
+                  </label>
+                  {arrIdx > 0 && (
+                    <label className="text-ink-500 flex items-center gap-1" title="How the picture switches from the previous scene to this one">
+                      ✨ Arrives by
+                      <select
+                        value={s.transition ?? 'cut'}
+                        onChange={(e) => patchScene(s.index, { transition: e.target.value as SceneTransition })}
+                        className="rounded bg-ink-950 border border-ink-800 px-1 py-0.5 text-[10px] text-ink-200"
+                      >
+                        {SCENE_TRANSITIONS.map((t) => (
+                          <option key={t.value} value={t.value}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   )}
                 </div>
                 <textarea

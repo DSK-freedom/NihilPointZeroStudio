@@ -159,6 +159,63 @@ try {
     fail('Video Studio BUILD', `${err?.message ?? err}`)
   }
 
+  // ---- 2b) Per-video tools on the video just built, clicked like a user:
+  //      🎧 AI DJ (reads the video's own stored script → offline synth → ducked under
+  //      the voice) and 🧹 Clean copy (rebuild with zero on-screen text). Both are
+  //      fully offline and only exist because jobs now remember their recipe.
+  try {
+    const aiDjBtn = win.locator('button', { hasText: 'Let the AI DJ pick' }).first()
+    if ((await aiDjBtn.count()) === 0) throw new Error('the AI DJ button is missing on a freshly built video')
+    await aiDjBtn.click()
+    await win.waitForFunction(
+      () => {
+        const main = document.querySelector('main')
+        return main ? /\(AI DJ: /.test(main.innerText) : false
+      },
+      undefined,
+      { timeout: 120_000 }
+    )
+    console.log('  ✓ AI DJ: read the video, composed a mood track, laid it under the voice')
+  } catch (err) {
+    fail('AI DJ', `${err?.message ?? err}`)
+  }
+  try {
+    const cleanBtn = win.locator('button', { hasText: 'Clean copy' }).first()
+    if ((await cleanBtn.count()) === 0) throw new Error('the Clean copy button is missing on a freshly built video')
+    await cleanBtn.click()
+    // The list is newest-first, so .first() may be the AI DJ copy's button — any job
+    // whose title ends in "(clean)" proves the recipe→rebuild→no-overlays path.
+    await win.waitForFunction(
+      () => {
+        const main = document.querySelector('main')
+        return main ? /\(clean\)/.test(main.innerText) : false
+      },
+      undefined,
+      { timeout: 240_000 }
+    )
+    console.log('  ✓ Clean copy: rebuilt the same video with no on-screen text')
+  } catch (err) {
+    fail('Clean copy', `${err?.message ?? err}`)
+  }
+  try {
+    const decksBtn = win.locator('button', { hasText: 'Open audio in DJ decks' }).first()
+    if ((await decksBtn.count()) === 0) throw new Error('the "Open audio in DJ decks" button is missing')
+    await decksBtn.click()
+    // Success = the Sound Studio view opens with the track DECODED onto Deck A
+    // (its name shown plain — not "loading …", not "could not read …").
+    await win.waitForFunction(
+      () => {
+        const t = document.querySelector('main')?.innerText ?? ''
+        return /Dual decks/.test(t) && /E2E smoke test/.test(t) && !/could not read/.test(t) && !/loading /.test(t)
+      },
+      undefined,
+      { timeout: 60_000 }
+    )
+    console.log('  ✓ DJ decks: video audio extracted, sent over IPC, decoded onto Deck A')
+  } catch (err) {
+    fail('DJ decks preload', `${err?.message ?? err}`)
+  }
+
   // ---- 3) Edge cases a real user hits: the app must stay alive and SAY something
   //         every time — silence or a crash is the failure being hunted here.
 
@@ -189,8 +246,10 @@ try {
     fail('Autosave', `${err?.message ?? err}`)
   }
 
-  // 3b. Empty input: the correct behavior (already implemented) is that the Build
-  //     button is DISABLED — submitting nothing must be impossible, not "handled".
+  // 3b. Empty input: Build must NEVER be a silently-dead button (a real user hit
+  //     the ⊘ cursor and concluded the app was broken). It stays CLICKABLE; with no
+  //     script it must (a) show a standing hint, (b) on click, explain and point at
+  //     the script box, and (c) NOT start a build.
   try {
     await win.evaluate(() => {
       window.location.hash = '#/video'
@@ -200,14 +259,24 @@ try {
     await win.locator('input[placeholder="Video title shown on the opening card"]').fill('')
     await win.locator('textarea[placeholder*="spoken narration"]').fill('')
     await win.waitForTimeout(300)
-    const disabled = await win.locator('button', { hasText: 'Build Video' }).first().isDisabled()
-    if (!disabled) {
-      fail('Empty-input guard', 'Build is clickable with an empty script — it must be disabled')
+    const buildBtn = win.locator('button', { hasText: 'Build Video' }).first()
+    if (await buildBtn.isDisabled()) {
+      fail('Empty-input guidance', 'Build is silently DISABLED with an empty script — it must stay clickable and explain what is missing')
+    } else if ((await win.locator('text=Build needs script words first').count()) === 0) {
+      fail('Empty-input guidance', 'the standing "Build needs script words first" hint is missing when the script box is empty')
     } else {
-      console.log('  ✓ Empty-input guard: Build is correctly disabled until a script exists')
+      await buildBtn.click()
+      await win.waitForTimeout(1200)
+      const started =
+        (await win.locator('button', { hasText: 'Building video…' }).count()) > 0 ||
+        (await win.locator('button', { hasText: '⏹ Stop' }).count()) > 0
+      const explained = (await win.locator('text=script box is empty').count()) > 0
+      if (started) fail('Empty-input guidance', 'clicking Build with an empty script actually STARTED a build')
+      else if (!explained) fail('Empty-input guidance', 'clicking Build with an empty script produced no explanation')
+      else console.log('  ✓ Empty-input guidance: Build stays clickable, explains itself, and refuses to start')
     }
   } catch (err) {
-    fail('Empty-input guard', `${err?.message ?? err}`)
+    fail('Empty-input guidance', `${err?.message ?? err}`)
   }
 
   // 3c. Bilingual + emoji build TO COMPLETION: Roman Urdu, Urdu script and emoji

@@ -9,6 +9,55 @@ The running app shows this in the sidebar (under "OS") as a gold badge. The badg
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
+## New in this build (2026-07-31, late night — your reported errors, fixed at the root)
+
+### 🚫 "Build Video won't click" — the dead-button era is over
+The button showed the ⊘ not-allowed cursor with ZERO explanation whenever the script box
+was empty (including when a picked saved script had no words in it). That silence was the
+bug. Now the Build button is **never silently disabled**: it stays clickable, a standing
+note under it says exactly what's missing, and clicking it highlights the script box and
+tells you plainly ("The script box is empty — write or pick the words to be spoken").
+Empty saved scripts are now labeled "(empty — no words in it)" in the list. The automated
+gate now FAILS any build button that sits disabled without explanation.
+
+### 📷 "Put me in the photo → Regenerate → error" — found it, a real bug
+Pressing ⏹ Stop on ANY video build left an invisible "cancelled" flag switched on until
+the next build started. The photo-scene generator's last step saw that stale flag and
+died with "Render cancelled by user" — every time, even 10 minutes later. Fixed at the
+root: a Stop now lives and dies with the build it stopped (pinned by new tests). Also
+fixed around it: a moved/renamed photo now says so plainly instead of a raw system error;
+huge phone photos are auto-shrunk before upload (the free service rejected 8MB+ posts);
+and a failed regenerate now shows its reason in red on the scene card — it used to be
+invisible when an older image was still on screen.
+
+### 🎧 The AI DJ (Video Studio → under each video)
+One click: the app reads the video's own script (videos now remember their script), or
+listens to the narration if there isn't one, judges the mood — Roman Urdu and Urdu too —
+composes a fitting track sized to the video, and mixes it softly under your voice
+(auto-ducked). Type a hint ("lofi", "tense", "calm…") to steer it, or leave it empty and
+let it decide. New copy; the original is kept.
+
+### 🎵 Music/voice separation — now BOTH directions
+"Remove music (keep my voice)" existed. Now there's also **"Remove my voice (keep the
+music)"** — on app-built videos and on outside videos (Online free / Local Demucs).
+
+### 🧹 Clean copy — one click removes titles, headings and captions
+Videos now remember their own recipe, so "🧹 Clean copy (no on-screen text)" rebuilds the
+exact same video with NOTHING drawn over the picture. (Burned captions never touched your
+original anyway — it's always still in the list.)
+
+### 🎛 "Open audio in DJ decks" (under each video)
+Pulls the video's audio out and loads it straight onto Deck A of the Dual decks — EQ,
+loops, hot cues, BPM, crossfader — no file-hunting.
+
+### 🎞 Scene Studio — your pacing, your transitions
+Every scene card now has **"⏱ Stays … sec"** and **"✨ Arrives by"** (straight cut, fade,
+dissolve, slide from any side, circle open). Leave them empty for the classic automatic
+pacing; set them and every image appears exactly once, in your order, at your pace — and
+the total is always stretched to fit the narration so speech never gets cut off. The
+video settings row (Style · Video look · Resolution · Format · Look) got a clear header —
+it was always there, just easy to miss.
+
 ## New in this build (2026-07-31, night)
 
 ### 💾 Backups grew up: new home, restore button, delete-sync, second copy
@@ -64,7 +113,7 @@ links to matching category pages on the free libraries (Pixabay Music, Free Musi
 and tells the built-in music maker which mood fits your script.
 
 ### 🧪 The self-test gate got meaner (see docs/QA-REPORT.md)
-The pre-ship click-through now also proves: empty input can't be submitted, a Roman Urdu +
+The pre-ship click-through now also proves: an empty script never builds (and the app says why), a Roman Urdu +
 Urdu script + emoji video builds to completion, a 15,000-character script starts fine,
 rapid double-clicks are harmless, ⏹ Stop halts a build instantly and the UI recovers, and
 autosave survives tab switches. The full honest test report lives in **docs/QA-REPORT.md**.

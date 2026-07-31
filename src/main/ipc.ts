@@ -16,6 +16,7 @@ import { tmpdir } from 'os'
 import { basename, dirname, extname, join, sep } from 'path'
 import { backupsRoot, listOrphans, purgeFromBackups, restoreMissing, runBackup } from './autoBackup'
 import { IPC } from '../shared/ipc-channels'
+import { MOODS } from '../shared/types'
 import type {
   AdvisorRequest,
   IdeaGenRequest,
@@ -851,6 +852,8 @@ export function registerIpcHandlers(): void {
           engine: req.engine,
           style: req.style,
           images: req.images,
+          imageShots: req.imageShots,
+          textOverlays: req.textOverlays,
           useStock: req.useStock,
           // Read the key server-side (never sent from the renderer).
           stockApiKey: req.useStock ? getStockConfig().pixabayKey : undefined,
@@ -870,7 +873,15 @@ export function registerIpcHandlers(): void {
       path: outPath,
       hasCustomVoice: false,
       createdAt: new Date().toISOString(),
-      narrationPath: existsSync(narrationOutPath) ? narrationOutPath : undefined
+      narrationPath: existsSync(narrationOutPath) ? narrationOutPath : undefined,
+      // Remember the video's own recipe: the AI DJ reads `body` to pick fitting
+      // music, and "clean copy" rebuilds without captions/titles from these.
+      body: req.body,
+      resolution: req.resolution,
+      aspect: req.aspect,
+      template: req.template,
+      engine: req.engine,
+      style: req.style
     }
     appendVideo(job)
     logActivity('ai', `Built ${(req.resolution ?? '1080p').toUpperCase()} video${req.musicPath ? ' with music' : ''}${req.soundEffects ? ' + SFX' : ''}`, req.title)
@@ -1616,39 +1627,41 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.settingsSetDemucsCmd, (_e, cmd: string) => setDemucsCmd(cmd))
   ipcMain.handle(IPC.settingsSetFaceAnimCmd, (_e, cmd: string) => setFaceAnimCmd(cmd))
 
-  // OUTSIDE videos: remove the background music by AI-separating the audio and keeping
-  // only the vocals/narration. engine 'online' (MVSEP, free token) or 'local' (Demucs).
-  // Optional add-on; clear errors if not set up. New video, original kept.
-  ipcMain.handle(IPC.videoSeparateMusic, async (e, videoId: string, engine: 'online' | 'local') => {
+  // AI-separate a video's audio and keep ONE side of the split:
+  //   keep 'voice' → music removed (the original behavior)
+  //   keep 'music' → the voice is removed, the music/instrumental stays
+  // engine 'online' (MVSEP, free token) or 'local' (Demucs). New video, original kept.
+  ipcMain.handle(IPC.videoSeparateMusic, async (e, videoId: string, engine: 'online' | 'local', keep: 'voice' | 'music' = 'voice') => {
     const src = listVideos().find((j) => j.id === videoId)
     if (!src) throw new Error('Video not found — build it again first.')
     const notify = (msg: string): void => {
       if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, msg)
     }
+    const target = keep === 'voice' ? 'vocals' : 'instrumental'
     const scratch = makeSeparationScratch()
     try {
       notify('Extracting the audio track…')
       const mixed = join(scratch, 'mixed.wav')
       await runFfmpeg(['-y', '-i', src.path, '-vn', '-ar', '44100', '-ac', '2', mixed])
-      const vocals =
+      const stem =
         engine === 'online'
-          ? await separateOnline(mixed, getMvsepToken() ?? '', scratch, (p) => notify(p.message))
-          : await separateLocal(mixed, getDemucsCmd(), scratch, (p) => notify(p.message))
-      notify('Rebuilding the video with music removed…')
+          ? await separateOnline(mixed, getMvsepToken() ?? '', scratch, (p) => notify(p.message), undefined, target)
+          : await separateLocal(mixed, getDemucsCmd(), scratch, (p) => notify(p.message), target)
+      notify(keep === 'voice' ? 'Rebuilding the video with music removed…' : 'Rebuilding the video with the voice removed…')
       const id = randomUUID()
       const slug = (src.title || 'video').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40) || 'video'
-      const outPath = join(videosDir(), `${slug}-nomusic-${id.slice(0, 8)}.mp4`)
-      // The vocals stem IS the "narration only" track → reuse the exact music-remove muxer.
-      await setVideoMusic(src.path, vocals, 'remove', undefined, outPath, (line) => notify(line.trim().slice(0, 160)))
+      const outPath = join(videosDir(), `${slug}-${keep === 'voice' ? 'nomusic' : 'novoice'}-${id.slice(0, 8)}.mp4`)
+      // The kept stem IS the full replacement audio → reuse the exact remove-muxer.
+      await setVideoMusic(src.path, stem, 'remove', undefined, outPath, (line) => notify(line.trim().slice(0, 160)))
       const job = {
         id,
-        title: `${src.title} (music removed)`,
+        title: `${src.title} (${keep === 'voice' ? 'music removed' : 'voice removed'})`,
         path: outPath,
         hasCustomVoice: src.hasCustomVoice,
         createdAt: new Date().toISOString()
       }
       appendVideo(job)
-      logActivity('user', `Separated music (${engine}) from a video`, src.title)
+      logActivity('user', `Separated audio (${engine}, kept the ${keep}) on a video`, src.title)
       return job
     } finally {
       rmSync(scratch, { recursive: true, force: true })
@@ -1687,6 +1700,106 @@ export function registerIpcHandlers(): void {
     appendVideo(job)
     logActivity('user', `Music ${mode} on a video`, src.title)
     return job
+  })
+
+  // 🎧 AI DJ: one click → the app works out what the video FEELS like and lays a
+  // fitting music bed under the voice (sidechain-ducked, looped to length). Where the
+  // feel comes from, in order: the user's own words → the video's stored script →
+  // listening to the narration (offline Whisper) → the title. New video, original kept.
+  ipcMain.handle(IPC.videoAiDj, async (e, videoId: string, styleHint?: string) => {
+    const src = listVideos().find((j) => j.id === videoId)
+    if (!src) throw new Error('Video not found — build it again first.')
+    if (!src.narrationPath || !existsSync(src.narrationPath)) {
+      throw new Error(
+        'This video has no saved narration track, so music can’t be laid under the voice. Rebuild it once to enable the AI DJ.'
+      )
+    }
+    const notify = (msg: string): void => {
+      if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, msg)
+    }
+    const hint = (styleHint ?? '').trim()
+    let moodText = hint
+    let how = 'your description'
+    if (!moodText && src.body?.trim()) {
+      moodText = `${src.title}\n${src.body}`
+      how = 'the video’s own script'
+    }
+    if (!moodText) {
+      notify('AI DJ is listening to the narration to understand the video…')
+      try {
+        const segs = await transcribeFileToSegments(src.narrationPath)
+        const heard = segs.map((s) => s.text).join(' ').trim()
+        if (heard) {
+          moodText = heard
+          how = 'listening to the narration'
+        }
+      } catch {
+        /* transcription is a bonus — the title still works */
+      }
+    }
+    if (!moodText.trim()) {
+      moodText = src.title
+      how = 'the title'
+    }
+    // A mood named outright in the hint ("lofi", "tense"…) always wins.
+    const direct = MOODS.find((m) => hint.toLowerCase().includes(m))
+    const mood = direct ?? synthMoodFromText(moodText)
+    notify(`AI DJ picked “${mood}” (from ${how}) — composing the track…`)
+    // Size the bed to the actual video so it doesn't audibly restart every 40s
+    // (capped for synth sanity; the muxer loops anything longer than the cap).
+    const videoSec = Math.round(await ffprobeDuration(src.path).catch(() => 0)) || 40
+    const bedSec = Math.max(8, Math.min(300, videoSec))
+    const seed = ((Array.from(videoId).reduce((a, c) => a + c.charCodeAt(0), 0) % 97) + 1)
+    const musicPath = await renderMusic(mood, bedSec, seed)
+    notify('Laying the music under your voice…')
+    const id = randomUUID()
+    const slug = (src.title || 'video').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40) || 'video'
+    const outPath = join(videosDir(), `${slug}-aidj-${id.slice(0, 8)}.mp4`)
+    await setVideoMusic(src.path, src.narrationPath, 'replace', musicPath, outPath, (line) => {
+      if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, line.trim().slice(0, 160))
+    })
+    const job: VideoJob = {
+      id,
+      title: `${src.title} (AI DJ: ${mood})`,
+      path: outPath,
+      hasCustomVoice: src.hasCustomVoice,
+      createdAt: new Date().toISOString(),
+      narrationPath: src.narrationPath,
+      body: src.body,
+      resolution: src.resolution,
+      aspect: src.aspect,
+      template: src.template,
+      engine: src.engine,
+      style: src.style
+    }
+    appendVideo(job)
+    logActivity('user', `AI DJ laid a “${mood}” track under a video (decided from ${how})`, src.title)
+    return { job, mood, how }
+  })
+
+  // Serve audio bytes to the renderer for WebAudio decoding — a sandboxed renderer
+  // cannot fetch() file:// URLs. Guarded to the app's own data folder only.
+  ipcMain.handle(IPC.audioReadFile, (_e, p: string) => {
+    const dataDir = app.getPath('userData')
+    const norm = p.replace(/\//g, '\\')
+    if (!norm.toLowerCase().startsWith(dataDir.toLowerCase() + sep)) {
+      throw new Error('Only files inside the app data folder can be read this way.')
+    }
+    if (!existsSync(norm)) throw new Error('That audio file no longer exists.')
+    return readFileSync(norm)
+  })
+
+  // Pull a video's full audio out to an MP3 so it can be loaded into the DJ decks.
+  // Cached per video id (re-extracts only if the file vanished).
+  ipcMain.handle(IPC.videoExtractAudio, async (_e, videoId: string) => {
+    const src = listVideos().find((j) => j.id === videoId)
+    if (!src) throw new Error('Video not found.')
+    if (!existsSync(src.path)) throw new Error('The video file is missing on disk.')
+    const out = join(generatedAudioDir(), `deck-${videoId.slice(0, 8)}.mp3`)
+    if (!existsSync(out)) {
+      await runFfmpeg(['-y', '-i', src.path, '-vn', '-ar', '44100', '-ac', '2', '-b:a', '192k', out])
+    }
+    return out
   })
 
   // FREE COPYRIGHT-SAFE MUSIC (Pixabay). Every handler degrades to "no music" with a

@@ -32,7 +32,7 @@ reach you.
 
 | Case | What happens (verified by the machine) |
 |---|---|
-| Empty input | 🎬 Build is **disabled** until a script exists — submitting nothing is impossible |
+| Empty input | 🎬 Build stays **clickable** and explains itself: a standing hint says script words are needed, clicking highlights the script box and toasts the reason, and no build starts. (It used to sit silently disabled with a ⊘ cursor — a real user read that as "the app is broken", twice. Dead-looking buttons are treated as bugs now.) |
 | Roman Urdu + Urdu script + emoji script | Builds **to completion**; the finished video appears (UTF-8 through narration, layout, encoding) |
 | Huge script (~15,000 characters) | Build starts normally; UI stays responsive |
 | Rapid double-click on Build | Second click is harmless — no double build, no crash |
@@ -42,6 +42,22 @@ reach you.
 | Free service down/busy | Falls back per scene/feature with the reason in the build log and ai-errors.log (verified live against real 429/402/401 outages this week) |
 
 ## Broken and NOW FIXED (this week, each verified by a real run)
+
+- **"Put me in the photo → Regenerate → error" (user-reported, twice)** — root cause
+  found and pinned by tests: pressing ⏹ Stop on any build left a global "cancelled"
+  flag on until the NEXT build began; the photo-scene's final conversion step saw the
+  stale flag and died with "Render cancelled by user", forever. A Stop now lives and
+  dies with the run it stopped (`cancelLifecycle.test.ts`). Also fixed on the same
+  path: moved/renamed photos now say so plainly (no raw ENOENT), 6–12MB phone photos
+  are auto-shrunk before upload (the free service rejects huge posts), and a failed
+  regenerate now shows its reason in red on the scene card instead of hiding behind
+  the previous image.
+- **"Build Video won't click" (user-reported, twice)** — the button sat silently
+  disabled with a ⊘ cursor whenever the script box was empty (including after picking
+  an empty saved script), with zero explanation. The previous "fix" made that silence
+  deliberate — wrong call, now reversed: the button is never silently disabled; it
+  explains, points at the script box, and refuses to build. The gate now FAILS any
+  silently-dead Build button.
 
 - **The gate's own wait-timeouts were silently ignored** — every long wait passed its
   timeout in the wrong argument slot (playwright's `waitForFunction(fn, arg, options)`),

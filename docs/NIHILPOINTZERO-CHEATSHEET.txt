@@ -47,13 +47,19 @@ RESOLUTION ....... 1080p (fast) · 1440p · 4K (sharp) · 8K (slow, huge)
 🎙 Voice studio . record your voice: Pause/Resume, scrub, "redo from playhead", replace OR add
 📝 Captions ..... "Get .srt" (upload to YouTube) or "Burn into video" (Shorts)
 🏷 Logo ......... stamp your logo in a corner
-🎵 Music ........ remove (keep voice) / replace (auto-ducks under your voice)
+🎵 Music ........ remove (keep voice) / replace (auto-ducks) / REMOVE MY VOICE (keep music)
+   🎧 AI DJ: one click -> reads the video's own script (or listens), picks the mood, lays a
+   fitting track under your voice. Type "lofi"/"tense"/etc. to steer it, or leave empty.
    For OUTSIDE videos: "Remove music (AI separate)" -> Online (built-in) or Local (Demucs, installed)
+🧹 Clean copy ... one click rebuilds the video with NO titles/headings/captions on it
+🎛 DJ decks ..... "Open audio in DJ decks" loads the video's sound onto Deck A instantly
 ▶ Publish ....... AI writes title+desc+tags to clipboard, opens YOUR YouTube upload page
 Download as ..... YouTube / MP4 / H.265 / MOV / WebM   ·   Trim = cut   ·   Save a copy = export
 
 ------------------------------  BIG FEATURES  ---------------------------------------------------
 🎬 Scene Studio . build scene-by-scene: watch each, Pause, reorder ↑↓/add/remove, "📎 Put me in (photo)", Beautify
+   NEW per scene: "⏱ Stays N sec" + "✨ Arrives by" (cut/fade/dissolve/slides) — empty = automatic;
+   the total always stretches to fit the narration. Style/look/resolution/format = the VIDEO SETTINGS row.
 🎞 Storyboard Director . direct SHOT BY SHOT: Auto (paste script, AI decides) OR Guided (write beats). Per shot:
    seconds + scene + narration + caption + motion + crossfade + SUBJECT (AI scene / your photo / your clip / AI person)
    + SOUNDS (music/SFX/your audio, each with gain+fades). Beautify slider for your photo. -> renders + opens in Timeline

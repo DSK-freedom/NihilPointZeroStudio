@@ -56,7 +56,12 @@ button. Best used right after "📱 Cut into vertical shorts" so uploading is co
   directions]), click "Plan scenes", then "▶ Generate all scenes". Failed scenes retry
   automatically. Each scene: edit its prompt, "↻ Regenerate", "⬇ Save" the image, or
   "📎 Put me in (photo)" to base the scene on your own photo. "⬇ Save all images" exports
-  the whole storyboard numbered. "🎬 Build video" merges the scenes AND narrates the
+  the whole storyboard numbered. NEW per scene: "⏱ Stays … sec" (how long the image is on
+  screen) and "✨ Arrives by" (cut/fade/dissolve/slides/circle) — empty = automatic pacing;
+  set them and every image shows once, in order, at your pace, always fitted to the
+  narration. The VIDEO SETTINGS row above the scenes holds Style · Video look ·
+  Resolution · Format · Look. A failed regenerate shows its reason in red on the card.
+  "🎬 Build video" merges the scenes AND narrates the
   script; when done, buttons take you to Video Studio or the Timeline Editor. Builds keep
   running if you switch tabs — the finished video lands in Video Studio, and the Activity
   Log records started/finished/failed.
@@ -80,7 +85,15 @@ button. Best used right after "📱 Cut into vertical shorts" so uploading is co
   moment. "🏷 Posting text" (YouTube/TikTok) writes a ready-to-paste title, description
   and hashtags for any video or short, with Copy buttons — and "▶ Publish to YouTube" now
   uses this SAME engine automatically (Shorts get Shorts-appropriate text), copies it to
-  the clipboard, and opens the upload page.
+  the clipboard, and opens the upload page. NEW under each video: 🎧 AI DJ (reads the
+  video's own script or listens to the narration, judges the mood — English/Roman
+  Urdu/Urdu — and lays a fitting composed track softly under the voice; type "lofi"/
+  "tense"/etc. to steer it), "Remove my voice (keep music)" (the reverse of remove-music,
+  via AI separation, also for outside videos), 🧹 Clean copy (rebuilds the exact video
+  with NO title/headings/captions on it — videos now remember their own recipe), and
+  "Open audio in DJ decks" (loads the video's sound onto Deck A of the Dual decks).
+  The Build button is NEVER silently disabled: with no script text it stays clickable,
+  explains what's missing, and highlights the script box when pressed.
 • 🎞 STORYBOARD DIRECTOR — shot-by-shot filmmaking. AUTO mode: paste a script and it
   plans timed beats (visual + narration + captions + transitions). GUIDED mode: write
   your own pointers, one per line, like "0-15s: I arrive in a Ferrari, VO: 'welcome'" —

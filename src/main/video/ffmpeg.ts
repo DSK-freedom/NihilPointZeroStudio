@@ -29,6 +29,14 @@ let lastCancelAt = 0
  */
 let cancelRequested = false
 
+/**
+ * True only between beginRenderSession() and endRenderSession(). The sticky cancel
+ * flag must only gate work INSIDE the session it stopped: it used to outlive the
+ * build, and the next unrelated one-shot ffmpeg call (e.g. Scene Studio's photo
+ * conversion) died with "Render cancelled by user" — a real user hit exactly that.
+ */
+let sessionOpen = false
+
 /** Marker text put on the rejection when a run was cancelled by the user. */
 export const CANCELLED_MESSAGE = 'Render cancelled by user.'
 
@@ -46,9 +54,25 @@ let sessionAbort = new AbortController()
  * fresh abort signal for the new session.
  */
 export function beginRenderSession(): void {
+  sessionOpen = true
   cancelRequested = false
   lastCancelAt = 0
   sessionAbort = new AbortController()
+}
+
+/**
+ * Call in the OUTERMOST finally of every function that called beginRenderSession().
+ * A Stop must not outlive the run it stopped — once the cancelled pipeline has
+ * unwound, later unrelated work starts clean.
+ */
+export function endRenderSession(): void {
+  sessionOpen = false
+  cancelRequested = false
+}
+
+/** Exposed for tests only. */
+export function isRenderSessionOpen(): boolean {
+  return sessionOpen
 }
 
 /**
@@ -134,9 +158,10 @@ export function makeFfmpegProgressLogger(
 /** Runs ffmpeg with the given args; streams stderr to onLog. Rejects on non-zero exit. */
 export function runFfmpeg(args: string[], onLog?: (line: string) => void): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    // A Stop pressed between stages must stop the NEXT ffmpeg step too, not just the
-    // one that was running when Stop was pressed.
-    if (cancelRequested) return reject(new Error(CANCELLED_MESSAGE))
+    // A Stop pressed between stages must stop the NEXT ffmpeg step of that SAME
+    // session — but never a later, unrelated one-shot call (photo conversion,
+    // captions, exports). Outside a session the kill of the live process is enough.
+    if (cancelRequested && sessionOpen) return reject(new Error(CANCELLED_MESSAGE))
     const proc = spawn(ffmpegPath, args)
     activeFfmpeg.add(proc)
     let stderrTail = ''

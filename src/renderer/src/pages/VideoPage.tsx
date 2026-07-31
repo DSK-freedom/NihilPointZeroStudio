@@ -191,10 +191,18 @@ export default function VideoPage() {
   }
 
   const [building, setBuilding] = useState(false)
+  // The Build button must NEVER look dead with no explanation (a real user hit a
+  // silently-disabled button with the ⊘ cursor and concluded the app was broken).
+  // It stays clickable; clicking without a script points at the script box instead.
+  const scriptBoxRef = useRef<HTMLTextAreaElement | null>(null)
+  const [needScriptFlash, setNeedScriptFlash] = useState(false)
   const [stage, setStage] = useState<string | null>(null)
   const [buildPreview, setBuildPreview] = useState<string | null>(null)
   const [musicBusyId, setMusicBusyId] = useState<string | null>(null)
   const [replaceMood, setReplaceMood] = useState<Mood>('calm')
+  // 🎧 AI DJ hint ("what should it feel like?") and the track handed to the DJ decks.
+  const [aiDjHint, setAiDjHint] = useState('')
+  const [djTrack, setDjTrack] = useState<{ path: string; name: string } | null>(null)
   const [voiceOpenId, setVoiceOpenId] = useState<string | null>(null)
   const [captionBusyId, setCaptionBusyId] = useState<string | null>(null)
   const [shortsBusyId, setShortsBusyId] = useState<string | null>(null)
@@ -320,7 +328,8 @@ export default function VideoPage() {
         next.push({ key: 'writer', label: `Current Writer draft — ${writer.script.title}`, title: writer.script.title, body: writer.body })
       }
       for (const s of saved) {
-        next.push({ key: s.id, label: s.title, title: s.title, body: s.body })
+        // An empty saved script would silently leave nothing to build — say so in the list.
+        next.push({ key: s.id, label: s.body.trim() ? s.title : `${s.title} (empty — no words in it)`, title: s.title, body: s.body })
       }
       setSources(next)
       setJobs(vids as VideoJob[])
@@ -361,9 +370,16 @@ export default function VideoPage() {
   }
 
   async function handleBuild(): Promise<void> {
-    // Only a script is required now — a missing title is auto-derived from the first line
-    // (previously the button stayed disabled unless you ALSO typed a title).
-    if (!body.trim()) return
+    // Only a script is required — a missing title is auto-derived from the first line.
+    // No script yet? Don't sit there disabled: SAY it and point at the exact box.
+    if (!body.trim()) {
+      toast('The script box is empty — write or pick the words to be spoken, then press Build.', 'error')
+      setNeedScriptFlash(true)
+      scriptBoxRef.current?.focus()
+      scriptBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setTimeout(() => setNeedScriptFlash(false), 3000)
+      return
+    }
     const effectiveTitle =
       title.trim() ||
       body.replace(/^[\s#*[\]]+/, '').split(/[\n.!?]/)[0].split(/\s+/).slice(0, 8).join(' ').slice(0, 60) ||
@@ -546,22 +562,97 @@ export default function VideoPage() {
     }
   }
 
-  // Outside videos (music already blended in): AI-separate to remove music, keep vocals.
-  async function handleSeparateMusic(job: VideoJob, engine: 'online' | 'local'): Promise<void> {
+  // AI-separate a video's blended audio and keep one side of the split:
+  // keep 'voice' = music removed; keep 'music' = the voice removed, music stays.
+  async function handleSeparateMusic(job: VideoJob, engine: 'online' | 'local', keep: 'voice' | 'music' = 'voice'): Promise<void> {
     setMusicBusyId(job.id)
     setError(null)
     setStage(engine === 'online' ? 'Separating audio (online)…' : 'Separating audio (local)…')
     const unsubscribe = window.api.video.onProgress((s) => setStage(s))
     try {
-      await window.api.video.separateMusic(job.id, engine)
+      await window.api.video.separateMusic(job.id, engine, keep)
       await refreshJobs()
-      toast('Music separated out ✓', 'success')
+      toast(keep === 'voice' ? 'Music removed — your voice kept ✓' : 'Voice removed — the music kept ✓', 'success')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Separation failed')
       toast(err instanceof Error ? err.message : 'Separation failed', 'error')
     } finally {
       unsubscribe()
       setMusicBusyId(null)
+      setStage(null)
+    }
+  }
+
+  // 🎧 AI DJ: the app judges the video's mood (user hint → its own script → listening
+  // to the narration → the title), composes a fitting bed, and ducks it under the voice.
+  async function handleAiDj(job: VideoJob): Promise<void> {
+    setMusicBusyId(job.id)
+    setError(null)
+    setStage('AI DJ warming up…')
+    const unsubscribe = window.api.video.onProgress((s) => setStage(s))
+    try {
+      const res = await window.api.video.aiDj(job.id, aiDjHint.trim() || undefined)
+      await refreshJobs()
+      toast(`AI DJ done — a “${res.mood}” track now plays under the voice (decided from ${res.how}) ✓`, 'success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'AI DJ failed')
+      toast(err instanceof Error ? err.message : 'AI DJ failed', 'error')
+    } finally {
+      unsubscribe()
+      setMusicBusyId(null)
+      setStage(null)
+    }
+  }
+
+  // Rebuild this exact video with NOTHING drawn over the picture (no title, headings
+  // or captions) — possible because videos now remember their own recipe (job.body).
+  async function handleCleanCopy(job: VideoJob): Promise<void> {
+    if (!job.body?.trim()) return
+    setBuilding(true)
+    setError(null)
+    setStage('Building a clean copy (no on-screen text)…')
+    const unsubscribe = window.api.video.onProgress((s) => setStage(s))
+    try {
+      await window.api.video.build({
+        title: `${job.title} (clean)`,
+        body: job.body,
+        resolution: job.resolution,
+        aspect: job.aspect,
+        template: job.template,
+        engine: 'presets',
+        style: job.style,
+        narrationVoice,
+        winVoiceId: narrationVoice === 'winnatural' ? winVoiceId : undefined,
+        captionsAndChapters: false,
+        textOverlays: false
+      })
+      await refreshJobs()
+      toast('Clean copy built — no titles, headings or captions on it ✓', 'success')
+    } catch (err) {
+      if (isCancel(err)) setSavedNote('Build stopped.')
+      else {
+        setError(err instanceof Error ? err.message : 'Clean copy failed')
+        toast(err instanceof Error ? err.message : 'Clean copy failed', 'error')
+      }
+    } finally {
+      unsubscribe()
+      setBuilding(false)
+      setStage(null)
+    }
+  }
+
+  // Pull this video's audio out and load it onto Deck A of the Dual decks.
+  async function handleOpenInDecks(job: VideoJob): Promise<void> {
+    setError(null)
+    setStage('Pulling the audio out of the video…')
+    try {
+      const p = await window.api.video.extractAudio(job.id)
+      setDjTrack({ path: p, name: job.title })
+      setStudioView('sound')
+      toast('Loaded onto Deck A — the Dual decks are open below.', 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Could not extract the audio', 'error')
+    } finally {
       setStage(null)
     }
   }
@@ -765,7 +856,7 @@ export default function VideoPage() {
 
       {studioView === 'sound' && (
         <div className="mt-6">
-          <DjStationPage embedded />
+          <DjStationPage embedded deckFile={djTrack ?? undefined} />
         </div>
       )}
 
@@ -820,11 +911,14 @@ export default function VideoPage() {
                 <MicButton onText={(t) => setBody((prev) => appendDictation(prev, t))} />
               </div>
               <textarea
+                ref={scriptBoxRef}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={10}
                 placeholder="The spoken narration. Bracketed [STAGE DIRECTIONS] become on-screen section cards."
-                className="mt-1 w-full rounded-md bg-ink-800 border border-ink-700 px-3 py-2 text-sm text-ink-100 leading-relaxed outline-none focus:border-gold-500 font-serif"
+                className={`mt-1 w-full rounded-md bg-ink-800 border px-3 py-2 text-sm text-ink-100 leading-relaxed outline-none focus:border-gold-500 font-serif ${
+                  needScriptFlash ? 'border-amber-400 ring-2 ring-amber-400/70 animate-pulse' : 'border-ink-700'
+                }`}
               />
             </div>
             <TemplatesMenu
@@ -1304,8 +1398,8 @@ export default function VideoPage() {
             <div className="flex gap-2">
               <button
                 onClick={handleBuild}
-                disabled={building || !body.trim()}
-                className="flex-1 rounded-md bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-ink-950 font-medium px-4 py-2 text-sm transition-colors"
+                disabled={building}
+                className="flex-1 rounded-md bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-ink-950 font-medium px-4 py-2 text-sm transition-colors"
               >
                 {building ? 'Building video…' : `🎬 Build Video (${resolution.toUpperCase()}, free)`}
               </button>
@@ -1319,6 +1413,12 @@ export default function VideoPage() {
                 </button>
               )}
             </div>
+            {!body.trim() && !building && (
+              <p className="text-[11px] text-amber-300/90 leading-snug">
+                ⚠ Build needs script words first — type in the “Narration script” box above, or pick a saved
+                script from the list at the top. Everything else (title, music, look) is optional.
+              </p>
+            )}
             {(building || exportingId || trimmingId) && stage && (
               <div className="flex items-center gap-2 rounded-md border border-gold-500/30 bg-gold-500/5 px-3 py-2">
                 <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-gold-400" />
@@ -1480,7 +1580,35 @@ export default function VideoPage() {
                         >
                           Replace
                         </button>
+                        <button
+                          onClick={() => handleSeparateMusic(job, 'online', 'music')}
+                          disabled={musicBusyId === job.id}
+                          title="AI-separates the mixed audio and keeps only the music/instrumental"
+                          className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors disabled:opacity-50"
+                        >
+                          Remove my voice (keep music)
+                        </button>
                         {musicBusyId === job.id && <span className="text-[10px] text-gold-300">working…</span>}
+                        <div className="w-full flex flex-wrap items-center gap-1.5 pt-1 border-t border-ink-800">
+                          <span className="text-[11px] text-gold-300">🎧 AI DJ</span>
+                          <input
+                            value={aiDjHint}
+                            onChange={(e) => setAiDjHint(e.target.value)}
+                            placeholder="optional — what should it feel like? (e.g. lofi · tense · calm) Empty = it reads the video"
+                            className="flex-1 min-w-[180px] rounded-md bg-ink-800 border border-ink-700 px-2 py-1 text-xs text-ink-100 outline-none focus:border-gold-500"
+                          />
+                          <button
+                            onClick={() => handleAiDj(job)}
+                            disabled={musicBusyId === job.id}
+                            className="rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 text-xs font-medium px-3 py-1 transition-colors disabled:opacity-50"
+                          >
+                            Let the AI DJ pick &amp; lay the music
+                          </button>
+                          <span className="w-full text-[10px] text-ink-600">
+                            Reads this video’s own script (or listens to the narration) to judge the mood, composes a fitting
+                            track sized to the video, and mixes it softly under your voice. New copy — the original is kept.
+                          </span>
+                        </div>
                       </div>
                     ) : (
                       <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900/60 p-2">
@@ -1498,6 +1626,21 @@ export default function VideoPage() {
                           className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors disabled:opacity-50"
                         >
                           Local (Demucs)
+                        </button>
+                        <span className="text-[11px] text-ink-500">· or remove the VOICE instead:</span>
+                        <button
+                          onClick={() => handleSeparateMusic(job, 'online', 'music')}
+                          disabled={musicBusyId === job.id}
+                          className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors disabled:opacity-50"
+                        >
+                          Keep music (online)
+                        </button>
+                        <button
+                          onClick={() => handleSeparateMusic(job, 'local', 'music')}
+                          disabled={musicBusyId === job.id}
+                          className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors disabled:opacity-50"
+                        >
+                          Keep music (local)
                         </button>
                         {musicBusyId === job.id && <span className="text-[10px] text-gold-300">working…</span>}
                         <span className="w-full text-[10px] text-ink-600">
@@ -1526,8 +1669,33 @@ export default function VideoPage() {
                       {captionBusyId === job.id && <span className="text-[10px] text-gold-300">working…</span>}
                       <span className="w-full text-[10px] text-ink-600">
                         Transcribes your narration offline (free). The .srt uploads straight to YouTube; “Burn” makes a
-                        captioned copy for Shorts/Reels.
+                        captioned copy for Shorts/Reels — your original (without captions) stays in this list.
                       </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900/60 p-2">
+                      <span className="text-[11px] text-ink-400">🎛 Studio tools</span>
+                      <button
+                        onClick={() => handleOpenInDecks(job)}
+                        title="Pulls this video's audio out and loads it onto Deck A of the Dual decks"
+                        className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors"
+                      >
+                        Open audio in DJ decks
+                      </button>
+                      {job.body && (job.engine ?? 'presets') === 'presets' && (
+                        <button
+                          onClick={() => handleCleanCopy(job)}
+                          disabled={building}
+                          title="Rebuilds this exact video with NOTHING drawn over the picture — no title, no headings, no captions"
+                          className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors disabled:opacity-50"
+                        >
+                          🧹 Clean copy (no on-screen text)
+                        </button>
+                      )}
+                      {!job.body && (
+                        <span className="text-[10px] text-ink-600">
+                          (Clean copy — a rebuild without titles/headings — unlocks for videos built from now on.)
+                        </span>
+                      )}
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-gold-500/30 bg-ink-900/60 p-2">
                       <span className="text-[11px] text-gold-300">📱 Make Shorts</span>

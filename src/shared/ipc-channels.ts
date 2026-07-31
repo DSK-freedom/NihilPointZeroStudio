@@ -105,6 +105,16 @@ export const IPC = {
   aiFallback: 'ai:fallback',
   stockGetConfig: 'stock:get-config',
   stockSetKey: 'stock:set-key',
+  // Last quiet weekly health check result (drives the Settings red badge).
+  healthLast: 'health:last',
+  // Backups: status, options (second home + delete-sync), restore, orphan cleanup.
+  backupStatus: 'backup:status',
+  backupSetOptions: 'backup:set-options',
+  backupPickSecondDir: 'backup:pick-second-dir',
+  backupRunNow: 'backup:run-now',
+  backupRestore: 'backup:restore',
+  backupOrphans: 'backup:orphans',
+  backupCleanOrphans: 'backup:clean-orphans',
   templatesList: 'templates:list',
   templatesSave: 'templates:save',
   templatesDelete: 'templates:delete',

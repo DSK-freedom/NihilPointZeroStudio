@@ -1,6 +1,8 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { checkForUpdate } from './updateCheck'
 import { runAutoBackupIfDue } from './autoBackup'
+import { runHealthCheck } from './health'
+import { getLastHealth, logActivity, setLastHealth } from './store'
 import { join } from 'path'
 import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs'
 import { registerIpcHandlers } from './ipc'
@@ -134,6 +136,32 @@ if (!gotLock) {
       setTimeout(() => {
         void runAutoBackupIfDue()
       }, 30_000)
+
+      // Weekly QUIET health check: the manual "Run full check" only helps when the
+      // user remembers it. This runs the same live checks in the background, stores
+      // the verdict (Settings shows a red badge when something is actually broken),
+      // and writes a plain-English line to the Activity Log. Never blocks startup.
+      setTimeout(() => {
+        void (async () => {
+          try {
+            const last = getLastHealth()
+            const lastAt = last.at ? Date.parse(last.at) : NaN
+            if (!Number.isNaN(lastAt) && Date.now() - lastAt < 7 * 24 * 60 * 60 * 1000) return
+            const report = await runHealthCheck()
+            const failed = report.checks.filter((c) => c.status === 'fail').map((c) => c.name)
+            setLastHealth(failed)
+            if (failed.length) {
+              logActivity(
+                'ai',
+                `Weekly self-check found ${failed.length} problem(s): ${failed.join(', ')}`,
+                'Open Settings → "Run full check" for details and fixes. Everything else keeps working.'
+              )
+            }
+          } catch {
+            /* a failed self-check must never bother the user */
+          }
+        })()
+      }, 90_000)
     }
 
     app.on('activate', () => {

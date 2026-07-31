@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 
 // Visible build stamp — injected automatically at build time (electron.vite.config.ts:
@@ -27,6 +28,19 @@ const links = [
 ]
 
 export default function Sidebar() {
+  // Red dot on Settings when the quiet weekly self-check found a real failure —
+  // problems announce themselves instead of waiting to be discovered.
+  const [healthFailed, setHealthFailed] = useState(0)
+  useEffect(() => {
+    try {
+      window.api.health
+        .last()
+        .then((h) => setHealthFailed(h.failed.length))
+        .catch(() => {})
+    } catch {
+      /* preload bridge missing (unit tests) — no badge, never a crash */
+    }
+  }, [])
   return (
     <aside className="w-56 shrink-0 border-r border-ink-800 bg-ink-900 flex flex-col">
       <div className="px-5 py-6">
@@ -51,6 +65,12 @@ export default function Sidebar() {
             }
           >
             {link.label}
+            {link.to === '/settings' && healthFailed > 0 && (
+              <span
+                title={`The weekly self-check found ${healthFailed} problem(s) — open Settings → Run full check`}
+                className="ml-2 inline-block h-2 w-2 rounded-full bg-red-500 align-middle"
+              />
+            )}
           </NavLink>
         ))}
       </nav>

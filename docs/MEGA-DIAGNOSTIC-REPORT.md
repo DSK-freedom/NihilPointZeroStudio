@@ -9,6 +9,39 @@ The running app shows this in the sidebar (under "OS") as a gold badge. The badg
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
+## New in this build (2026-07-31, night)
+
+### 💾 Backups grew up: new home, restore button, delete-sync, second copy
+- **New home:** backups now live in `C:\Users\<you>\NihilPointZero-Backups` (moved from
+  Documents — the app relocates the old folder automatically, nothing to do).
+- **RESTORE exists and is PROVEN:** Settings → Backups → "Restore missing files" copies back
+  anything in the backup that's missing from the app. It **never overwrites** what you have —
+  and an automated drill now runs on every ship: back up real files → delete one → restore →
+  verify it comes back byte-for-byte identical. A backup nobody ever restored from is a hope;
+  this one is tested.
+- **Delete-sync (your instruction, ON by default):** permanently deleting a video in the app
+  now deletes its backup copy too — deleted means **gone for good**, no ghost copies. The
+  delete dialog says so. Toggleable in Settings → Backups.
+- **"Clean deleted-items ghosts":** removes backup copies of things deleted before delete-sync
+  existed. Shows the count and size first and asks.
+- **Second backup home (optional):** point it at a USB stick or second disk in Settings →
+  Backups and every weekly backup lands there too. Unplugged that week? Skipped and noted —
+  never an error. A backup on the same disk can't survive a disk failure; this one can.
+
+### 🩺 The health check now runs itself
+About once a week, quietly. Real problems put a **red dot on "Settings" in the sidebar** and
+a plain-English line in the Activity Log. No more discovering a dead key mid-project.
+
+### 🈳 Disk-space guard on video builds
+Almost-full disk → the build says so **before** starting instead of dying halfway with a
+cryptic error. Merely low → the build runs but warns you early.
+
+### 🧪 The ship gate now proves the Storyboard AND Timeline pipelines
+Every ship now also: seeds a guided one-shot storyboard with a photo subject, renders the
+film through the real UI, opens it in the Timeline editor and **re-renders it there** —
+plus exercises add-shot/delete-shot and the confirm dialog. (This immediately caught a real
+bug: the gate's own wait-timeouts were silently ignored — fixed.)
+
 ## New in this build (2026-07-31, evening)
 
 ### ⬆ "Get the update" can never look dead again
@@ -233,8 +266,9 @@ motion-video option becomes available.
   every 7 days, shortly after startup, and records it in the Activity Log. Copy-only: it
   never deletes or moves anything, and files you removed from your work folder stay in the
   backup. **Your API keys and the app's browser data are deliberately NOT copied** — the
-  backup lives in Documents, which is often cloud-synced, and saved keys are recoverable in
-  the portable copy. It backs up videos, thumbnails, scripts, library, drafts and logs (no
+  backup folder is often cloud-synced, and saved keys are recoverable in
+  the portable copy. (The backup now lives in `C:\Users\<you>\NihilPointZero-Backups` —
+  see the 2026-07-31 night build notes above.) It backs up videos, thumbnails, scripts, library, drafts and logs (no
   size limit — the big finished videos are the whole point). If any file can't be copied the
   Activity Log says INCOMPLETE and it retries next launch instead of falsely reporting success.
   BACKUP-NOW.cmd applies the same exclusions.
@@ -255,8 +289,8 @@ motion-video option becomes available.
   ("open Scene Studio…"), one-click chips appear under the answer that jump straight to
   that tab — the Expert now walks you to the room, not just describes it.
 - **💾 BACKUP-NOW.cmd** now sits in the Desktop studio folder: double-click to copy all
-  your work (videos, scripts, settings) to Documents\NihilPointZero-Backups. Copy-only —
-  it can never delete anything.
+  your work (videos, scripts, settings) to the backup folder (now
+  `C:\Users\<you>\NihilPointZero-Backups`). Copy-only — it can never delete anything.
 - **🧭 A second AI helper — the STUDIO EXPERT — now floats on every tab**, separate from
   the 🎬 Producer. It knows the entire app and answers anything about it in whatever
   format you ask (bullet points · step-wise · precise clicks · fully detailed · brief —

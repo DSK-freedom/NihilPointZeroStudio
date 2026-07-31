@@ -31,6 +31,13 @@ interface PersistedSettings {
   faceAnimCmd: string
   youtubeChannelId: string
   piperVoiceId: string
+  /** Optional second backup home (USB / second disk) — survives a dead system drive. */
+  secondBackupDir?: string
+  /** Delete-sync: a permanent delete in the app also removes the backup copy. */
+  purgeBackupsOnDelete?: boolean
+  /** Last quiet health check: when it ran and which checks failed (for the badge). */
+  lastHealthAt?: string
+  lastHealthFailed?: string[]
 }
 
 const DEFAULT_SETTINGS: PersistedSettings = {
@@ -154,6 +161,42 @@ export function getSettings(): ProviderSettings {
     youtubeChannelId: s.youtubeChannelId || '',
     piperVoiceId: resolvePiperVoiceId(s.piperVoiceId)
   }
+}
+
+/** Optional second backup location (unset = single-home backups). */
+export function getSecondBackupDir(): string | null {
+  const v = readSettings().secondBackupDir
+  return v && v.trim() ? v : null
+}
+
+export function setSecondBackupDir(dir: string): void {
+  const s = readSettings()
+  s.secondBackupDir = dir.trim()
+  writeSettings(s)
+}
+
+/** Delete-sync (ON by default per the user's explicit 2026-07-31 instruction). */
+export function isPurgeBackupsOnDelete(): boolean {
+  return readSettings().purgeBackupsOnDelete !== false
+}
+
+export function setPurgeBackupsOnDelete(on: boolean): void {
+  const s = readSettings()
+  s.purgeBackupsOnDelete = on
+  writeSettings(s)
+}
+
+/** Quiet weekly health check bookkeeping (drives the Settings red badge). */
+export function getLastHealth(): { at: string | null; failed: string[] } {
+  const s = readSettings()
+  return { at: s.lastHealthAt ?? null, failed: s.lastHealthFailed ?? [] }
+}
+
+export function setLastHealth(failed: string[]): void {
+  const s = readSettings()
+  s.lastHealthAt = new Date().toISOString()
+  s.lastHealthFailed = failed
+  writeSettings(s)
 }
 
 /** Persists the user's chosen Piper voice. An unknown/invalid id resolves to the default
@@ -695,6 +738,15 @@ export function deleteVideo(id: string): VideoJob[] {
       rmSync(job.path, { force: true })
     } catch {
       // File may already be gone; removing the index entry is what matters.
+    }
+    // The saved narration-only track belongs to this video — a permanent delete
+    // must not leave it behind as an orphan.
+    if (job.narrationPath) {
+      try {
+        rmSync(job.narrationPath, { force: true })
+      } catch {
+        /* same rule: best effort */
+      }
     }
   }
   writeVideos(jobs.filter((j) => j.id !== id))

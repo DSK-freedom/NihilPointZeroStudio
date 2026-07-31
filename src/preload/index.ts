@@ -490,7 +490,25 @@ const api = {
   },
   health: {
     // Live self-test of every dependency (validates saved keys with a cheap request).
-    run: (): Promise<import('../shared/types').HealthReport> => ipcRenderer.invoke(IPC.healthRun)
+    run: (): Promise<import('../shared/types').HealthReport> => ipcRenderer.invoke(IPC.healthRun),
+    // The last quiet weekly self-check (when + which checks failed) — for the badge.
+    last: (): Promise<{ at: string | null; failed: string[] }> => ipcRenderer.invoke(IPC.healthLast)
+  },
+  // Backups: one home in your user folder, optional second home, delete-sync,
+  // non-destructive restore, and cleanup of pre-delete-sync orphans.
+  backups: {
+    status: (): Promise<{ root: string; secondDir: string; purgeOnDelete: boolean }> =>
+      ipcRenderer.invoke(IPC.backupStatus),
+    setOptions: (opts: { secondDir?: string; purgeOnDelete?: boolean }): Promise<{ ok: boolean }> =>
+      ipcRenderer.invoke(IPC.backupSetOptions, opts),
+    pickSecondDir: (): Promise<{ picked: string }> => ipcRenderer.invoke(IPC.backupPickSecondDir),
+    runNow: (): Promise<{ copied: number; unchanged: number; failed: number; secondNote: string }> =>
+      ipcRenderer.invoke(IPC.backupRunNow),
+    restore: (): Promise<{ ok: boolean; copied?: number; unchanged?: number; failed?: number; error?: string }> =>
+      ipcRenderer.invoke(IPC.backupRestore),
+    orphans: (): Promise<{ count: number; mb: number }> => ipcRenderer.invoke(IPC.backupOrphans),
+    /** User-confirmed in the UI before this is ever called. */
+    cleanOrphans: (): Promise<{ removed: number; mb: number }> => ipcRenderer.invoke(IPC.backupCleanOrphans)
   },
   stock: {
     getConfig: (): Promise<{ hasPixabay: boolean; hasPexels: boolean }> => ipcRenderer.invoke(IPC.stockGetConfig),

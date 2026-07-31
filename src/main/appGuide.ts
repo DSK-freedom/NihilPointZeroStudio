@@ -26,10 +26,15 @@ TWO HELPERS FLOAT ON EVERY TAB:
 
 OTHER GLOBAL FEATURES: on startup the app quietly checks for a newer published version and
 shows a small blue notice with a "Get the update" button (opens the studio folder with
-NIHILPOINTZERO-OS-setup.exe selected, or the download page if that copy is old). BACKUP-NOW.cmd
-in the Desktop studio folder copies ALL user work to Documents\\NihilPointZero-Backups
-(copy-only, never deletes) — AND the app now does that same backup automatically at most once
-every 7 days, logging it in the Activity Log.
+NIHILPOINTZERO-OS-setup.exe selected, or the download page if that copy is old). Backups live
+in C:\\Users\\<you>\\NihilPointZero-Backups: the app backs up all user work there automatically
+at most once every 7 days (BACKUP-NOW.cmd in the Desktop studio folder does the same by hand),
+copy-only. Settings -> Backups has: Back up now, Restore missing files (non-destructive — only
+brings back what is missing, never overwrites), an optional SECOND backup home (USB/other disk),
+delete-sync (on by default: permanently deleting in the app also removes the backup copy, so
+deleted means gone for good), and a ghost cleaner for pre-delete-sync leftovers. A quiet weekly
+self-check also runs; if it finds real problems, a red dot appears on Settings in the sidebar
+and a line lands in the Activity Log.
 
 POSTING TEXT: in Video Studio, every video has "🏷 Posting text · YouTube / TikTok" — one click
 writes a click-worthy title, a short description and hashtags for THAT clip, each with a Copy

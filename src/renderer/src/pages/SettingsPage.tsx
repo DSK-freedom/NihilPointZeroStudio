@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmDialog } from '../components/Confirm'
 import type {
   AiErrorEntry,
   HardwareReport,
@@ -54,6 +55,9 @@ export default function SettingsPage() {
   const [aiPollinTest, setAiPollinTest] = useState<string | null>(null)
   const [aiFreeCap, setAiFreeCap] = useState(5)
   const [aiFreeStatus, setAiFreeStatus] = useState<{ ok: boolean; detail: string } | null>(null)
+  const [backupInfo, setBackupInfo] = useState<{ root: string; secondDir: string; purgeOnDelete: boolean } | null>(null)
+  const [backupBusy, setBackupBusy] = useState<'backup' | 'restore' | 'orphans' | null>(null)
+  const [backupNote, setBackupNote] = useState<string | null>(null)
   const [pixabayKey, setPixabayKey] = useState('')
   const [hasPixabay, setHasPixabay] = useState(false)
   const [hardware, setHardware] = useState<HardwareReport | null>(null)
@@ -87,6 +91,7 @@ export default function SettingsPage() {
       .engineStatus()
       .then((s) => setAiFreeStatus({ ok: s.freeCloudAvailable, detail: s.freeCloudDetail }))
       .catch(() => {})
+    window.api.backups.status().then(setBackupInfo).catch(() => {})
     window.api.stock.getConfig().then((c) => setHasPixabay(c.hasPixabay))
     window.api.voice.piperStatus().then((s) => setPiperInstalled(s.installed))
     window.api.voice.piperCatalogue().then(setPiperVoices)
@@ -163,6 +168,77 @@ export default function SettingsPage() {
     setAiPollinKey('')
     setStatus('AI Video settings saved.')
     setTimeout(() => setStatus(null), 2500)
+  }
+
+  async function backupNow(): Promise<void> {
+    setBackupBusy('backup')
+    setBackupNote(null)
+    try {
+      const r = await window.api.backups.runNow()
+      setBackupNote(
+        r.failed
+          ? `Backup finished with ${r.failed} FAILED file(s) — see the Activity Log.${r.secondNote}`
+          : `Backup done — ${r.copied} new/changed file(s), ${r.unchanged} already safe.${r.secondNote}`
+      )
+    } finally {
+      setBackupBusy(null)
+    }
+  }
+
+  async function restoreFromBackup(): Promise<void> {
+    const ok = await confirmDialog({
+      title: 'Restore missing files from backup?',
+      message:
+        'Anything in the backup that is MISSING from your work folder will be copied back. Nothing you currently have is touched or overwritten.',
+      confirmLabel: 'Restore'
+    })
+    if (!ok) return
+    setBackupBusy('restore')
+    setBackupNote(null)
+    try {
+      const r = await window.api.backups.restore()
+      setBackupNote(
+        r.ok
+          ? `Restore done — ${r.copied} missing file(s) brought back, ${r.unchanged} were already present.`
+          : (r.error ?? 'Restore failed.')
+      )
+    } finally {
+      setBackupBusy(null)
+    }
+  }
+
+  async function cleanOrphans(): Promise<void> {
+    setBackupBusy('orphans')
+    setBackupNote(null)
+    try {
+      const scan = await window.api.backups.orphans()
+      if (scan.count === 0) {
+        setBackupNote('No ghosts — your backup only contains things that still exist in the app.')
+        return
+      }
+      const ok = await confirmDialog({
+        title: `Remove ${scan.count} ghost file(s) (~${scan.mb} MB)?`,
+        message:
+          'These are backup copies of things you deleted in the app BEFORE delete-sync existed. Removing them makes those deletions final, everywhere. This cannot be undone.',
+        confirmLabel: 'Remove them for good',
+        danger: true
+      })
+      if (!ok) return
+      const r = await window.api.backups.cleanOrphans()
+      setBackupNote(`Removed ${r.removed} ghost file(s), freeing ~${r.mb} MB.`)
+    } finally {
+      setBackupBusy(null)
+    }
+  }
+
+  async function setBackupOptions(opts: { secondDir?: string; purgeOnDelete?: boolean }): Promise<void> {
+    await window.api.backups.setOptions(opts)
+    setBackupInfo(await window.api.backups.status())
+  }
+
+  async function pickSecondBackupDir(): Promise<void> {
+    const r = await window.api.backups.pickSecondDir()
+    if (r.picked) setBackupInfo(await window.api.backups.status())
   }
 
   /** Tests the typed (or saved) Pollinations key without spending any Pollen. */
@@ -340,6 +416,64 @@ export default function SettingsPage() {
           This list shows what is SET UP. It cannot tell whether a saved key is accepted — click
           &ldquo;🩺 Run full check&rdquo; above for the live truth. Green = ready. Amber = optional/needs setup.
         </p>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-3">
+        <div>
+          <div className="text-sm text-ink-100 font-medium">Backups</div>
+          <p className="text-[11px] text-ink-500 mt-0.5">
+            Your work is copied weekly (and on demand) to <span className="text-ink-300">{backupInfo?.root || '…'}</span>.
+            Keys and browser data are never included.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => void backupNow()}
+            disabled={backupBusy !== null}
+            className="rounded-md border border-ink-600 hover:border-gold-500 disabled:opacity-40 text-ink-200 text-xs px-3 py-1.5"
+          >
+            {backupBusy === 'backup' ? 'Backing up…' : '💾 Back up now'}
+          </button>
+          <button
+            onClick={() => void restoreFromBackup()}
+            disabled={backupBusy !== null}
+            className="rounded-md border border-ink-600 hover:border-gold-500 disabled:opacity-40 text-ink-200 text-xs px-3 py-1.5"
+            title="Brings back anything in the backup that is missing from your work folder. Never overwrites existing work."
+          >
+            {backupBusy === 'restore' ? 'Restoring…' : '↩ Restore missing files from backup'}
+          </button>
+          <button
+            onClick={() => void cleanOrphans()}
+            disabled={backupBusy !== null}
+            className="rounded-md border border-ink-700 hover:border-amber-500 disabled:opacity-40 text-ink-400 text-xs px-3 py-1.5"
+            title="Backup copies of things you deleted in the app before delete-sync existed. You confirm before anything is removed."
+          >
+            {backupBusy === 'orphans' ? 'Scanning…' : '🧹 Clean deleted-items ghosts'}
+          </button>
+        </div>
+        <label className="flex items-start gap-2 text-[11px] text-ink-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={backupInfo?.purgeOnDelete ?? true}
+            onChange={(e) => void setBackupOptions({ purgeOnDelete: e.target.checked })}
+            className="mt-0.5"
+          />
+          <span>
+            <b>Delete-sync:</b> when I permanently delete something in the app, remove its backup copy too — deleted
+            means gone for good, everywhere.
+          </span>
+        </label>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-ink-400 shrink-0">Second backup home (USB / another disk):</span>
+          <span className="min-w-0 flex-1 truncate text-[11px] text-ink-300">{backupInfo?.secondDir || 'not set — recommended, so a dead disk can never take both copies'}</span>
+          <button
+            onClick={() => void pickSecondBackupDir()}
+            className="shrink-0 rounded-md border border-ink-600 hover:border-gold-500 text-ink-200 text-xs px-3 py-1"
+          >
+            Choose…
+          </button>
+        </div>
+        {backupNote && <p className="text-[11px] text-emerald-400">{backupNote}</p>}
       </div>
 
       <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4">

@@ -17,10 +17,12 @@
  * PRESENCE and RESPONSIVENESS, never for online success.
  */
 import { _electron as electron } from 'playwright-core'
-import { mkdtempSync, rmSync } from 'fs'
+import { existsSync, mkdtempSync, rmSync } from 'fs'
+import { spawnSync } from 'child_process'
 import { tmpdir } from 'os'
 import { join, dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
+import ffmpegPath from 'ffmpeg-static'
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -149,6 +151,7 @@ try {
         const main = document.querySelector('main')
         return main ? /E2E smoke test/.test(main.innerText) && !!main.querySelector('video') : false
       },
+      undefined, // playwright signature is (fn, ARG, options) — options third, or the timeout is silently ignored
       { timeout: 240_000 }
     )
     console.log('  ✓ Build Video: clicked → rendered → finished video visible in the list')
@@ -221,6 +224,7 @@ try {
         const main = document.querySelector('main')
         return main ? /E2E اردو test/.test(main.innerText) && !!main.querySelector('video') : false
       },
+      undefined, // playwright signature is (fn, ARG, options) — options third, or the timeout is silently ignored
       { timeout: 240_000 }
     )
     console.log('  ✓ Urdu + emoji build: finished video visible in the list')
@@ -248,12 +252,109 @@ try {
         const b = btns.find((x) => /Build Video/.test(x.textContent ?? ''))
         return !!b && !b.disabled
       },
+      undefined,
       { timeout: 30_000 }
     )
     if ((await win.locator('text=This tab hit a snag').count()) > 0) throw new Error('tab crashed after Stop')
     console.log('  ✓ Huge script + double-click + Stop: build started, stopped instantly, UI recovered')
   } catch (err) {
     fail('Huge/cancel build', `${err?.message ?? err}`)
+  }
+
+  // ---- 4) The STORYBOARD → TIMELINE pipelines, clicked like a user. A guided
+  //         one-shot film with the user's own photo: narration, shot render and the
+  //         final compile are all offline (the optional scene-image fetch may fail
+  //         without internet and must fall back — that fallback is part of the test).
+  //         The result is then opened in the Timeline editor and re-rendered there,
+  //         so BOTH render pipelines are proven end-to-end on every ship.
+  try {
+    // A real local "photo" made offline with the bundled ffmpeg — no network, ever.
+    const photo = join(dataHome, 'e2e-photo.png')
+    const mk = spawnSync(ffmpegPath, ['-y', '-f', 'lavfi', '-i', 'color=c=steelblue:s=640x360:d=1', '-frames:v', '1', photo], { stdio: 'ignore' })
+    if (mk.status !== 0 || !existsSync(photo)) throw new Error('could not create the test photo with ffmpeg')
+
+    // Seed the storyboard exactly the way the app itself persists one (autosave draft),
+    // then mount the tab — it restores the draft like any returning user session.
+    await win.evaluate(async (photoPath) => {
+      await window.api.drafts.set('storyboard-project', {
+        mode: 'guided',
+        title: 'E2E storyboard film',
+        brief: 'One shot of me presenting the automated test.',
+        language: 'English',
+        resKey: '720p',
+        fps: 25,
+        totalSeconds: 6,
+        style: 'cinematic',
+        photoPath,
+        beautifyStrength: 0,
+        beats: [
+          {
+            id: 'e2e-beat-1',
+            durationSec: 4,
+            visual: 'The presenter stands in a modern studio',
+            narration: 'Storyboard pipeline test.',
+            subject: { kind: 'photo' },
+            transitionSec: 0,
+            motion: 'still'
+          }
+        ]
+      })
+    }, photo)
+    await win.evaluate(() => {
+      window.location.hash = '#/'
+    })
+    await win.waitForTimeout(300)
+    await win.evaluate(() => {
+      window.location.hash = '#/storyboard'
+    })
+    await win.waitForTimeout(900)
+    const shotsHeader = await win.locator('main').innerText()
+    if (!/Shots \(1\)/.test(shotsHeader)) throw new Error('seeded storyboard did not restore (no "Shots (1)")')
+
+    // The guided editing surface must work: add a shot, then delete it through the
+    // real confirm dialog (which must appear — silent deletion would be a bug too).
+    await win.locator('button', { hasText: '+ Add shot' }).click()
+    await win.waitForTimeout(300)
+    if (!/Shots \(2\)/.test(await win.locator('main').innerText())) throw new Error('+ Add shot did not add a shot')
+    await win.locator('main button', { hasText: '✕' }).last().click()
+    const confirmBtn = win.locator('[role="dialog"] button', { hasText: 'Delete' })
+    await confirmBtn.waitFor({ timeout: 5000 })
+    await confirmBtn.click()
+    await win.waitForTimeout(300)
+    if (!/Shots \(1\)/.test(await win.locator('main').innerText())) throw new Error('deleting the added shot did not work')
+
+    // Render the film. Success = the "Your film" section with a real <video>.
+    await win.locator('button', { hasText: 'Render film' }).click()
+    await win.waitForFunction(
+      () => {
+        const main = document.querySelector('main')
+        return main ? /Your film/.test(main.innerText) && !!main.querySelector('video') : false
+      },
+      undefined, // playwright signature is (fn, ARG, options) — options third, or the timeout is silently ignored
+      { timeout: 240_000 }
+    )
+    console.log('  ✓ Storyboard: guided one-shot film rendered end-to-end through the UI')
+
+    // Hand the film to the Timeline editor and render THERE too.
+    const openTimeline = win.locator('button', { hasText: 'Open in Timeline editor' })
+    if ((await openTimeline.count()) === 0) throw new Error('rendered film offered no "Open in Timeline editor" button')
+    await openTimeline.click()
+    await win.waitForTimeout(900)
+    const renderBtn = win.locator('main button', { hasText: '🎬 Render' }).first()
+    await renderBtn.waitFor({ timeout: 10_000 })
+    if (await renderBtn.isDisabled()) throw new Error('Timeline Render is disabled after importing the storyboard film')
+    await renderBtn.click()
+    await win.waitForFunction(
+      () => {
+        const main = document.querySelector('main')
+        return main ? /Rendered result/.test(main.innerText) && !!main.querySelector('video') : false
+      },
+      undefined, // playwright signature is (fn, ARG, options) — options third, or the timeout is silently ignored
+      { timeout: 240_000 }
+    )
+    console.log('  ✓ Timeline: imported storyboard film re-rendered through the editor')
+  } catch (err) {
+    fail('Storyboard/Timeline pipelines', `${err?.message ?? err}`)
   }
 
   if (pageErrors.length) {

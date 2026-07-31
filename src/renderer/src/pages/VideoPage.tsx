@@ -598,7 +598,7 @@ export default function VideoPage() {
     const ok = await confirmDialog({
       title: 'Delete this video?',
       message:
-        'This permanently deletes the built video AND its file on disk. This cannot be undone.',
+        'This permanently deletes the built video AND its file on disk — including its backup copies, so it is gone for good. This cannot be undone.',
       danger: true
     })
     if (!ok) return

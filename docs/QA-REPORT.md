@@ -17,6 +17,11 @@ The app is tested by a machine, not by promises. A hard gate in the ship pipelin
   content, working controls, no crash screen);
 - **builds a real video by clicking the UI** (paste script → Style presets →
   🎬 Build Video → a finished, playable video appears), fully offline;
+- **renders a storyboard film AND re-renders it in the Timeline editor** — a guided
+  one-shot storyboard with a photo subject is seeded the way the app itself saves
+  drafts, a shot is added and deleted through the real confirm dialog, the film is
+  rendered, opened in Timeline, and rendered AGAIN there — both pipelines proven
+  end-to-end on every ship;
 - hammers the edge cases below.
 
 If ANY check fails, the ship stops. 471 unit tests (math, ffmpeg graphs, engines,
@@ -37,6 +42,17 @@ reach you.
 | Free service down/busy | Falls back per scene/feature with the reason in the build log and ai-errors.log (verified live against real 429/402/401 outages this week) |
 
 ## Broken and NOW FIXED (this week, each verified by a real run)
+
+- **The gate's own wait-timeouts were silently ignored** — every long wait passed its
+  timeout in the wrong argument slot (playwright's `waitForFunction(fn, arg, options)`),
+  so all of them ran on the 30s default. Found the moment a genuinely longer render
+  (the new storyboard step) was added; every call site fixed. The gate now truly waits
+  as long as it claims.
+- **Backups had never been restored from** — restore didn't exist. Now it does
+  (Settings → Backups), it is non-destructive by construction (only copies what is
+  missing), and a unit "restore drill" runs on every ship: back up real files →
+  delete one → restore → byte-identical, secrets excluded, purge stays inside the
+  backup tree.
 
 - **"Get the update" looked dead** — its only effect was an Explorer window that
   opened BEHIND the app, with zero feedback. Now: one click **restarts straight onto
@@ -82,8 +98,9 @@ reach you.
   needs a decision: finish it or remove it.
 - The phone webserver exposes a `/api/library` endpoint no page uses — leftover or
   future feature; needs a decision.
-- The one manual backup in the Desktop `archive` folder (July 19, 2.1 GB) is
-  superseded by weekly auto-backups — deletion awaits the user naming it explicitly.
+- ~~The one manual backup in the Desktop `archive` folder (July 19, 2.1 GB)~~ —
+  resolved 2026-07-31: its 16 unique files were preserved into the backup folder,
+  then the archive was deleted with the user's explicit approval.
 
 _Regenerate this confidence at any time: `npm run test` then `npm run test:e2e` —
 or just ship, which runs both and refuses to proceed on any failure._

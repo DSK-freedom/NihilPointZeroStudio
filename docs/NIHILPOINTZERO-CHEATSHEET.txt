@@ -19,7 +19,12 @@ STUCK? ASK IT .... click 🎬 Producer (bottom-right of EVERY tab) and ask "how 
                     buttons set how long the answer is.
 JUMP ANYWHERE ..... press Ctrl-K, type a tab (e.g. "scene"), Enter
 AUTOSAVE .......... work saves itself ("Saved ✓" near the title) and survives restart
-ONLY YOU DELETE ... every delete asks you to confirm; the AI can create/edit but NEVER deletes
+BACKUPS ........... automatic weekly copy to C:\Users\<you>\NihilPointZero-Backups. Lost something?
+                    Settings -> Backups -> "Restore missing files" (never overwrites current work).
+                    Optional second home (USB) + delete-sync (delete in app = gone from backup too).
+ONLY YOU DELETE ... every delete asks you to confirm; the AI can create/edit but NEVER deletes.
+                    Deleting a video also removes its backup copy (delete-sync, off-switch in Settings).
+RED DOT on Settings = the weekly self-check found a real problem -> open Settings -> Run full check
 IF A CHANGE DOESN'T SHOW ... check the BUILD BADGE. If it's old: you launched a stale taskbar/Start
                     pin — use the Desktop shortcut or the .exe directly, then fully close + reopen.
 

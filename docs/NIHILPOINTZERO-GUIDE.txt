@@ -154,22 +154,40 @@ Copy the folder to another PC and:
      If yes, a small blue notice appears with a "Show me the file" button that opens the
      studio folder with NIHILPOINTZERO-OS-setup.exe selected — one double-click updates.
      Offline? The check silently skips; it never blocks or nags.
-  💾 BACKUP-NOW.cmd (in the Desktop studio folder): double-click to copy ALL your work
-     (videos, scripts, settings) to Documents\NihilPointZero-Backups. It only adds/updates,
-     never deletes. Do it weekly — and now and then copy that folder to a USB stick too.
-     AUTOMATIC TOO: the app quietly runs this same backup for you at most once every 7
-     days (about half a minute after you open it) and notes it in the Activity Log.
+  💾 BACKUPS (Settings → Backups — and automatic): your work is copied to
+     C:\Users\<you>\NihilPointZero-Backups (it moved there from Documents; the app moves
+     the old folder for you automatically). The app backs up by itself at most once every
+     7 days; "Back up now" in Settings does it on demand, and BACKUP-NOW.cmd in the
+     Desktop studio folder still works too. It only adds/updates, never deletes.
+     RESTORE (the part that matters in a disaster): Settings → Backups → "Restore missing
+     files" copies back anything that is in the backup but MISSING from the app. It never
+     overwrites anything you currently have — completely safe to press.
+     SECOND HOME: pick a folder on a USB stick or second disk and every weekly backup is
+     copied there too. A backup on the same disk cannot survive a disk failure — this one
+     can. If the drive is unplugged that week, it's skipped and noted, never an error.
+     DELETE-SYNC (on by default): when you permanently delete a video in the app, its
+     backup copy is deleted too — deleted means GONE FOR GOOD, no ghost copies left
+     behind. Turn it off in Settings → Backups if you'd rather backups keep everything.
+     "Clean deleted-items ghosts" removes backup copies of things you deleted BEFORE
+     delete-sync existed — it shows you the count and size first, and asks.
      WHAT IS AND ISN'T COPIED: videos, thumbnails, scripts, library, drafts and logs —
      with NO size limit, so your biggest finished videos are protected. Your API keys and
-     the app's browser data are deliberately EXCLUDED (Documents is often cloud-synced,
-     and in the portable copy saved keys can be read back — they must not travel). If any
-     file can't be copied, the Activity Log says INCOMPLETE and it retries next time you
-     open the app — it never claims success it didn't achieve.
+     the app's browser data are deliberately EXCLUDED (the backup folder may be cloud-
+     synced, and in the portable copy saved keys can be read back — they must not travel).
+     If any file can't be copied, the Activity Log says INCOMPLETE and it retries next
+     time you open the app — it never claims success it didn't achieve.
   🩺 "RUN FULL CHECK" (Settings, top-right of Setup health): the most useful button in the
      app when something feels off. It really tests everything — internet, the free AI, the
      free image service, Ollama (and whether your chosen model is installed), and whether
      your saved Anthropic/OpenAI key is actually ACCEPTED. A wrong key turns RED with the
      reason. Green = truly working, not just "saved".
+     AUTOMATIC TOO: the same check quietly runs by itself about once a week. If it finds
+     a real problem, a small RED DOT appears on "Settings" in the sidebar and a plain-
+     English line lands in the Activity Log — problems announce themselves instead of
+     waiting to be discovered mid-project.
+  🈳 DISK-SPACE GUARD: if your disk is almost full, video builds now say so up front
+     ("This disk is almost full…") instead of failing halfway with a confusing error —
+     and warn you early when space is merely getting low.
   🏠 TODAY (first sidebar item): the app opens here — latest videos, recent activity, and
      one-click cards to start the usual jobs. Ideas & Trends is now the item just below it.
   🏷 POSTING TEXT (Video Studio, under each video): one click writes a title, description

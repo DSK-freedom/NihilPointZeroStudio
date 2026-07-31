@@ -1,8 +1,20 @@
 import { app, BrowserWindow, clipboard, desktopCapturer, dialog, ipcMain, shell } from 'electron'
 import { randomUUID } from 'crypto'
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statfsSync, statSync, writeFileSync } from 'fs'
+
+/** Free space (MB) on the disk holding `dir`, or null when it can't be read —
+ * the guard then stays out of the way rather than blocking on bad data. */
+function freeDiskMB(dir: string): number | null {
+  try {
+    const s = statfsSync(dir)
+    return Math.round((s.bavail * s.bsize) / 1048576)
+  } catch {
+    return null
+  }
+}
 import { tmpdir } from 'os'
-import { basename, dirname, extname, join } from 'path'
+import { basename, dirname, extname, join, sep } from 'path'
+import { backupsRoot, listOrphans, purgeFromBackups, restoreMissing, runBackup } from './autoBackup'
 import { IPC } from '../shared/ipc-channels'
 import type {
   AdvisorRequest,
@@ -115,8 +127,14 @@ import {
   getMvsepToken,
   getFaceAnimCmd,
   getScriptPad,
+  getSecondBackupDir,
   getSettings,
   getYouTubeChannelId,
+  getLastHealth,
+  isPurgeBackupsOnDelete,
+  setLastHealth,
+  setPurgeBackupsOnDelete,
+  setSecondBackupDir,
   setDemucsCmd,
   setFaceAnimCmd,
   setDraft,
@@ -686,7 +704,13 @@ export function registerIpcHandlers(): void {
 
   // Live health check — actually talks to every service (validates keys with a cheap
   // authenticated request) instead of trusting saved settings. See src/main/health.ts.
-  ipcMain.handle(IPC.healthRun, () => runHealthCheck())
+  ipcMain.handle(IPC.healthRun, async () => {
+    const report = await runHealthCheck()
+    // A manual run is the freshest truth — store it so the weekly badge clears
+    // (or appears) based on what the user just saw.
+    setLastHealth(report.checks.filter((c) => c.status === 'fail').map((c) => c.name))
+    return report
+  })
 
   // "Update available" banner support: pull-based re-read for renderers that mounted
   // after the one-shot broadcast (slow first paint, Ctrl+R reload).
@@ -794,6 +818,16 @@ export function registerIpcHandlers(): void {
     const slug = (req.title || 'video').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 50) || 'video'
     const outPath = join(videosDir(), `${slug}-${id.slice(0, 8)}.mp4`)
     const narrationOutPath = `${outPath}.narration.wav`
+    // DISK GUARD: a full disk mid-render produces a confusing half-broken failure
+    // (or a corrupt file). Refuse clearly below 500MB; warn below 2GB and continue.
+    const free = freeDiskMB(videosDir())
+    if (free !== null && free < 500) {
+      logActivity('ai', 'Video build refused — the disk is almost full', `Only ${free}MB free where videos are saved. Free some space (a 1080p video needs roughly 100-500MB while rendering) and try again.`)
+      throw new Error(`This disk is almost full (${free}MB free) — a video can't be rendered safely. Free some space and try again.`)
+    }
+    if (free !== null && free < 2048 && !e.sender.isDestroyed()) {
+      e.sender.send(IPC.videoProgress, `⚠ Low disk space (${Math.round(free / 102.4) / 10}GB free) — a long or 4K video may not fit.`)
+    }
     // Bookend the build in the Activity Log. Builds run here in the MAIN process, so they
     // keep going when the user switches tabs — these entries (start / failed / built) are
     // how the user can always answer "where did my video go?".
@@ -1050,6 +1084,78 @@ export function registerIpcHandlers(): void {
     const r = setStockKey(provider, key)
     logActivity('user', `${key ? 'Saved' : 'Removed'} ${provider} stock-footage key`)
     return r
+  })
+
+  // Last quiet weekly self-check (when + what failed) for the Settings badge. The
+  // manual "Run full check" stores its result too, so the badge clears on a green run.
+  ipcMain.handle(IPC.healthLast, () => getLastHealth())
+
+  // ── Backups (one home, delete-sync, restore, optional second location) ──
+  ipcMain.handle(IPC.backupStatus, () => ({
+    root: backupsRoot(),
+    secondDir: getSecondBackupDir() ?? '',
+    purgeOnDelete: isPurgeBackupsOnDelete()
+  }))
+
+  ipcMain.handle(IPC.backupSetOptions, (_e, opts: { secondDir?: string; purgeOnDelete?: boolean }) => {
+    if (typeof opts?.secondDir === 'string') setSecondBackupDir(opts.secondDir)
+    if (typeof opts?.purgeOnDelete === 'boolean') setPurgeBackupsOnDelete(opts.purgeOnDelete)
+    logActivity('user', 'Updated backup settings')
+    return { ok: true }
+  })
+
+  ipcMain.handle(IPC.backupPickSecondDir, async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const opts: Electron.OpenDialogOptions = {
+      title: 'Choose a SECOND home for your backups (a USB drive or another disk)',
+      properties: ['openDirectory', 'createDirectory']
+    }
+    const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+    if (res.canceled || !res.filePaths.length) return { picked: '' }
+    setSecondBackupDir(res.filePaths[0])
+    return { picked: res.filePaths[0] }
+  })
+
+  // Manual "back up right now" — same engine as the weekly run, reported honestly.
+  ipcMain.handle(IPC.backupRunNow, async () => {
+    const src = app.getPath('userData')
+    const c = await runBackup(src, join(backupsRoot(), 'nihilpointzero-data'))
+    const second = getSecondBackupDir()
+    let secondNote = ''
+    if (second) {
+      if (existsSync(second)) {
+        const c2 = await runBackup(src, join(second, 'nihilpointzero-data'))
+        secondNote = c2.failed ? ` Second location: ${c2.failed} file(s) FAILED.` : ' Second location: done.'
+      } else {
+        secondNote = ' Second location unreachable (drive unplugged?).'
+      }
+    }
+    logActivity('user', `Manual backup — ${c.copied} copied, ${c.unchanged} up to date${c.failed ? `, ${c.failed} FAILED` : ''}`, backupsRoot() + secondNote)
+    return { ...c, secondNote }
+  })
+
+  // NON-DESTRUCTIVE restore: brings back anything missing from the live folder;
+  // never overwrites existing work. The drill for this is unit-tested.
+  ipcMain.handle(IPC.backupRestore, async () => {
+    const backupData = join(backupsRoot(), 'nihilpointzero-data')
+    if (!existsSync(backupData)) return { ok: false, error: 'No backup found yet — run "Back up now" first.' }
+    const c = await restoreMissing(backupData, app.getPath('userData'))
+    logActivity('user', `Restored from backup — ${c.copied} missing file(s) brought back, ${c.unchanged} already present${c.failed ? `, ${c.failed} FAILED` : ''}`)
+    return { ok: true, ...c }
+  })
+
+  // Orphans = backup copies of things deleted in the app BEFORE delete-sync existed.
+  // Listed first; deleted only via the confirmed cleanup below.
+  ipcMain.handle(IPC.backupOrphans, async () => {
+    const report = await listOrphans(join(backupsRoot(), 'nihilpointzero-data'), app.getPath('userData'))
+    return { count: report.count, mb: Math.round(report.bytes / 1048576) }
+  })
+
+  ipcMain.handle(IPC.backupCleanOrphans, async () => {
+    const report = await listOrphans(join(backupsRoot(), 'nihilpointzero-data'), app.getPath('userData'))
+    const removed = await purgeFromBackups(report.relPaths, [backupsRoot()])
+    logActivity('user', `Cleaned ${removed} orphaned backup cop${removed === 1 ? 'y' : 'ies'} (things previously deleted in the app)`)
+    return { removed, mb: Math.round(report.bytes / 1048576) }
   })
 
   // Reusable script templates ("hook → context → analysis → takeaway…"): new videos
@@ -1923,9 +2029,21 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.videoList, () => listVideos())
 
   // User-only delete (removes the file too); no AI/generation path calls this.
+  // DELETE-SYNC (user's explicit instruction): the backup copies go too, so a
+  // permanent delete in the app never leaves ghosts on the disk.
   ipcMain.handle(IPC.videoDelete, (_e, id: string) => {
     logActivity('user', 'Deleted a built video')
-    return deleteVideo(id)
+    const dataDir = app.getPath('userData')
+    const job = listVideos().find((j) => j.id === id)
+    const rels: string[] = []
+    for (const p of [job?.path, job?.narrationPath]) {
+      if (p && p.toLowerCase().startsWith(dataDir.toLowerCase() + sep)) {
+        rels.push(p.slice(dataDir.length + 1).replace(/\\/g, '/'))
+      }
+    }
+    const out = deleteVideo(id)
+    if (rels.length) void purgeFromBackups(rels)
+    return out
   })
 
   // Stitch several built videos into one new video (non-destructive).

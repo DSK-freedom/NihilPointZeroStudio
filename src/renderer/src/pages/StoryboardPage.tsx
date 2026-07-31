@@ -75,7 +75,9 @@ export default function StoryboardPage(): React.JSX.Element {
     if (v.language) setLanguage(v.language)
     if (v.resKey) setResKey(v.resKey)
     if (typeof v.fps === 'number') setFps(v.fps)
-    if (typeof v.totalSeconds === 'number') setTotalSeconds(v.totalSeconds)
+    // Clamp on the way back in too: a project saved with a wild total (9999s was real)
+    // would otherwise restore the same runaway length forever.
+    if (typeof v.totalSeconds === 'number') setTotalSeconds(Math.max(10, Math.min(3600, v.totalSeconds)))
     if (v.style) setStyle(v.style)
     if (Array.isArray(v.beats)) setBeats(v.beats)
     if (v.photoPath !== undefined) setPhotoPath(v.photoPath)
@@ -190,6 +192,25 @@ export default function StoryboardPage(): React.JSX.Element {
 
   async function render(): Promise<void> {
     if (!beats.length) { toast('Plan or add at least one shot first.', 'error'); return }
+    // A real project once asked for 9999s, got 39 shots all clamped to the 120s
+    // maximum with no narration at all, and the app spent hours producing 78 minutes
+    // of silence without a word. Show the user what they are about to get first.
+    const silent = beats.every((b) => !b.narration?.trim())
+    if (totalDur > 20 * 60 || silent) {
+      const mins = Math.round(totalDur / 60)
+      const lines = [
+        `This will render ${beats.length} shots into a film about ${mins} minute${mins === 1 ? '' : 's'} long.`,
+        silent ? 'None of the shots have narration, so the film will be SILENT.' : '',
+        totalDur > 20 * 60 ? `Long films take a long time to render and can run to several GB.` : '',
+        'Carry on?'
+      ].filter(Boolean)
+      const ok = await confirmDialog({
+        title: silent ? 'Render a silent film?' : `Render a ${mins}-minute film?`,
+        message: lines.join('\n\n'),
+        confirmLabel: 'Render it'
+      })
+      if (!ok) return
+    }
     const doc: StoryboardDoc = { title: title || 'Storyboard film', style, width: dims.w, height: dims.h, fps, language, beats }
     setBusy('Rendering your film…'); setProgress(null); setRenderedPath(null); setRenderedTimeline(null)
     try {
@@ -278,7 +299,15 @@ export default function StoryboardPage(): React.JSX.Element {
           </select>
           {mode === 'auto' && (
             <label className="text-xs text-ink-400">Target length
-              <input type="number" min={10} value={totalSeconds} onChange={(e) => setTotalSeconds(Number(e.target.value))} className="ml-2 w-20 rounded-md border border-ink-700 bg-ink-950 px-2 py-1 text-sm text-ink-100" />s
+              <input
+                type="number"
+                min={10}
+                max={3600}
+                title="Roughly how long the finished film should be. Kept to 60 minutes — a bigger number here silently produced a 78-minute silent film once."
+                value={totalSeconds}
+                onChange={(e) => setTotalSeconds(Math.max(10, Math.min(3600, Number(e.target.value) || 10)))}
+                className="ml-2 w-20 rounded-md border border-ink-700 bg-ink-950 px-2 py-1 text-sm text-ink-100"
+              />s
             </label>
           )}
         </div>

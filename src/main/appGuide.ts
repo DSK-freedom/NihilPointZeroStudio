@@ -24,7 +24,11 @@ TWO HELPERS FLOAT ON EVERY TAB:
   When an Expert answer mentions a tab, "→ Open <tab>" chips appear under it — one click
   jumps straight to that tab.
 
-WHERE WORK IS KEPT: Settings names the exact data folder in use. The app supports three
+WHERE WORK IS KEPT: the folder is decided ONCE and pinned to a small record file, so the
+app can never quietly move house between launches (that is what made ~15 GB of videos
+invisible on 2026-08-01). An unreachable pinned folder is reported in plain English —
+never treated as "no work". A portable exe still always uses the data beside it.
+Settings names the exact data folder in use. The app supports three
 (portable folder next to the exe / adopted Desktop studio folder / the default per-user
 folder), and work created while one was active becomes invisible when another takes over —
 so the app now scans the others for finished videos, reports them in Settings and the

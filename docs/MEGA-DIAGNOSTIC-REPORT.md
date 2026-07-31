@@ -9,6 +9,40 @@ The running app shows this in the sidebar (under "OS") as a gold badge. The badg
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
+## New in this build (2026-08-01, early morning — the cure, not the bandage)
+
+### 📌 Your work folder is now decided ONCE and written down
+This is the real fix behind last night's "15 GB of invisible videos". The app used to
+work out where to keep your work **every single time it started** — portable folder?
+Desktop studio? private Windows folder? If anything around it changed, the guess changed
+with it, the app quietly moved house, and everything made before that vanished from view.
+
+Now it decides **once**, records the answer in a tiny file at a fixed address, and every
+later launch simply reads it. The guess can never come back and change its mind.
+Two deliberate exceptions, both correct: the portable exe always uses the data beside it
+(travelling with your work is the point of a portable build), and the self-test harness
+always uses its own throwaway folder. And if the recorded folder is ever unreachable —
+an external drive unplugged, a folder renamed — the app does **not** silently start empty:
+it says so in plain English, tells you nothing was deleted, and keeps working meanwhile.
+Nine tests pin every one of those branches.
+
+### 🎬 No more accidental 78-minute silent films
+A real project on this PC asked for a **9,999-second** film. Every one of its 39 shots
+pinned to the 120-second maximum, none had any narration, and the app spent hours
+rendering **78 minutes of silence** without a word of warning. Now: the length box is
+capped at 60 minutes (and a wild value saved in an old project is corrected on the way
+back in), and before rendering anything over 20 minutes — or anything with no narration
+at all — the app tells you exactly what it is about to make and lets you back out.
+
+### 🧹 15.2 GB of proven garbage removed from this PC
+Nine video files that **no player could open** (interrupted builds — 14.8 GB, including a
+10.7 GB one), the stranded old data folder (1.15 GB) and the Recovered-Videos folder
+(1.13 GB, whose contents were already in the app or corrupt at source). Every file was
+re-checked with the video prober at the moment of deletion — anything that played was
+left alone. **Five narration recordings were deliberately kept**, including 71 minutes of
+Fiscal Federalism narration, because those are real work that a video can be rebuilt from.
+Your work folder went from 61 GB to 46 GB.
+
 ## New in this build (2026-08-01 — lost-work detector + the recovered videos)
 
 ### 📍 "Where is my work kept?" — and 14 GB of your videos the app wasn't showing you

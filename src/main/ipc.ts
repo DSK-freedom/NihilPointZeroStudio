@@ -2245,6 +2245,12 @@ export function registerIpcHandlers(): void {
       params: { mode: 'auto' | 'guided'; title: string; brief: string; totalSeconds?: number; language?: string; width?: number; height?: number; fps?: number }
     ) => {
       const defaults = { width: params.width ?? 1920, height: params.height ?? 1080, fps: params.fps ?? 25 }
+      // Defence in depth against a runaway requested length. A real project arrived
+      // here asking for 9999 seconds; every beat then pinned to its 120s ceiling and
+      // the app produced a 78-minute silent film. One hour is the honest ceiling.
+      if (typeof params.totalSeconds === 'number') {
+        params = { ...params, totalSeconds: Math.max(10, Math.min(3600, params.totalSeconds)) }
+      }
       // One AI attempt: null (never a throw) when the model is down or returns junk.
       const attemptAI = async (extra = ''): Promise<ReturnType<typeof sanitizeStoryboard> | null> => {
         try {

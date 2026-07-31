@@ -154,6 +154,13 @@ Copy the folder to another PC and:
      If yes, a small blue notice appears with a "Show me the file" button that opens the
      studio folder with NIHILPOINTZERO-OS-setup.exe selected — one double-click updates.
      Offline? The check silently skips; it never blocks or nags.
+  📌 THE FOLDER IS NOW PINNED: the app decides where your work lives ONCE, writes it
+     down, and reads that from then on. It used to re-decide on every launch, which is
+     how work could "disappear" — the app had quietly moved to a different folder.
+     If the recorded folder is ever unreachable (external drive unplugged, folder
+     renamed) the app tells you plainly, confirms nothing was deleted, and keeps
+     working from a safe fallback until the drive is back. A portable exe on a USB
+     stick still always uses the data beside it — that is intended.
   📍 WHERE YOUR WORK IS KEPT (Settings, just above Backups): the app names the exact
      folder holding your videos, scripts and settings — no more guessing. The app can
      legitimately use one of three folders (next to the portable exe / the Desktop
@@ -351,6 +358,11 @@ Remove or swap the background music (and now the VOICE too):
      topic, mood, genre, style, and the whole shot breakdown.
    - GUIDED mode: you write the shots yourself, e.g. "0-15s I arrive in a Ferrari and
      say '…'; then 20s a helicopter over the hills, slow fade; then 90s of me speaking".
+   LENGTH GUARD: the "aim for … seconds" box is capped at 60 minutes, and before
+   rendering anything longer than 20 minutes — or anything with NO narration on any
+   shot — the app tells you what it is about to make (how many shots, how long,
+   whether it will be silent) and lets you cancel. One project once asked for 9,999
+   seconds and quietly produced 78 minutes of silence; that cannot happen now.
    Each SHOT has: a length in seconds, a SCENE description (what to show), optional
    narration and an on-screen caption, a camera MOTION, a crossfade INTO it, and its own
    SOUNDS (add a music bed, a sound effect, or your own audio file — each with gain,

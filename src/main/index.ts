@@ -3,70 +3,50 @@ import { checkForUpdate } from './updateCheck'
 import { runAutoBackupIfDue } from './autoBackup'
 import { runHealthCheck } from './health'
 import { scanStranded } from './strandedData'
+import { decideDataHome, holdsUserWork, isUsableDir, readPin, writePin } from './dataHome'
 import { getLastHealth, logActivity, setLastHealth } from './store'
 import { join } from 'path'
-import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs'
 import { registerIpcHandlers } from './ipc'
 
-// Portable mode: when launched from the electron-builder portable target,
-// PORTABLE_EXECUTABLE_DIR is the folder the .exe sits in. Prefer to keep ALL user
-// data (settings, library, advisor memory, built videos) next to the executable
-// so it travels with the USB stick / copied folder instead of living in %APPDATA%.
-//
-// BUT that folder can be read-only — e.g. the exe was burned to a CD/DVD or copied
-// into a locked/protected directory. Writing there would throw and the app would
-// fail to launch. So we probe writability first and only redirect userData when
-// the location is actually writable; otherwise we leave it at the default per-user
-// dir (always writable) so the app still runs. Must run before anything reads
-// getPath('userData').
 // E2E harness (scripts/e2e-smoke.mjs, the ship gate): a fully ISOLATED data home so
-// the click-through suite can NEVER touch real user data — it must win over both the
-// portable redirect and the Desktop-adoption below. Also silences the update check
-// and auto-backup (network/disk noise a test run must not produce).
+// the click-through suite can NEVER touch real user data — it outranks every other
+// rule below. It also silences the update check and auto-backup (network/disk noise
+// a test run must not produce).
 const e2eUserData = process.env.NPZ_E2E_USERDATA
-if (e2eUserData) app.setPath('userData', e2eUserData)
 
-const portableDir = process.env.PORTABLE_EXECUTABLE_DIR
-if (e2eUserData) {
-  /* isolated E2E data home already set above — skip all adoption logic */
-} else if (portableDir) {
-  const candidate = join(portableDir, 'nihilpointzero-data')
-  // Does the portable folder already hold this user's data? If so we MUST use it —
-  // never strand videos/settings there and silently start fresh in %APPDATA%.
-  const hasPriorData = existsSync(join(candidate, 'settings.json')) || existsSync(join(candidate, 'videos.json'))
-  let writable = false
+// WHERE THE USER'S WORK LIVES. Decided ONCE and written down (see main/dataHome.ts) —
+// the app no longer re-derives this on every launch, which is what used to move it to
+// a different folder and make every earlier video vanish from the UI.
+let dataHomeNotice: string | undefined
+{
+  const defaultDir = join(app.getPath('appData'), app.getName())
+  const portableDir = process.env.PORTABLE_EXECUTABLE_DIR
+  const portableCandidate = portableDir ? join(portableDir, 'nihilpointzero-data') : undefined
+  let desktopDir: string | undefined
   try {
-    mkdirSync(candidate, { recursive: true })
-    // PID-unique probe: multiple instances launching together must NOT collide on the
-    // same '.write-test' file (that false "not writable" was pushing data into %APPDATA%).
-    const probe = join(candidate, `.write-test-${process.pid}`)
-    writeFileSync(probe, 'ok')
-    rmSync(probe, { force: true })
-    writable = true
+    desktopDir = join(app.getPath('desktop'), 'NihilPointZeroStudio', 'nihilpointzero-data')
   } catch {
-    /* transient lock or truly read-only */
+    /* no Desktop on this machine — the default folder still works */
   }
-  // Use the portable folder when it's writable OR already contains the user's data.
-  // Only fall back to the per-user dir if it's BOTH unwritable AND empty (e.g. CD/DVD).
-  if (writable || hasPriorData) {
-    app.setPath('userData', candidate)
-  }
-} else {
-  // Installed (non-portable) build: if the classic studio folder on the Desktop already
-  // holds the user's data, ADOPT it instead of starting fresh in %APPDATA%. The installed
-  // app and the portable exe then share ONE data home — videos, scripts and settings made
-  // in either flavor appear in both, and the folder still travels on a USB as before.
-  // (Only the canonical documented location is probed; no disk scanning.)
-  try {
-    const desktopData = join(app.getPath('desktop'), 'NihilPointZeroStudio', 'nihilpointzero-data')
-    const hasDesktopData =
-      existsSync(join(desktopData, 'settings.json')) || existsSync(join(desktopData, 'videos.json'))
-    if (hasDesktopData) {
-      app.setPath('userData', desktopData)
-    }
-  } catch {
-    /* Desktop path unavailable (rare) — keep the default per-user dir. */
-  }
+  const pinnedDir = e2eUserData || portableDir ? null : readPin(defaultDir)
+  const choice = decideDataHome({
+    e2eDir: e2eUserData,
+    portableDir,
+    portableCandidate,
+    // Usable when writable OR already holding work (a read-only CD still must not
+    // strand data that is already sitting there).
+    portableUsable: portableCandidate
+      ? isUsableDir(portableCandidate) || holdsUserWork(portableCandidate)
+      : false,
+    pinnedDir,
+    pinnedUsable: pinnedDir ? isUsableDir(pinnedDir) : false,
+    desktopDir,
+    desktopHasData: desktopDir ? holdsUserWork(desktopDir) : false,
+    defaultDir
+  })
+  if (choice.dir !== defaultDir) app.setPath('userData', choice.dir)
+  if (choice.pin) writePin(defaultDir, choice.dir)
+  dataHomeNotice = choice.notice
 }
 
 function createWindow(): void {
@@ -137,6 +117,17 @@ if (!gotLock) {
       setTimeout(() => {
         void runAutoBackupIfDue()
       }, 30_000)
+
+      // The recorded work folder could not be reached this launch (drive unplugged,
+      // folder renamed). Never let that pass silently — it looks exactly like "all my
+      // work is gone" from the user's side.
+      if (dataHomeNotice) {
+        try {
+          logActivity('ai', 'Your usual work folder could not be reached', dataHomeNotice)
+        } catch {
+          /* logging must never block startup */
+        }
+      }
 
       // Work stranded in a data folder the app is NOT using is invisible in the UI —
       // that really happened (1.15 GB of finished videos). Say so in the Activity Log

@@ -24,6 +24,8 @@ import VoiceRecorder from '../components/VoiceRecorder'
 import TrimTimeline, { mmss } from '../components/TrimTimeline'
 import MusicTrackBar, { type MusicRegion } from '../components/MusicTrackBar'
 import MusicPicker from '../components/MusicPicker'
+import TemplatesMenu from '../components/TemplatesMenu'
+import FactCheckPanel from '../components/FactCheckPanel'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../components/Confirm'
 import DjStationPage from './DjStationPage'
@@ -129,14 +131,20 @@ export default function VideoPage() {
   const [engine, setEngine] = useState<LookEngine>('ai-free')
   const [style, setStyle] = useState<VideoStyle>('cinematic')
 
-  // Persist the paste/write-your-own script editor AND the chosen engine/style so
-  // switching tabs never loses either (the engine used to silently reset to the
-  // default on every visit). Skip content restore when navigating in from "Send to
-  // Video Generator" (that flow supplies its own content). Memoized ref → no autosave loop.
-  const editorPersist = useMemo(() => ({ title, body, engine, style }), [title, body, engine, style])
+  // Persist the paste/write-your-own script editor AND every build knob (engine,
+  // style, resolution, shape, template) so switching tabs never resets choices.
+  // Skip content restore when navigating in from "Send to Video Generator" (that
+  // flow supplies its own content). Memoized ref → no autosave loop.
+  const editorPersist = useMemo(
+    () => ({ title, body, engine, style, resolution, aspect, template }),
+    [title, body, engine, style, resolution, aspect, template]
+  )
   useAutosave('video-editor', editorPersist, (v) => {
     if (v.engine != null && v.engine in ENGINE_INFO) setEngine(v.engine)
     if (typeof v.style === 'string' && v.style) setStyle(v.style as VideoStyle)
+    if (typeof v.resolution === 'string' && v.resolution) setResolution(v.resolution as VideoResolution)
+    if (typeof v.aspect === 'string' && v.aspect) setAspect(v.aspect as VideoAspect)
+    if (typeof v.template === 'string' && v.template) setTemplate(v.template as VideoTemplate)
     if (wantScriptPad) return
     if (v.title != null) setTitle(v.title)
     if (v.body != null) setBody(v.body)
@@ -819,6 +827,15 @@ export default function VideoPage() {
                 className="mt-1 w-full rounded-md bg-ink-800 border border-ink-700 px-3 py-2 text-sm text-ink-100 leading-relaxed outline-none focus:border-gold-500 font-serif"
               />
             </div>
+            <TemplatesMenu
+              title={title}
+              body={body}
+              onInsert={(t, b) => {
+                setTitle(t)
+                setBody(b)
+              }}
+            />
+            <FactCheckPanel text={`${title}\n${body}`} />
             <div>
               <button
                 onClick={handlePlan}
@@ -869,6 +886,39 @@ export default function VideoPage() {
                   </p>
                 </div>
               )}
+            </div>
+
+            <div>
+              <label className="text-xs text-ink-400">Quick presets (one click sets shape · look · resolution)</label>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {(
+                  [
+                    { label: '▶ YouTube long-form', resolution: '1080p', aspect: '16:9', template: 'cinematic' },
+                    { label: '📱 Shorts / TikTok / Reels', resolution: '1080p', aspect: '9:16', template: 'bold' },
+                    { label: '⬛ Square (feed)', resolution: '1080p', aspect: '1:1', template: 'clean' }
+                  ] as { label: string; resolution: VideoResolution; aspect: VideoAspect; template: VideoTemplate }[]
+                ).map((p) => {
+                  const active = aspect === p.aspect && template === p.template && resolution === p.resolution
+                  return (
+                    <button
+                      key={p.label}
+                      onClick={() => {
+                        setResolution(p.resolution)
+                        setAspect(p.aspect)
+                        setTemplate(p.template)
+                      }}
+                      className={`rounded-md border px-2.5 py-1 text-[11px] transition-colors ${
+                        active ? 'border-gold-500 bg-gold-500/10 text-gold-300' : 'border-ink-700 text-ink-300 hover:border-ink-500'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[10px] text-ink-600 mt-1">
+                Presets only set the knobs below — you can still fine-tune everything afterwards.
+              </p>
             </div>
 
             <div>

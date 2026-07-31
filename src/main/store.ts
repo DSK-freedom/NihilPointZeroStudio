@@ -557,6 +557,48 @@ export function setAiVideoConfig(partial: AiVideoConfig): AiVideoConfig {
   }
 }
 
+function templatesPath(): string {
+  return join(dataDir(), 'templates.json')
+}
+
+export interface ScriptTemplate {
+  id: string
+  name: string
+  title: string
+  body: string
+  createdAt: string
+}
+
+/** Reusable script/video structures ("hook → context → analysis → takeaway…"). */
+export function listTemplates(): ScriptTemplate[] {
+  try {
+    const raw = JSON.parse(readFileSync(templatesPath(), 'utf-8'))
+    return Array.isArray(raw) ? raw : []
+  } catch {
+    return []
+  }
+}
+
+export function saveTemplate(name: string, title: string, body: string): ScriptTemplate[] {
+  const all = listTemplates()
+  all.unshift({
+    id: `tpl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: name.slice(0, 60) || 'Untitled template',
+    title,
+    body,
+    createdAt: new Date().toISOString()
+  })
+  atomicWrite(templatesPath(), JSON.stringify(all.slice(0, 100), null, 2))
+  return listTemplates()
+}
+
+/** User-initiated only — the UI confirms before calling (same rule as every delete). */
+export function deleteTemplate(id: string): ScriptTemplate[] {
+  const all = listTemplates().filter((t) => t.id !== id)
+  atomicWrite(templatesPath(), JSON.stringify(all, null, 2))
+  return all
+}
+
 function stockConfigPath(): string {
   return join(dataDir(), 'stock.json')
 }

@@ -127,8 +127,11 @@ import {
   listChat,
   listDjPlans,
   listLibrary,
+  listTemplates,
   listVideos,
   logActivity,
+  saveTemplate,
+  deleteTemplate,
   restoreLibraryEntry,
   saveDjPlan,
   saveScriptPad,
@@ -1047,6 +1050,20 @@ export function registerIpcHandlers(): void {
     const r = setStockKey(provider, key)
     logActivity('user', `${key ? 'Saved' : 'Removed'} ${provider} stock-footage key`)
     return r
+  })
+
+  // Reusable script templates ("hook → context → analysis → takeaway…"): new videos
+  // start half-built instead of from a blank page. Delete is user-confirmed in the UI.
+  ipcMain.handle(IPC.templatesList, () => listTemplates())
+  ipcMain.handle(IPC.templatesSave, (_e, name: string, title: string, body: string) => {
+    const out = saveTemplate(String(name ?? ''), String(title ?? ''), String(body ?? ''))
+    logActivity('user', 'Saved a script template', name)
+    return out
+  })
+  ipcMain.handle(IPC.templatesDelete, (_e, id: string) => {
+    const out = deleteTemplate(String(id ?? ''))
+    logActivity('user', 'Deleted a script template')
+    return out
   })
 
   ipcMain.handle(IPC.scriptpadGet, () => getScriptPad())

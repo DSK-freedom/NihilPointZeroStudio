@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import type { GeneratedScript, LanguageMix, ScriptLength, ScriptStyle, VideoIdea, VideoStyle } from '../../../shared/types'
 import { VIDEO_STYLES } from '../../../shared/types'
 import MicButton, { appendDictation } from '../components/MicButton'
+import BusyTimer from '../components/BusyTimer'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../components/Confirm'
 import { useStudio } from '../store/StudioContext'
@@ -454,6 +455,7 @@ export default function WriterPage() {
                 <span className="text-[11px] text-gold-300/90 leading-snug">{progress}</span>
               </div>
             )}
+            {loading && !progress && <BusyTimer label="Writing the script" />}
           </div>
           {error && (
             <div className="rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">

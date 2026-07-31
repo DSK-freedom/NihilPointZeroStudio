@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import TemplatesMenu from '../components/TemplatesMenu'
+import FactCheckPanel from '../components/FactCheckPanel'
 import { useNavigate } from 'react-router-dom'
 import MicButton, { appendDictation } from '../components/MicButton'
 import { useProducerTarget } from '../store/ProducerContext'
@@ -121,6 +123,16 @@ export default function ScriptPadPage(): React.JSX.Element {
           <span>{saving ? 'Saving…' : savedAt ? `Saved ${new Date(savedAt).toLocaleTimeString()}` : 'Not saved yet'}</span>
           <span>Autosaves to your portable data folder.</span>
         </div>
+
+        <TemplatesMenu
+          title={title}
+          body={body}
+          onInsert={(t, b) => {
+            setTitle(t)
+            setBody(b)
+          }}
+        />
+        <FactCheckPanel text={`${title}\n${body}`} />
       </div>
     </div>
   )

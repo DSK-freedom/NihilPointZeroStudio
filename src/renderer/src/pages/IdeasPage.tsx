@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import IdeaCard from '../components/IdeaCard'
+import BusyTimer from '../components/BusyTimer'
 import MicButton, { appendDictation } from '../components/MicButton'
 import { confirmDialog } from '../components/Confirm'
 import { useStudio } from '../store/StudioContext'
@@ -100,6 +101,7 @@ export default function IdeasPage() {
           >
             {loading ? 'Generating…' : 'Generate Ideas'}
           </button>
+          {loading && <BusyTimer label="Generating ideas" />}
         </div>
       </div>
 

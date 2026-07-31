@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import ErrorBoundary from './components/ErrorBoundary'
 import FallbackBanner from './components/FallbackBanner'
 import UpdateBanner from './components/UpdateBanner'
+import OnboardingTour from './components/OnboardingTour'
 import AssistantWidget from './components/AssistantWidget'
 import GuideWidget from './components/GuideWidget'
 import CommandPalette from './components/CommandPalette'
@@ -62,6 +63,7 @@ export default function App() {
         </main>
         <FallbackBanner />
         <UpdateBanner />
+        <OnboardingTour />
         <AssistantWidget />
         <GuideWidget />
         <CommandPalette />

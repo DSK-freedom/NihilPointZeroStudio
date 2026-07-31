@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '../../../shared/types'
 import MicButton, { appendDictation } from '../components/MicButton'
+import BusyTimer from '../components/BusyTimer'
 import { confirmDialog } from '../components/Confirm'
 import { useStudio } from '../store/StudioContext'
 
@@ -155,7 +156,7 @@ export default function AdvisorPage() {
             </div>
           </div>
         )}
-        {busy && !streaming && <div className="text-ink-500 text-xs">Advisor is thinking…</div>}
+        {busy && !streaming && <BusyTimer label="Advisor is thinking" />}
       </div>
 
       <div className="mt-4 flex gap-2 items-end">

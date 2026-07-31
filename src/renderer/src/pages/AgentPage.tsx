@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { AgentPlan, AgentStep, AgentStepResult, VideoJob, VideoResolution, VideoStyle } from '../../../shared/types'
 import { VIDEO_STYLES } from '../../../shared/types'
 import MicButton, { appendDictation } from '../components/MicButton'
+import BusyTimer from '../components/BusyTimer'
 import { useAutosave } from '../hooks/useAutosave'
 import { toast } from '../components/Toast'
 
@@ -210,6 +211,7 @@ export default function AgentPage(): React.JSX.Element {
             </button>
           )}
           <MicButton onText={(t) => setCommand((prev) => appendDictation(prev, t))} className="px-3 py-1" />
+          {interpreting && <BusyTimer label="Planning" />}
           <span className="text-[11px] text-ink-600">Ctrl+Enter to plan · 🎤 to speak</span>
           <span className="ml-auto text-[11px] text-ink-500">
             {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved ✓' : ''}

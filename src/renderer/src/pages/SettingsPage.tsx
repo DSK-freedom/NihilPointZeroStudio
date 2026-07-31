@@ -342,6 +342,23 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm text-ink-100 font-medium">Welcome tour</div>
+            <p className="text-[11px] text-ink-500 mt-0.5">
+              The 60-second orientation shown on first run — replay it any time.
+            </p>
+          </div>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('npz-show-tour'))}
+            className="rounded-md border border-ink-700 hover:border-gold-500 text-ink-300 text-xs px-3 py-1.5 transition-colors"
+          >
+            ▶ Show the welcome tour
+          </button>
+        </div>
+      </div>
+
       {/* Known Issues — the AI failure log. Problems used to vanish silently; now every
           failure is recorded with a timestamp and the service's own words. */}
       <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4">

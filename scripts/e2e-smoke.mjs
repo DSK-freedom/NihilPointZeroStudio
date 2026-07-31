@@ -72,6 +72,18 @@ try {
   // First paint of the React tree.
   await win.waitForSelector('main', { timeout: 15000 })
 
+  // A fresh data home = first run = the onboarding tour overlay. It must exist
+  // (that's a feature), be skippable, and get out of the way before the sweep.
+  const skipTour = win.locator('button', { hasText: 'Skip tour' })
+  if ((await skipTour.count()) > 0) {
+    await skipTour.first().click()
+    await win.waitForTimeout(300)
+    if ((await skipTour.count()) > 0) fail('Onboarding tour', 'Skip did not dismiss the tour')
+    else console.log('  ✓ Onboarding tour: shown on first run, Skip dismisses it')
+  } else {
+    fail('Onboarding tour', 'did not appear on a fresh first run')
+  }
+
   // ---- 1) Every tab must render alive: headline present, no crash screen,
   //         real content, and at least one enabled button to press.
   for (const tab of TABS) {

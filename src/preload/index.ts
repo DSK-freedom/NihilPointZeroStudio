@@ -132,6 +132,16 @@ const api = {
     list: () => ipcRenderer.invoke(IPC.activityList),
     clear: () => ipcRenderer.invoke(IPC.activityClear)
   },
+  // Reusable script/video templates — recurring formats start half-built.
+  templates: {
+    list: (): Promise<{ id: string; name: string; title: string; body: string; createdAt: string }[]> =>
+      ipcRenderer.invoke(IPC.templatesList),
+    save: (name: string, title: string, body: string): Promise<{ id: string; name: string; title: string; body: string; createdAt: string }[]> =>
+      ipcRenderer.invoke(IPC.templatesSave, name, title, body),
+    /** Deletion is user-confirmed in the UI before this is ever called. */
+    remove: (id: string): Promise<{ id: string; name: string; title: string; body: string; createdAt: string }[]> =>
+      ipcRenderer.invoke(IPC.templatesDelete, id)
+  },
   // What this PC can actually run (GPU/VRAM), so limits are stated up front.
   hardware: {
     check: (): Promise<import('../shared/types').HardwareReport> => ipcRenderer.invoke(IPC.hardwareCheck)

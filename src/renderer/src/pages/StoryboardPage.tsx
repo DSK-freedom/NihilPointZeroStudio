@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAutosave } from '../hooks/useAutosave'
+import { useHistory } from '../hooks/useHistory'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../components/Confirm'
 import MicButton, { appendDictation } from '../components/MicButton'
@@ -41,6 +42,8 @@ export default function StoryboardPage(): React.JSX.Element {
   const [totalSeconds, setTotalSeconds] = useState(120)
   const [style, setStyle] = useState<VideoStyle>('cinematic')
   const [beats, setBeats] = useState<StoryboardBeat[]>([])
+  // Undo/redo over the shot list — deleting or mangling a beat is no longer final.
+  const history = useHistory(beats, setBeats)
   const [photoPath, setPhotoPath] = useState<string | null>(null)
   const [beautifyStrength, setBeautifyStrength] = useState(0.6)
   // Scene motion: classic animated stills, or REAL AI video per beat (free cloud / local
@@ -223,6 +226,24 @@ export default function StoryboardPage(): React.JSX.Element {
             Direct your film shot by shot, or paste a script and let the AI decide everything. Total so far:{' '}
             <span className="text-ink-200">{totalDur.toFixed(1)}s</span>.
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={history.undo}
+            disabled={!history.canUndo}
+            title="Undo (Ctrl+Z)"
+            className="rounded-md border border-ink-700 px-2 py-1.5 text-sm text-ink-200 hover:border-gold-500 disabled:opacity-40"
+          >
+            ↩
+          </button>
+          <button
+            onClick={history.redo}
+            disabled={!history.canRedo}
+            title="Redo (Ctrl+Y)"
+            className="rounded-md border border-ink-700 px-2 py-1.5 text-sm text-ink-200 hover:border-gold-500 disabled:opacity-40"
+          >
+            ↪
+          </button>
         </div>
       </div>
 

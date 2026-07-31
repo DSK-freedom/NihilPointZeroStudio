@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useHistory } from '../hooks/useHistory'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAutosave } from '../hooks/useAutosave'
 import { toast } from '../components/Toast'
@@ -56,6 +57,13 @@ export default function TimelinePage(): React.JSX.Element {
   const [video, setVideo] = useState<TimelineVideoClip[]>([])
   const [audio, setAudio] = useState<TimelineAudioClip[]>([])
   const [text, setText] = useState<TimelineTextOverlay[]>([])
+  // Undo/redo over the STRUCTURAL edits (clips, audio, overlays) — one wrong delete
+  // or drag used to be unrecoverable. Ctrl+Z / Ctrl+Y, plus the ↩ ↪ buttons.
+  const history = useHistory({ video, audio, text }, (v) => {
+    setVideo(v.video)
+    setAudio(v.audio)
+    setText(v.text)
+  })
   const [busy, setBusy] = useState<string | null>(null)
   const [progress, setProgress] = useState<string | null>(null)
   const [renderedPath, setRenderedPath] = useState<string | null>(null)
@@ -203,6 +211,22 @@ export default function TimelinePage(): React.JSX.Element {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={history.undo}
+            disabled={!history.canUndo}
+            title="Undo (Ctrl+Z)"
+            className="rounded-md border border-ink-700 px-2 py-1.5 text-sm text-ink-200 hover:border-gold-500 disabled:opacity-40"
+          >
+            ↩
+          </button>
+          <button
+            onClick={history.redo}
+            disabled={!history.canRedo}
+            title="Redo (Ctrl+Y)"
+            className="rounded-md border border-ink-700 px-2 py-1.5 text-sm text-ink-200 hover:border-gold-500 disabled:opacity-40"
+          >
+            ↪
+          </button>
           <select value={resKey} onChange={(e) => setResKey(e.target.value)} className="rounded-md border border-ink-700 bg-ink-950 px-2 py-1.5 text-sm text-ink-200">
             {Object.keys(RES).map((k) => <option key={k} value={k}>{k}</option>)}
           </select>

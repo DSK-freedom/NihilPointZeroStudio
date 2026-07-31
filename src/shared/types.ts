@@ -325,8 +325,22 @@ export interface AiVideoConfig {
    * {{HEIGHT}} {{FRAMES}} {{SEED}} placeholders. Blank = the built-in LTX starter template.
    */
   comfyWorkflowPath?: string
+  /**
+   * Which free-cloud route generates real motion:
+   * - 'puter' (default): Google Veo via Puter — no key, but needs a Puter account
+   *   sign-in (their phone verification rejects some countries' numbers).
+   * - 'pollinations': gen.pollinations.ai with a free developer key (GitHub/email,
+   *   NO phone) — a small daily Pollen grant renews every day.
+   */
+  freeCloudProvider?: 'puter' | 'pollinations'
   /** Free-cloud engine: Puter model id (default 'google/veo-3.1-fast'). */
   freeCloudModel?: string
+  /** Pollinations route: the pk_/sk_ key (decrypted, in memory only — see pollinationsKeyEnc). */
+  pollinationsKey?: string
+  /** Pollinations key at rest — encrypted like every other key. */
+  pollinationsKeyEnc?: string
+  /** Pollinations route: video model (default 'wan-fast' — the cheapest real-motion model). */
+  pollinationsModel?: string
   /**
    * Free-cloud engine: at most this many scenes get REAL generated motion per build
    * (default 5) — protects the small free Puter allowance; the rest use AI stills.
@@ -338,10 +352,12 @@ export interface AiVideoConfig {
 export interface AiEngineStatus {
   cloudConfigured: boolean
   localDetected: boolean
-  /** True when the free-cloud video service (Puter) is reachable right now. */
+  /** True when the chosen free-cloud video route is usable right now. */
   freeCloudAvailable: boolean
   /** One-line plain-English detail for the free-cloud pill (why it is/isn't available). */
   freeCloudDetail: string
+  /** Which free-cloud route the status describes. */
+  freeCloudProvider: 'puter' | 'pollinations'
   /** Which local server kind the status was checked against. */
   localKind: 'comfyui' | 'generic'
   cloudEndpoint?: string

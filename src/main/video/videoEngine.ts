@@ -186,7 +186,7 @@ export function cleanupClipTemp(clipPath: string): void {
   try {
     const dir = dirname(clipPath)
     const base = dir.slice(dir.lastIndexOf(sep) + 1)
-    if (dirname(dir) === tmpdir() && /^ai-(puter|comfy|local)-/.test(base)) {
+    if (dirname(dir) === tmpdir() && /^ai-(puter|comfy|local|pollin)-/.test(base)) {
       rmSync(dir, { recursive: true, force: true })
     }
   } catch {

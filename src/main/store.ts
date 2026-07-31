@@ -529,10 +529,12 @@ export function getAiVideoConfig(): AiVideoConfig {
       const onDisk = { ...raw }
       delete onDisk.cloudApiKey
       atomicWrite(aiVideoConfigPath(), JSON.stringify(onDisk, null, 2))
-      return raw
     }
-    if (raw.cloudApiKeyEnc) return { ...raw, cloudApiKey: decrypt(raw.cloudApiKeyEnc) || undefined }
-    return raw
+    return {
+      ...raw,
+      cloudApiKey: raw.cloudApiKeyEnc ? decrypt(raw.cloudApiKeyEnc) || undefined : raw.cloudApiKey,
+      pollinationsKey: raw.pollinationsKeyEnc ? decrypt(raw.pollinationsKeyEnc) || undefined : undefined
+    }
   } catch {
     return {}
   }
@@ -541,12 +543,18 @@ export function getAiVideoConfig(): AiVideoConfig {
 export function setAiVideoConfig(partial: AiVideoConfig): AiVideoConfig {
   const current = getAiVideoConfig()
   const next: AiVideoConfig = { ...current, ...partial }
-  // Never persist the decrypted form; encrypt any newly supplied key.
+  // Never persist a decrypted form; encrypt any newly supplied key.
   const onDisk = { ...next }
   if (partial.cloudApiKey) onDisk.cloudApiKeyEnc = encrypt(partial.cloudApiKey)
+  if (partial.pollinationsKey) onDisk.pollinationsKeyEnc = encrypt(partial.pollinationsKey)
   delete onDisk.cloudApiKey
+  delete onDisk.pollinationsKey
   atomicWrite(aiVideoConfigPath(), JSON.stringify(onDisk, null, 2))
-  return { ...onDisk, cloudApiKey: onDisk.cloudApiKeyEnc ? decrypt(onDisk.cloudApiKeyEnc) || undefined : undefined }
+  return {
+    ...onDisk,
+    cloudApiKey: onDisk.cloudApiKeyEnc ? decrypt(onDisk.cloudApiKeyEnc) || undefined : undefined,
+    pollinationsKey: onDisk.pollinationsKeyEnc ? decrypt(onDisk.pollinationsKeyEnc) || undefined : undefined
+  }
 }
 
 function stockConfigPath(): string {

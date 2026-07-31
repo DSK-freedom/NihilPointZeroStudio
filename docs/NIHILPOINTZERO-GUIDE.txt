@@ -195,15 +195,17 @@ VIDEO LOOK (engine) — what makes the visuals. Five tiers:
    Photo slideshow (AI images) - free, online, no key. A real AI image per scene,
                                 panned and zoomed. A moving photo slideshow — not
                                 filmed motion.
-   REAL AI video — free cloud - free, online, NO API key. REAL moving video per scene
-                                (Google's Veo model, through a free service called
-                                Puter). You sign into a free Puter account once — a
-                                sign-in window pops up during the first build. The
-                                free allowance is small and monthly; up to 5 scenes
-                                per build get real motion (adjustable in Settings ->
-                                AI Video) and the rest use AI stills; each real-motion
-                                scene takes minutes. If it can't run, scenes fall back
-                                to AI stills and the build log says why. (See §18.)
+   REAL AI video — free cloud - free, online. REAL moving video per scene — not a
+                                slideshow. Two free routes, chosen in Settings ->
+                                AI Video: a free Pollinations key (daily Pollen,
+                                signup by GitHub/email — NO phone number) or a free
+                                Puter account (Google Veo, sign-in window; their
+                                phone verification rejects some countries' numbers,
+                                Pakistan included). Up to 5 scenes per build get
+                                real motion (adjustable) and the rest use AI stills;
+                                each real-motion scene takes minutes. If it can't
+                                run, scenes fall back to AI stills and the build
+                                log says why. (See §18.)
    AI footage (cloud)         - paid; real AI footage from a provider you supply your
                                 own key for.
    REAL AI video — local GPU (ComfyUI) - free per video and fully private, but needs a
@@ -282,7 +284,7 @@ Remove or swap the background music:
      Exact face likeness isn't guaranteed on free AI.
    - "🎬 Build video" stitches the approved scenes with narration, your Look, etc.
    - "VIDEO LOOK" selector: the final build can use your generated stills (classic,
-     default) or REAL AI motion per scene — free cloud (free Puter sign-in) or local
+     default) or REAL AI motion per scene — free cloud (Pollinations key or Puter sign-in) or local
      GPU (needs NVIDIA). Same rules and honest catches as Video Studio's engine
      list (§5, §18).
    - BEAUTIFY: a slider retouches your uploaded photo (skin-smooth + brighten + sharpen)
@@ -313,7 +315,7 @@ Remove or swap the background music:
    captions + your sounds, and opens the finished film in the ✂ Timeline Editor so you can
    fine-tune anything.
    SCENES SELECTOR: by default AI scenes are animated stills, but the "Scenes:"
-   selector can switch them to REAL AI video — free cloud (free Puter sign-in, a few
+   selector can switch them to REAL AI video — free cloud (Pollinations key or Puter sign-in, a few
    scenes per build, minutes per scene) or local GPU (needs NVIDIA). See §18.
    HONEST LIMITS (free): unless you pick a REAL-video engine above, AI scenes are
    STILLS with Ken-Burns motion, not real moving footage — and even with the free
@@ -415,8 +417,8 @@ FREE + OFFLINE (anywhere, forever): building/looks/shapes, your voice + Natural 
 FREE + INTERNET (keys built in, nothing to sign up for): AI writing/ideas/advisor/
    AI Command, AI images/visuals, thumbnails-with-AI-background, put-me-in-a-scene,
    online music removal.
-FREE + INTERNET + ONE FREE SIGN-IN: REAL AI video — free cloud. You sign into a free
-   Puter account once (the window appears on the first build); the allowance is small
+FREE + INTERNET + ONE FREE SIGN-UP: REAL AI video — free cloud. Either a free
+   Pollinations key (daily Pollen, no phone — best here) or a free Puter sign-in; allowances are small
    and monthly. See §18.
 FREE + ONE-TIME SETUP (optional; both already done on this PC): Natural voice (Piper)
    download; offline Demucs music separation (Python).
@@ -523,7 +525,7 @@ Q: How do I use my own keys? A: Settings has fields (AI Horde for photos, MVSEP 
           subject: AI scene / your photo composited / your clip / AI person + per-shot sounds)
   VISUALS:Looks (Clean/News/Cinematic/Bold) · animated titles + lower-thirds ·
           Ken-Burns of your images · free AI per-scene images · REAL AI video per scene
-          (free cloud, Puter — §18) · Scene Studio storyboard (reorder/add/remove,
+          (free cloud, Pollinations/Puter — §18) · Scene Studio storyboard (reorder/add/remove,
           pause, regenerate) · put YOUR photo in a scene · photo Beautify
   PRESENT:🎥 Presenter Studio (Real Video / Photo / ✨ Living Picture — YOU present,
           real footage only) · ⏺ Recorder (webcam or screen, up to 8K, OBS virtual camera)
@@ -662,16 +664,30 @@ See §18 for what's new and the honest catches.
     HARDWARE EXISTS
 -------------------------------------------------------------------------------
 
-REAL MOVING VIDEO, FREE, NO API KEY
+REAL MOVING VIDEO, FREE — TWO ROUTES
 Video Studio's "Video look (engine)" list has a new tier: "REAL AI video — free
-cloud". It generates REAL moving video for each scene — Google's Veo model, through
-a free service called Puter — not a photo slideshow.
+cloud". It generates REAL moving video for each scene — not a photo slideshow.
+There are two free ways to power it; pick one in Settings -> AI Video:
 
-The honest catches, stated plainly:
-  * You sign into a FREE Puter account once. A sign-in window pops up during the
-    first build. No key to paste, nothing to pay.
-  * The free allowance is SMALL and MONTHLY. When it runs out, scenes automatically
-    fall back to AI still images and the build log says why. Nothing breaks.
+ROUTE 1 — POLLINATIONS (recommended on this PC; NO phone number):
+  * Sign up free at enter.pollinations.ai with GitHub or email, create a key
+    (starts with pk_ or sk_), and paste it into Settings -> AI Video.
+  * Registered users get a small amount of free "Pollen" EVERY DAY — it renews
+    daily. The default video model (wan-fast) costs about 0.05 Pollen for a
+    5-second scene, so the daily grant is several real-motion scenes, every day.
+  * The "Test key" button checks your key and shows your Pollen balance without
+    spending anything.
+
+ROUTE 2 — PUTER (Google's Veo; no key at all):
+  * A sign-in window pops up during the first build; sign into a free Puter
+    account there (it may ask again after an app restart).
+  * Heads-up: Puter's verification rejects some countries' phone numbers —
+    Pakistani numbers included. If their sign-up won't finish, use Route 1.
+  * The free allowance is SMALL and MONTHLY.
+
+True for both routes:
+  * When an allowance runs out, scenes automatically fall back to AI still images
+    and the build log says why. Nothing breaks.
   * By default only up to 5 scenes per build get real motion — this protects the
     free allowance. The rest of the scenes use AI stills. Adjustable in Settings ->
     AI Video ("Real-motion scenes per build").

@@ -65,6 +65,7 @@ import { generatedAudioDir, getAiVideoConfig, getStockConfig, setAiVideoConfig, 
 import { isCloudConfigured } from './video/aiCloud'
 import { detectLocal, localEndpoint, localKind } from './video/aiLocal'
 import { detectPuter } from './video/puter'
+import { checkPollinationsKey } from './video/pollinationsVideo'
 import type {
   AgentPlan,
   AiVideoConfig,
@@ -962,13 +963,18 @@ export function registerIpcHandlers(): void {
   // Live status for the engine badges + saved config for the settings inputs.
   ipcMain.handle(IPC.aiEngineStatus, async () => {
     const cfg = getAiVideoConfig()
+    const provider = cfg.freeCloudProvider === 'pollinations' ? 'pollinations' : 'puter'
     // Both live checks in parallel — each has its own short timeout.
-    const [localUp, freeCloud] = await Promise.all([detectLocal(), detectPuter()])
+    const [localUp, freeCloud] = await Promise.all([
+      detectLocal(),
+      provider === 'pollinations' ? checkPollinationsKey(cfg.pollinationsKey ?? '') : detectPuter()
+    ])
     return {
       cloudConfigured: isCloudConfigured(),
       localDetected: localUp,
       freeCloudAvailable: freeCloud.ok,
       freeCloudDetail: freeCloud.detail,
+      freeCloudProvider: provider,
       localKind: localKind(),
       cloudEndpoint: cfg.cloudEndpoint,
       localEndpoint: localEndpoint()
@@ -976,7 +982,7 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC.aiGetConfig, () => {
-    // Never send the raw key back to the renderer — just whether one is set.
+    // Never send the raw keys back to the renderer — just whether one is set.
     const cfg = getAiVideoConfig()
     return {
       cloudEndpoint: cfg.cloudEndpoint ?? '',
@@ -984,19 +990,30 @@ export function registerIpcHandlers(): void {
       localEndpoint: cfg.localEndpoint ?? '',
       localKind: cfg.localKind ?? 'comfyui',
       comfyWorkflowPath: cfg.comfyWorkflowPath ?? '',
+      freeCloudProvider: cfg.freeCloudProvider === 'pollinations' ? 'pollinations' : 'puter',
       freeCloudModel: cfg.freeCloudModel ?? '',
+      pollinationsModel: cfg.pollinationsModel ?? '',
       freeCloudSceneCap: cfg.freeCloudSceneCap ?? 5,
-      hasCloudKey: !!cfg.cloudApiKey
+      hasCloudKey: !!cfg.cloudApiKey,
+      hasPollinationsKey: !!cfg.pollinationsKey
     }
   })
 
   ipcMain.handle(IPC.aiSetConfig, (_e, partial: AiVideoConfig) => {
-    // The renderer can never write the encrypted-at-rest field directly.
+    // The renderer can never write the encrypted-at-rest fields directly.
     const clean = { ...partial }
     delete clean.cloudApiKeyEnc
+    delete clean.pollinationsKeyEnc
     setAiVideoConfig(clean)
     logActivity('user', 'Updated AI video engine settings')
     return { ok: true }
+  })
+
+  // Validates a Pollinations key (the saved one, or one just typed but not yet saved)
+  // via /account/balance — costs nothing, returns the Pollen balance for the UI.
+  ipcMain.handle(IPC.aiTestPollinationsKey, async (_e, candidateKey?: string) => {
+    const key = (candidateKey ?? '').trim() || getAiVideoConfig().pollinationsKey || ''
+    return checkPollinationsKey(key)
   })
 
   // Whether a stock-footage key is set (never returns the key itself).

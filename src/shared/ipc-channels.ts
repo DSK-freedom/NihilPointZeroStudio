@@ -41,6 +41,8 @@ export const IPC = {
   activityClear: 'activity:clear',
   aiErrorsList: 'ai-errors:list',
   aiErrorsReveal: 'ai-errors:reveal',
+  // Validates the saved (or a just-typed) Pollinations key WITHOUT spending Pollen.
+  aiTestPollinationsKey: 'ai:test-pollinations-key',
   // A tab crashed in the UI. Recorded into the same log so Known Issues shows
   // interface failures alongside AI ones instead of them vanishing silently.
   aiErrorsRecordUi: 'ai-errors:record-ui',

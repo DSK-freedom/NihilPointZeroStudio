@@ -65,13 +65,19 @@ IF THE AI STOPS ANSWERING  (READ THIS — it was a real bug, now fixed)
 
 REAL AI VIDEO — WHAT'S NEW, AND WHAT'S STILL TRUE  (being straight with you)
    NEW: Video Studio now has "REAL AI video — free cloud" — real moving video per
-   scene (Google's Veo model, through a free service called Puter), not a photo
-   slideshow. The honest catches: you sign into a free Puter account once (a sign-in
-   window pops up during the first build); the free allowance is small and monthly;
-   only up to 5 scenes per build get real motion (the rest use AI stills — adjustable
-   in Settings -> AI Video); and each real-motion scene takes minutes. When the
-   allowance runs out, scenes fall back to AI still images and the build log says
-   why. Nothing breaks.
+   scene, not a photo slideshow. TWO free routes (pick in Settings -> AI Video):
+   • Pollinations (recommended here): sign up at enter.pollinations.ai with GitHub
+     or email — NO phone number — create a free key and paste it into Settings.
+     You get a small amount of free "Pollen" EVERY DAY; a 5-second scene costs about
+     0.05, so that's several real-motion scenes daily, renewing each morning. A
+     "Test key" button in Settings shows your balance without spending anything.
+   • Puter (Google's Veo): no key at all — a sign-in window pops up during the first
+     build. Heads-up: Puter's verification rejects some countries' phone numbers
+     (Pakistani numbers included) — if their sign-up won't finish, use Pollinations.
+   The honest catches for both: the free allowances are small; only up to 5 scenes
+   per build get real motion (the rest use AI stills — adjustable in Settings); and
+   each real-motion scene takes minutes. When an allowance runs out, scenes fall
+   back to AI still images and the build log says why. Nothing breaks.
    STILL TRUE: LOCAL AI "motion video" and "talking photo" models (LTX-Video, Wan 2.2,
    SadTalker, LivePortrait) need a DEDICATED NVIDIA graphics card. This laptop's
    graphics are built into the processor, so those cannot run here at all — not even
@@ -119,5 +125,5 @@ WHERE TO LOOK NEXT
 Everything core is FREE and works offline. The smart-AI parts (writing, images,
 "put me in a scene", online music removal) are also free but need internet — the keys
 are already built in, nothing to sign up for. (One exception: "REAL AI video — free
-cloud" asks you to sign into a free Puter account, once.) Enjoy.
+cloud" needs one free sign-up — a Pollinations key or a Puter account.) Enjoy.
 ===============================================================================

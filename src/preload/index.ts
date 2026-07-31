@@ -441,12 +441,18 @@ const api = {
       localEndpoint: string
       localKind: 'comfyui' | 'generic'
       comfyWorkflowPath: string
+      freeCloudProvider: 'puter' | 'pollinations'
       freeCloudModel: string
+      pollinationsModel: string
       freeCloudSceneCap: number
       hasCloudKey: boolean
+      hasPollinationsKey: boolean
     }> => ipcRenderer.invoke(IPC.aiGetConfig),
     setConfig: (partial: import('../shared/types').AiVideoConfig): Promise<{ ok: boolean }> =>
       ipcRenderer.invoke(IPC.aiSetConfig, partial),
+    /** Validates a Pollinations key (typed or saved) via /account/balance — spends nothing. */
+    testPollinationsKey: (candidateKey?: string): Promise<{ ok: boolean; balance?: number; detail: string }> =>
+      ipcRenderer.invoke(IPC.aiTestPollinationsKey, candidateKey),
     // Fires when the chosen paid/local AI failed and the free AI answered instead
     // (drives the on-screen warning banner). Returns an unsubscribe fn.
     onFallback: (cb: (notice: { provider: string; detail: string }) => void) => {

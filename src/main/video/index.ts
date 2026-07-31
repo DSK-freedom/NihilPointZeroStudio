@@ -28,6 +28,8 @@ import { generateCloudFootage } from './aiCloud'
 import { estimateReadingSeconds, writeSilentTrack } from './silentTrack'
 import { detectLocal, generateLocalClip } from './aiLocal'
 import { generatePuterClip, puterSceneCap } from './puter'
+import { generatePollinationsClip } from './pollinationsVideo'
+import { getAiVideoConfig } from '../store'
 import { assembleSceneBackground, generateMotionSceneAssets, type MotionClipGenerator } from './videoEngine'
 import { extractCards, extractScenePrompts } from './render'
 import { generateImage, sceneImagePrompt } from '../image'
@@ -190,8 +192,21 @@ export async function buildVideoFromScript(
             : `REAL AI video (local GPU): generating ${scenes.length} scene clips…`
         )
       }
+      // Free-cloud route by config: Puter (no key, account sign-in) or Pollinations
+      // (free developer key + daily Pollen — the route that needs NO phone number).
+      const aiCfg = getAiVideoConfig()
+      const usePollinations = aiCfg.freeCloudProvider === 'pollinations'
       const generator: MotionClipGenerator = isCloudFree
-        ? (s) => generatePuterClip({ prompt: s.prompt, signal: renderSessionSignal(), onStatus: onProgress })
+        ? usePollinations
+          ? (s) =>
+              generatePollinationsClip({
+                key: aiCfg.pollinationsKey ?? '',
+                model: aiCfg.pollinationsModel,
+                ...s,
+                signal: renderSessionSignal(),
+                onStatus: onProgress
+              })
+          : (s) => generatePuterClip({ prompt: s.prompt, signal: renderSessionSignal(), onStatus: onProgress })
         : (s) => generateLocalClip({ ...s, signal: renderSessionSignal(), onStatus: onProgress })
       let seam: Awaited<ReturnType<typeof generateMotionSceneAssets>>
       try {

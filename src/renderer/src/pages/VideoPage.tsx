@@ -44,12 +44,12 @@ const ENGINE_INFO: Record<LookEngine, { label: string; badge: string; blurb: str
   },
   'ai-free-video': {
     label: 'REAL AI video — free cloud',
-    badge: '🟢 Free · online · no API key',
+    badge: '🟢 Free · online',
     blurb:
-      'Real generated motion per scene (Google Veo via Puter) — not a slideshow. Needs a free Puter account: ' +
-      'a sign-in window appears on the first build (and may ask again after an app restart). The free allowance ' +
-      'is small, so a few scenes per build get real motion (adjustable in Settings) and the rest use AI stills. ' +
-      'Any failure falls back to the slideshow and says why — the build never breaks.'
+      'Real generated motion per scene — not a slideshow. Two free routes (pick in Settings → AI Video): ' +
+      'a Pollinations key (free daily Pollen, no phone number) or a Puter account (Google Veo, sign-in window). ' +
+      'The free allowances are small, so a few scenes per build get real motion (adjustable) and the rest use ' +
+      'AI stills. Any failure falls back to the slideshow and says why — the build never breaks.'
   },
   'ai-cloud': {
     label: 'AI footage (cloud)',
@@ -893,7 +893,9 @@ export default function VideoPage() {
                       ? '✓ Ready — just needs internet'
                       : id === 'ai-free-video'
                         ? ready
-                          ? '✓ Ready — free Puter sign-in on the first build'
+                          ? aiStatus?.freeCloudProvider === 'pollinations'
+                            ? '✓ Ready — Pollinations key saved (free daily Pollen)'
+                            : '✓ Ready — free Puter sign-in on the first build'
                           : (aiStatus?.freeCloudDetail ?? 'Checking the free video service…')
                         : id === 'ai-cloud'
                           ? ready

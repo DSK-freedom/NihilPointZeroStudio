@@ -22,6 +22,8 @@ import { makeSlideshow, type Layout } from './render'
 import { beautifyImage, compositeImage, ffprobeDuration, renderTimeline } from '.'
 import { detectLocal, generateLocalClip } from './aiLocal'
 import { generatePuterClip, puterSceneCap } from './puter'
+import { generatePollinationsClip } from './pollinationsVideo'
+import { getAiVideoConfig } from '../store'
 import { cleanupClipTemp, normalizeClip } from './videoEngine'
 import { beginRenderSession, renderSessionSignal, throwIfCancelled } from './ffmpeg'
 import { compileStoryboardToTimeline, type ResolvedBeatAsset, type ResolvedBeatSound } from './storyboard'
@@ -112,9 +114,22 @@ export async function renderStoryboard(
     motionOn = false
     onProgress?.('⚠ Local AI video server not detected (Settings → AI Video) — beats use animated stills instead.')
   }
+  const aiCfg = getAiVideoConfig()
   const generateMotion = (prompt: string, seconds: number, seed: number): Promise<string> =>
     opts.motionEngine === 'ai-free-video'
-      ? generatePuterClip({ prompt, signal: renderSessionSignal(), onStatus: onProgress })
+      ? aiCfg.freeCloudProvider === 'pollinations'
+        ? generatePollinationsClip({
+            key: aiCfg.pollinationsKey ?? '',
+            model: aiCfg.pollinationsModel,
+            prompt,
+            seconds,
+            width: gen.width,
+            height: gen.height,
+            seed,
+            signal: renderSessionSignal(),
+            onStatus: onProgress
+          })
+        : generatePuterClip({ prompt, signal: renderSessionSignal(), onStatus: onProgress })
       : generateLocalClip({ prompt, seconds, width: gen.width, height: gen.height, seed, signal: renderSessionSignal(), onStatus: onProgress })
 
   // Prepare the user's real subject ONCE (beautify + background cutout), reused across all

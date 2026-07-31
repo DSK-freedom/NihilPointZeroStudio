@@ -46,7 +46,12 @@ export default function SettingsPage() {
   const [aiHasCloudKey, setAiHasCloudKey] = useState(false)
   const [aiLocalKind, setAiLocalKind] = useState<'comfyui' | 'generic'>('comfyui')
   const [aiComfyWorkflow, setAiComfyWorkflow] = useState('')
+  const [aiFreeProvider, setAiFreeProvider] = useState<'puter' | 'pollinations'>('puter')
   const [aiFreeModel, setAiFreeModel] = useState('')
+  const [aiPollinModel, setAiPollinModel] = useState('')
+  const [aiPollinKey, setAiPollinKey] = useState('')
+  const [aiHasPollinKey, setAiHasPollinKey] = useState(false)
+  const [aiPollinTest, setAiPollinTest] = useState<string | null>(null)
   const [aiFreeCap, setAiFreeCap] = useState(5)
   const [aiFreeStatus, setAiFreeStatus] = useState<{ ok: boolean; detail: string } | null>(null)
   const [pixabayKey, setPixabayKey] = useState('')
@@ -71,7 +76,10 @@ export default function SettingsPage() {
       setAiHasCloudKey(c.hasCloudKey)
       setAiLocalKind(c.localKind)
       setAiComfyWorkflow(c.comfyWorkflowPath)
+      setAiFreeProvider(c.freeCloudProvider)
       setAiFreeModel(c.freeCloudModel)
+      setAiPollinModel(c.pollinationsModel)
+      setAiHasPollinKey(c.hasPollinationsKey)
       setAiFreeCap(c.freeCloudSceneCap)
     })
     // Live pill for the free-cloud video tier (reachability only; sign-in happens at build time).
@@ -142,14 +150,26 @@ export default function SettingsPage() {
       localEndpoint: aiLocalEndpoint || undefined,
       localKind: aiLocalKind,
       comfyWorkflowPath: aiComfyWorkflow || undefined,
+      freeCloudProvider: aiFreeProvider,
       freeCloudModel: aiFreeModel || undefined,
+      pollinationsModel: aiPollinModel || undefined,
       freeCloudSceneCap: Math.min(30, Math.max(1, Math.round(aiFreeCap) || 5)),
-      ...(aiCloudKey ? { cloudApiKey: aiCloudKey } : {})
+      ...(aiCloudKey ? { cloudApiKey: aiCloudKey } : {}),
+      ...(aiPollinKey ? { pollinationsKey: aiPollinKey } : {})
     })
     setAiCloudKey('')
     setAiHasCloudKey(aiHasCloudKey || !!aiCloudKey)
+    setAiHasPollinKey(aiHasPollinKey || !!aiPollinKey)
+    setAiPollinKey('')
     setStatus('AI Video settings saved.')
     setTimeout(() => setStatus(null), 2500)
+  }
+
+  /** Tests the typed (or saved) Pollinations key without spending any Pollen. */
+  async function testPollinationsKey(): Promise<void> {
+    setAiPollinTest('Testing…')
+    const r = await window.api.ai.testPollinationsKey(aiPollinKey.trim() || undefined)
+    setAiPollinTest(r.detail)
   }
 
   async function toggleWebServer(): Promise<void> {
@@ -859,7 +879,7 @@ export default function SettingsPage() {
         <div className="mt-4 space-y-4">
           <div className="rounded-md border border-ink-700 bg-ink-800 p-3 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm text-ink-100">🎬 REAL AI video — free cloud (Puter, no API key)</div>
+              <div className="text-sm text-ink-100">🎬 REAL AI video — free cloud (two free routes)</div>
               {aiFreeStatus && (
                 <span className={`text-[10px] shrink-0 ${aiFreeStatus.ok ? 'text-emerald-400' : 'text-amber-400/80'}`}>
                   {aiFreeStatus.ok ? '✓ Reachable' : '✗ Unreachable'}
@@ -867,19 +887,69 @@ export default function SettingsPage() {
               )}
             </div>
             <p className="text-[11px] text-ink-500">
-              Real generated motion (Google Veo through Puter) with no developer key. Straight truth about “free”: you
-              sign into a <b>free Puter account</b> — a sign-in window pops up during the first build, and it may ask
-              again after you restart the app — and generation draws on that account’s <b>small free monthly
-              allowance</b>. When it runs out, scenes fall back to AI stills and the build log says so. That’s why
-              there is a per-build cap below.
+              Real generated motion with no paid subscription — two routes, pick what works for you. Both fall back to
+              AI stills automatically when they can’t run, and the build log always says why.
             </p>
             {aiFreeStatus && !aiFreeStatus.ok && <p className="text-[11px] text-amber-400/80">{aiFreeStatus.detail}</p>}
-            <input
-              value={aiFreeModel}
-              onChange={(e) => setAiFreeModel(e.target.value)}
-              placeholder="Model (default google/veo-3.1-fast)"
-              className="w-full rounded-md bg-ink-900 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
-            />
+            <div className="flex flex-col gap-1.5">
+              <label className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${aiFreeProvider === 'pollinations' ? 'border-gold-500 bg-gold-500/5' : 'border-ink-700'}`}>
+                <input
+                  type="radio"
+                  checked={aiFreeProvider === 'pollinations'}
+                  onChange={() => setAiFreeProvider('pollinations')}
+                  className="mt-0.5"
+                />
+                <span className="text-[11px] text-ink-300">
+                  <b className="text-ink-100">Pollinations — free key, NO phone number.</b> Sign up at{' '}
+                  <b>enter.pollinations.ai</b> (GitHub or email), create a key, paste it below. Registered users get a
+                  small <b>daily Pollen grant that renews every day</b>; the default wan-fast model costs ~0.05 Pollen
+                  per 5-second scene. This is the route to use where Puter’s phone verification doesn’t work.
+                </span>
+              </label>
+              <label className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${aiFreeProvider === 'puter' ? 'border-gold-500 bg-gold-500/5' : 'border-ink-700'}`}>
+                <input type="radio" checked={aiFreeProvider === 'puter'} onChange={() => setAiFreeProvider('puter')} className="mt-0.5" />
+                <span className="text-[11px] text-ink-300">
+                  <b className="text-ink-100">Puter (Google Veo) — no key at all.</b> A sign-in window pops up during
+                  the first build (may ask again after a restart) and generation draws on that account’s small free
+                  monthly allowance. Heads-up: Puter’s verification rejects some countries’ phone numbers — if you
+                  can’t finish their sign-up, use the Pollinations route above.
+                </span>
+              </label>
+            </div>
+            {aiFreeProvider === 'pollinations' ? (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={aiPollinKey}
+                    onChange={(e) => setAiPollinKey(e.target.value)}
+                    placeholder={aiHasPollinKey ? 'Key saved — type to replace' : 'Pollinations key (pk_… or sk_…)'}
+                    className="flex-1 rounded-md bg-ink-900 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
+                  />
+                  <button
+                    onClick={() => void testPollinationsKey()}
+                    className="rounded-md border border-ink-600 hover:border-gold-500 text-ink-200 text-xs px-3"
+                    title="Checks the key against your Pollen balance — spends nothing."
+                  >
+                    Test key
+                  </button>
+                </div>
+                {aiPollinTest && <p className="text-[11px] text-ink-300">{aiPollinTest}</p>}
+                <input
+                  value={aiPollinModel}
+                  onChange={(e) => setAiPollinModel(e.target.value)}
+                  placeholder="Video model (default wan-fast — the cheapest)"
+                  className="w-full rounded-md bg-ink-900 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
+                />
+              </>
+            ) : (
+              <input
+                value={aiFreeModel}
+                onChange={(e) => setAiFreeModel(e.target.value)}
+                placeholder="Model (default google/veo-3.1-fast)"
+                className="w-full rounded-md bg-ink-900 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
+              />
+            )}
             <label className="flex items-center gap-2 text-[11px] text-ink-400">
               Real-motion scenes per build (rest use AI stills):
               <input

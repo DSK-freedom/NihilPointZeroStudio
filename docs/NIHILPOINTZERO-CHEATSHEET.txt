@@ -29,10 +29,10 @@ Hands-on: Video Studio -> pick/paste a script -> set Look/Voice/Format/Resolutio
 
 ------------------------------  KEY CHOICES WHEN BUILDING  ---------------------------------------
 ENGINE (Video look) Style presets (free, offline) · Photo slideshow (AI images) (free, online, no key) ·
-                    REAL AI video — free cloud (free Puter sign-in; small monthly allowance; up to 5
-                    scenes/build get real motion, rest = AI stills; minutes per scene) · AI footage
-                    (cloud, paid, your key) · REAL AI video — local GPU (ComfyUI; needs NVIDIA —
-                    greyed out on this PC until the card exists)
+                    REAL AI video — free cloud (two free routes: Pollinations key = free DAILY Pollen,
+                    no phone number — or Puter sign-in; up to 5 scenes/build get real motion, rest =
+                    AI stills; minutes per scene) · AI footage (cloud, paid, your key) · REAL AI
+                    video — local GPU (ComfyUI; needs NVIDIA — greyed out on this PC until the card exists)
 LOOK (template) .. Clean (plain) · News (lower-thirds) · Cinematic (graded+grain+bars) · Bold (punchy)
 FORMAT (shape) ... 16:9 YouTube · 9:16 Shorts/Reels/TikTok · 1:1 square
 VOICE ............ Your own (🎙 Voice studio = best) · Natural (Piper, installed) · Windows (basic)
@@ -72,7 +72,8 @@ Charts .......... live PSX by symbol (line+SMA/RSI) OR import your OHLC file (ca
 ------------------------------  FREE / INTERNET / SETUP  -----------------------------------------
 FREE + OFFLINE ...... building, edits, YOUR voice + Natural voice, captions, music, trim, watermark, export
 FREE + INTERNET ..... AI writing/images/visuals, put-me-in-scene, online music removal (keys built in),
-                      REAL AI video — free cloud (one free Puter sign-in; small monthly allowance)
+                      REAL AI video — free cloud (free Pollinations key with daily Pollen — no phone —
+                      or a free Puter sign-in; both small allowances)
 ALREADY SET UP ...... Natural voice (Piper) + offline Demucs installed on THIS PC; keys baked in
 
 ------------------------------  IF STUCK  -------------------------------------------------------
@@ -86,11 +87,13 @@ PSX portal down ......... the app now shows your last SAVED data with an amber "
 AI stops answering ...... the old free online AI went PAID (their change). The app now falls back to
                           Ollama on your own PC automatically. See Settings -> "Known Issues" for the
                           exact error + time, or nihilpointzero-data\logs\ai-errors.log
-Want real AI motion ..... pick "REAL AI video — free cloud" (free Puter sign-in on the first build; small
-                          monthly allowance; up to 5 scenes/build, minutes each; runs out -> AI stills,
-                          reason in the build log — nothing breaks). LOCAL AI video still needs an NVIDIA
-                          card this PC doesn't have — the option is visible but greyed out; you can
-                          pre-configure it in Settings -> AI Video for a future PC.
+Want real AI motion ..... pick "REAL AI video — free cloud". Easiest here: Settings -> AI Video ->
+                          Pollinations route -> get a free key at enter.pollinations.ai (GitHub/email,
+                          NO phone) -> paste + "Test key". Free Pollen renews DAILY (~a few 5s scenes/day).
+                          (Puter route also exists but its phone verification rejects Pakistani numbers.)
+                          Up to 5 scenes/build, minutes each; runs out -> AI stills, reason in the build
+                          log — nothing breaks. LOCAL AI video still needs an NVIDIA card this PC doesn't
+                          have — visible but greyed out; pre-configure it in Settings for a future PC.
 A tab crashes ........... contained to that tab — the rest keeps working. Click "Try this tab again".
                           The crash is logged in Settings -> "Known Issues" so it's provable.
 Robotic voice ........... use 🎙 Voice studio or the Natural voice

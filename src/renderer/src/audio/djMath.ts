@@ -72,16 +72,18 @@ export function detectBpm(samples: Float32Array, sampleRate: number): number | n
   const envRate = sampleRate / windowSize // envelope frames per second
   const minLag = Math.floor((60 / 180) * envRate) // 180 BPM
   const maxLag = Math.ceil((60 / 60) * envRate) // 60 BPM
-  let bestLag = 0
-  let bestScore = 0
   let energy0 = 0
   for (const v of centered) energy0 += v * v
   if (energy0 === 0) return null
-  for (let lag = minLag; lag <= Math.min(maxLag, centered.length - 1); lag++) {
+  const scoreAt = (lag: number): number => {
     let score = 0
     for (let i = 0; i + lag < centered.length; i++) score += centered[i] * centered[i + lag]
-    // Slight bias toward shorter lags so exact-multiple harmonics (60 vs 120) don't tie.
-    score *= 1 + 0.0005 * (maxLag - lag)
+    return score
+  }
+  let bestLag = 0
+  let bestScore = 0
+  for (let lag = minLag; lag <= Math.min(maxLag, centered.length - 1); lag++) {
+    const score = scoreAt(lag)
     if (score > bestScore) {
       bestScore = score
       bestLag = lag
@@ -89,7 +91,14 @@ export function detectBpm(samples: Float32Array, sampleRate: number): number | n
   }
   // A pulse must actually correlate — an unstructured track scores near zero.
   if (bestLag === 0 || bestScore < energy0 * 0.05) return null
-  const bpm = (60 * envRate) / bestLag
+  // Octave (harmonic) correction: a 120 BPM beat also correlates perfectly at the
+  // 60 BPM double-period. Whenever the half-lag correlates comparably, the FASTER
+  // tempo is the truth — step down while that holds.
+  let lag = bestLag
+  while (Math.floor(lag / 2) >= minLag && scoreAt(Math.floor(lag / 2)) >= 0.5 * scoreAt(lag)) {
+    lag = Math.floor(lag / 2)
+  }
+  const bpm = (60 * envRate) / lag
   return Math.round(bpm * 10) / 10
 }
 

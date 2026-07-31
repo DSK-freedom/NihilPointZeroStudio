@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAutosave } from '../hooks/useAutosave'
+import DualDecks from '../components/DualDecks'
 import {
   MOODS,
   SFX_KINDS,
@@ -253,6 +254,17 @@ export default function DjStationPage({ embedded = false }: { embedded?: boolean
           </p>
         </div>
       )}
+
+      {/* Live two-deck mixing — separate from the timeline below: decks are for
+          performing/practicing by ear; the timeline is for placing sounds onto videos. */}
+      <details className={`${embedded ? '' : 'mt-6 '}rounded-lg border border-ink-800 bg-ink-950`}>
+        <summary className="cursor-pointer px-3 py-2 text-sm text-gold-400 select-none">
+          🎛 Dual decks — mix two tracks live (EQ · loops · hot cues · crossfader · BPM)
+        </summary>
+        <div className="p-2">
+          <DualDecks />
+        </div>
+      </details>
 
       <div className={`${embedded ? '' : 'mt-6 '}grid grid-cols-1 lg:grid-cols-2 gap-6`}>
         {/* Library */}

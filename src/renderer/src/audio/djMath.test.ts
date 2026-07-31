@@ -41,6 +41,17 @@ describe('computePeaks (waveform)', () => {
   })
 })
 
+describe('energyEnvelope', () => {
+  it('is loud where the audio is loud and silent where it is silent', () => {
+    const s = new Float32Array(4096)
+    for (let i = 0; i < 1024; i++) s[i] = 0.8 // one loud opening window
+    const env = energyEnvelope(s, 1024)
+    expect(env).toHaveLength(4)
+    expect(env[0]).toBeCloseTo(0.8, 5)
+    expect(env[3]).toBe(0)
+  })
+})
+
 describe('detectBpm', () => {
   it('finds 120 BPM in a 120 BPM click track', () => {
     const bpm = detectBpm(clickTrack(120, 12), 44100)

@@ -61,6 +61,8 @@ Download as ..... YouTube / MP4 / H.265 / MOV / WebM   ·   Trim = cut   ·   Sa
 ✂ Timeline Editor . line up clips, crossfades, timed text, separate audio track w/ gain+fades, live waveform -> one MP4
 📦 Batch (AI Command) . paste many topics (1 per line) -> a video for each
 Sound Studio (DJ) . make music-only tracks, mix over video, auto-duck + peak limiter (no clipping), "📊 Show waveform"
+   NEW 🎛 Dual decks: load 2 tracks -> BPM, pitch, 3-band EQ, loop in/out, 4 hot cues each, crossfader.
+   All on this PC, free forever. (Cues: click sets, click jumps, right-click clears.)
 🎬 Producer (floating) . 3 modes: Advise · Edit my script (rewrite->Apply) · Do it (plans + RUNS real studio actions from ANY tab)
 
 ------------------------------  DATA / FINANCE (real numbers)  -----------------------------------

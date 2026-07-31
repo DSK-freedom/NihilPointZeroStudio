@@ -3,11 +3,38 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-07-31 10:28
+## Build: v0.1.1 · 2026-07-31 10:41
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
+
+## New in this build (2026-07-31, evening)
+
+### ⬆ "Get the update" can never look dead again
+The button's old behavior — opening a folder window that usually appeared BEHIND the app —
+is gone. Now one click **restarts the app straight onto the already-updated code** (ships
+update the installed app in place, so the update is already on disk). Where that doesn't
+apply, it falls back to revealing the installer or download page **and says so right in the
+banner**, so you always know what happened.
+
+### 🎛 Dual decks in the DJ studio — a real two-track mixer, free for life
+Inside Video Studio → Sound Studio: load any two audio files and mix them live —
+play/pause per deck, clickable waveforms, **BPM detection**, pitch sliders, **3-band EQ**
+(low/mid/high), **loop in/out**, **4 hot cues per deck**, and an equal-power **crossfader**.
+Runs 100% on this PC (WebAudio) — no service, no key, no internet, nothing to expire.
+
+### 🎵 Music that understands the subject — in BOTH languages
+The music picker's mood detection now reads **Roman Urdu and Urdu script**, not just
+English ("girawat", "بحران" → tense; "munafa", "ترقی" → uplifting). It also shows direct
+links to matching category pages on the free libraries (Pixabay Music, Free Music Archive)
+and tells the built-in music maker which mood fits your script.
+
+### 🧪 The self-test gate got meaner (see docs/QA-REPORT.md)
+The pre-ship click-through now also proves: empty input can't be submitted, a Roman Urdu +
+Urdu script + emoji video builds to completion, a 15,000-character script starts fine,
+rapid double-clicks are harmless, ⏹ Stop halts a build instantly and the UI recovers, and
+autosave survives tab switches. The full honest test report lives in **docs/QA-REPORT.md**.
 
 ## New in this build (2026-07-31, later)
 

@@ -29,6 +29,15 @@ Builds land in `release\` as `NIHILPOINTZERO-OS-portable.exe` and
 `%USERPROFILE%\Desktop\NihilPointZeroStudio\` (exes + the 4 docs +
 `nihilpointzero-data`, which is user work — never write into or delete it).
 
+## USER PREFERENCE (standing, 2026-07-31)
+
+All future updates, changes, and upgrades must be synchronized automatically across
+all environment directories (workshop source → Desktop studio → installed app →
+GitHub) to save the user time. The user does not code; handle pathing and
+synchronization autonomously. `npm run ship` already does all of this — including
+updating the INSTALLED app in place (Smart App Control-safe) and refusing to ship
+unless the automated UI click-through gate passes.
+
 ## Shipping rule (MANDATORY)
 
 Whenever a completed change touches app code, docs, or resources, finish the

@@ -86,6 +86,26 @@ export default function MusicPicker({
       {result?.moods.length ? (
         <div className="text-[10px] text-ink-500">
           Mood picked from your script: <span className="text-gold-300">{result.moods.join(', ')}</span>
+          {result.synthMood ? (
+            <span className="text-ink-600"> · the built-in music maker would play this as “{result.synthMood}”</span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {result?.libraryLinks?.length ? (
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-ink-500">
+          Browse this vibe on the free libraries:
+          {result.libraryLinks.map((l) => (
+            <a
+              key={l.url}
+              href={l.url}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded border border-ink-700 px-1.5 py-0.5 text-ink-300 hover:border-gold-500 hover:text-gold-300"
+            >
+              {l.name} ↗
+            </a>
+          ))}
         </div>
       ) : null}
 

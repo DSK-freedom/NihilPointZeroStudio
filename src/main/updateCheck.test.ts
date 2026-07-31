@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isNewer, tagDate } from './updateCheck'
+import { diskIsNewerThanRunning, isNewer, tagDate } from './updateCheck'
 
 describe('tagDate', () => {
   it('parses the timestamp out of a build tag', () => {
@@ -29,5 +29,24 @@ describe('isNewer', () => {
   it('false when either tag is unparseable (never nag on bad data)', () => {
     expect(isNewer('junk', 'v0.1.1 · 2026-07-29 21:30 · abc1234')).toBe(false)
     expect(isNewer(local, 'junk')).toBe(false)
+  })
+})
+
+describe('diskIsNewerThanRunning (drives the one-click "restart to update")', () => {
+  const running = 'v0.1.1 · 2026-07-31 09:13 · 359ec86'
+  const runningAt = tagDate(running) as number
+
+  it('true when the on-disk code archive postdates the running build (ship swapped it in place)', () => {
+    expect(diskIsNewerThanRunning(runningAt + 10 * 60_000, running)).toBe(true)
+  })
+
+  it('false within the same-build stamp-jitter window', () => {
+    expect(diskIsNewerThanRunning(runningAt + 60_000, running)).toBe(false)
+  })
+
+  it('false when disk is older, mtime is garbage, or the running tag has no date', () => {
+    expect(diskIsNewerThanRunning(runningAt - 60_000, running)).toBe(false)
+    expect(diskIsNewerThanRunning(NaN, running)).toBe(false)
+    expect(diskIsNewerThanRunning(runningAt + 10 * 60_000, 'v0.1.1 · probe')).toBe(false)
   })
 })

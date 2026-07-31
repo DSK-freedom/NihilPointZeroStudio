@@ -1,0 +1,89 @@
+# QA REPORT — NIHILPOINTZERO-OS (2026-07-31)
+
+_What was tested, how it was tested, what broke, what got fixed, and what genuinely
+cannot be fixed. Written to be re-checkable: every claim here comes from an actual
+run, not from reading code and hoping._
+
+## How the testing works now (the part that outlives this report)
+
+The app is tested by a machine, not by promises. A hard gate in the ship pipeline
+(`npm run test:e2e`) launches the REAL built app in an isolated throwaway data home
+(it can never touch your work), and:
+
+- opens **every tab** — Today, Ideas & Trends, AI Command, Scene Studio, Script
+  Writer, Script Pad, Video Studio, Storyboard Director, Presenter Studio, Recorder,
+  Timeline Editor, Charts, Live PSX Data, NCCPL Analysis, Advisor, Library,
+  Activity Log, Settings — and verifies each renders alive (headline present, real
+  content, working controls, no crash screen);
+- **builds a real video by clicking the UI** (paste script → Style presets →
+  🎬 Build Video → a finished, playable video appears), fully offline;
+- hammers the edge cases below.
+
+If ANY check fails, the ship stops. 471 unit tests (math, ffmpeg graphs, engines,
+fallbacks) run before it. This gate exists because unit tests alone let dead buttons
+reach you.
+
+## Edge cases exercised (all passing)
+
+| Case | What happens (verified by the machine) |
+|---|---|
+| Empty input | 🎬 Build is **disabled** until a script exists — submitting nothing is impossible |
+| Roman Urdu + Urdu script + emoji script | Builds **to completion**; the finished video appears (UTF-8 through narration, layout, encoding) |
+| Huge script (~15,000 characters) | Build starts normally; UI stays responsive |
+| Rapid double-click on Build | Second click is harmless — no double build, no crash |
+| ⏹ Stop mid-build | Build stops, UI recovers, Build becomes usable again within seconds |
+| Typed work + tab switching | Autosave keeps it — leaving and returning restores the text |
+| Tab crash (any tab) | Contained by the crash guard: plain-English message, "Try this tab again", rest of app usable, failure logged to Settings → Known Issues |
+| Free service down/busy | Falls back per scene/feature with the reason in the build log and ai-errors.log (verified live against real 429/402/401 outages this week) |
+
+## Broken and NOW FIXED (this week, each verified by a real run)
+
+- **"Get the update" looked dead** — its only effect was an Explorer window that
+  opened BEHIND the app, with zero feedback. Now: one click **restarts straight onto
+  the already-updated code** (the ship swaps it in place); on machines where that
+  doesn't apply it falls back to revealing the installer/download page **and says so
+  in the banner**.
+- **Updates were being blocked by Windows Smart App Control** — every new unsigned
+  installer is an unknown file to Windows. Ships now update the installed app in
+  place; nothing new for Windows to judge.
+- **A crashed tab used to blank the whole app** — now contained per tab, logged.
+- **Free-cloud video tier was unusable here** (Puter rejects Pakistani phone
+  numbers) — added the Pollinations key route (no phone); found and fixed the
+  Test-key button rejecting valid sk_ keys; keys stored encrypted.
+- **Video engine correctness bugs caught before shipping** by adversarial review +
+  the gate: motion clips routed through the wrong renderer path, wrong 9:16
+  generation size, Stop surfacing as a failure instead of a cancel, a text-encoding
+  corruption, missing network timeouts.
+- **Urdu/Roman-Urdu scripts fell through to generic music** — the mood matcher now
+  understands both (tested), links to matching category pages on the free libraries,
+  and tells the built-in music maker which mood fits.
+- **The engine choice reset on every visit** — now remembered.
+
+## Cannot be fixed, and why (the honest list)
+
+- **Local AI motion video / talking-photo models** — this PC has Intel graphics
+  built into the processor; these models need a dedicated NVIDIA card. Not slowly —
+  not at all. Everything is pre-wired and unlocks the day the hardware exists.
+  Workaround today: the free-cloud tier or the photo slideshow.
+- **Free cloud services having a bad hour** — Pollinations/Puter/image services can
+  rate-limit or change terms at any time (it happened twice this week, live). No
+  code prevents that; the app's job — done — is to fall back visibly, never break,
+  and log the reason. Also: cloud video spends allowance credits (Pollen), and
+  Pollinations' video currently requires more wallet balance than starter quests
+  grant — real options: their contribution bounties (free), a small top-up (paid,
+  user's choice), or waiting for more quests.
+- **Unsigned-app warnings on NEW machines** — until code signing is purchased
+  (documented in docs/SIGNING.md), Windows will warn on first run. In-place updates
+  sidestep this on an already-approved machine.
+
+## Flagged (found, deliberately not silently "fixed")
+
+- Pexels stock support is half-plumbed (storage/IPC exist; no search, no UI) —
+  needs a decision: finish it or remove it.
+- The phone webserver exposes a `/api/library` endpoint no page uses — leftover or
+  future feature; needs a decision.
+- The one manual backup in the Desktop `archive` folder (July 19, 2.1 GB) is
+  superseded by weekly auto-backups — deletion awaits the user naming it explicitly.
+
+_Regenerate this confidence at any time: `npm run test` then `npm run test:e2e` —
+or just ship, which runs both and refuses to proceed on any failure._

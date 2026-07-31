@@ -24,11 +24,14 @@ import type { HardwareReport } from '../shared/types'
 
 /** Probed once per session — spawning processes is slow and the answer can't change. */
 let cachedHardware: HardwareReport | null = null
-import { MOOD_PROMPT_HINT, moodsFromText, parseMoodReply } from './music/mood'
+import { freeLibraryLinks, MOOD_PROMPT_HINT, moodsFromText, parseMoodReply, synthMoodFromText } from './music/mood'
 import { getOllamaStatus, ollamaChatStream, type ChatTurn } from './llm/ollama'
 import { buildAdvisorSystemPrompt } from './prompts'
 import { APP_GUIDE } from './appGuide'
-import { getAvailableUpdate, tagDate } from './updateCheck'
+import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
+
+// Injected at build time by electron.vite.config.ts (same tag the sidebar badge shows).
+declare const __BUILD_TAG__: string
 import { listWinNaturalVoices, synthesizeWithWinNatural } from './voice/winNatural'
 import { runHealthCheck } from './health'
 import { generateIdeasFlow, generateScriptFlow } from './services'
@@ -685,6 +688,24 @@ export function registerIpcHandlers(): void {
   // "Update available" banner support: pull-based re-read for renderers that mounted
   // after the one-shot broadcast (slow first paint, Ctrl+R reload).
   ipcMain.handle(IPC.updateGet, () => getAvailableUpdate())
+
+  // The one-click update for the INSTALLED app: the ship pipeline already swapped the
+  // code archive on disk (Smart App Control-safe), so when the disk copy is newer than
+  // what's running, a plain relaunch IS the update. Returns ok:false when that isn't
+  // the case (portable exe, or nothing newer on disk) so the UI falls back to reveal.
+  ipcMain.handle(IPC.updateRestart, () => {
+    try {
+      if (!app.isPackaged || process.env.PORTABLE_EXECUTABLE_DIR) return { ok: false }
+      const asar = app.getAppPath()
+      if (!asar.endsWith('.asar') || !existsSync(asar)) return { ok: false }
+      if (!diskIsNewerThanRunning(statSync(asar).mtimeMs, __BUILD_TAG__)) return { ok: false }
+      app.relaunch()
+      app.exit(0)
+      return { ok: true }
+    } catch {
+      return { ok: false }
+    }
+  })
 
   // Reveal the setup exe in the Desktop studio folder so a non-technical user finds it
   // in one click. ONLY when that exe is at least as new as the advertised build — on a
@@ -1569,13 +1590,22 @@ export function registerIpcHandlers(): void {
     return {
       moods,
       tracks,
+      // Subject-aware extras: where to browse more of this vibe on the free
+      // libraries, and which built-in synth mood matches the script.
+      libraryLinks: freeLibraryLinks(moods),
+      synthMood: synthMoodFromText(scriptText || ''),
       note: tracks.length ? undefined : 'No free music came back for this mood. The video will be built without music.'
     } satisfies MusicSuggestion
   })
 
   ipcMain.handle(IPC.musicMoodSearch, async (_e, query: string) => {
     const tracks = await findMusic([query], getStockConfig().pixabayKey)
-    return { moods: [query], tracks, note: tracks.length ? undefined : `No free music found for “${query}”.` } satisfies MusicSuggestion
+    return {
+      moods: [query],
+      tracks,
+      libraryLinks: freeLibraryLinks([query]),
+      note: tracks.length ? undefined : `No free music found for “${query}”.`
+    } satisfies MusicSuggestion
   })
 
   // Places a chosen track over one stretch of a video, producing a NEW video.

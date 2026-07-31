@@ -807,6 +807,10 @@ export interface MusicSuggestion {
   tracks: MusicTrack[]
   /** Set when no music could be found, so the UI can say why instead of showing nothing. */
   note?: string
+  /** Direct category pages on the FREE libraries matching these moods (opened externally). */
+  libraryLinks?: { name: string; url: string }[]
+  /** The built-in synthesizer mood that best fits the subject (drives "make music"). */
+  synthMood?: Mood
 }
 
 /** What this PC can actually run — see main/hardware/gpu.ts. */

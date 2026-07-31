@@ -34,6 +34,18 @@ export function isNewer(localTag: string, remoteTag: string): boolean {
 }
 
 /**
+ * True when the app's code archive ON DISK is meaningfully newer than the code
+ * actually RUNNING — i.e. the ship pipeline already swapped app.asar in place and a
+ * simple restart loads the update. (>2 min slack for same-build stamp jitter.)
+ * Pure + tested; the caller supplies the asar's mtime.
+ */
+export function diskIsNewerThanRunning(asarMtimeMs: number, runningTag: string): boolean {
+  const runningAt = tagDate(runningTag)
+  if (runningAt === null || !Number.isFinite(asarMtimeMs)) return false
+  return asarMtimeMs - runningAt > 2 * 60_000
+}
+
+/**
  * Quiet startup check: is there a newer shipped build than the one running?
  * Reads the "Build v0.1.1 · yyyy-MM-dd HH:mm · hash" line that ship.ps1 writes
  * into the GitHub release notes and compares dates. MUST fail silently — being

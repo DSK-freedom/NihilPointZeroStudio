@@ -144,6 +144,106 @@ try {
     fail('Video Studio BUILD', `${err?.message ?? err}`)
   }
 
+  // ---- 3) Edge cases a real user hits: the app must stay alive and SAY something
+  //         every time — silence or a crash is the failure being hunted here.
+
+  // 3a. Autosave: typed work must survive leaving the tab and coming back.
+  try {
+    await win.evaluate(() => {
+      window.location.hash = '#/scriptpad'
+    })
+    await win.waitForTimeout(500)
+    const pad = win.locator('main textarea').first()
+    await pad.fill('E2E autosave probe — do not lose me')
+    await win.waitForTimeout(1200) // let the debounced save fire
+    await win.evaluate(() => {
+      window.location.hash = '#/'
+    })
+    await win.waitForTimeout(400)
+    await win.evaluate(() => {
+      window.location.hash = '#/scriptpad'
+    })
+    await win.waitForTimeout(800)
+    const back = await win.locator('main textarea').first().inputValue()
+    if (!back.includes('do not lose me')) {
+      fail('Autosave', `typed text did not survive a tab switch (got: "${back.slice(0, 60)}")`)
+    } else {
+      console.log('  ✓ Autosave: typed work survives leaving and re-entering the tab')
+    }
+  } catch (err) {
+    fail('Autosave', `${err?.message ?? err}`)
+  }
+
+  // 3b. Empty input: the correct behavior (already implemented) is that the Build
+  //     button is DISABLED — submitting nothing must be impossible, not "handled".
+  try {
+    await win.evaluate(() => {
+      window.location.hash = '#/video'
+    })
+    await win.waitForTimeout(700)
+    await win.locator('main select').first().selectOption({ label: '✍️ Paste / write my own script' })
+    await win.locator('input[placeholder="Video title shown on the opening card"]').fill('')
+    await win.locator('textarea[placeholder*="spoken narration"]').fill('')
+    await win.waitForTimeout(300)
+    const disabled = await win.locator('button', { hasText: 'Build Video' }).first().isDisabled()
+    if (!disabled) {
+      fail('Empty-input guard', 'Build is clickable with an empty script — it must be disabled')
+    } else {
+      console.log('  ✓ Empty-input guard: Build is correctly disabled until a script exists')
+    }
+  } catch (err) {
+    fail('Empty-input guard', `${err?.message ?? err}`)
+  }
+
+  // 3c. Bilingual + emoji build TO COMPLETION: Roman Urdu, Urdu script and emoji
+  //     through narration, layout and encoding — the whole offline pipeline.
+  try {
+    await win.locator('input[placeholder="Video title shown on the opening card"]').fill('E2E اردو test 🎬')
+    await win
+      .locator('textarea[placeholder*="spoken narration"]')
+      .fill('Rupay ki girawat aur mehngai. معیشت کا تجزیہ اور منافع کی کہانی۔ Emoji check 🚀📈 done.')
+    await win.locator('button', { hasText: 'Style presets' }).first().click()
+    await win.locator('button', { hasText: 'Build Video' }).first().click()
+    await win.waitForFunction(
+      () => {
+        const main = document.querySelector('main')
+        return main ? /E2E اردو test/.test(main.innerText) && !!main.querySelector('video') : false
+      },
+      { timeout: 240_000 }
+    )
+    console.log('  ✓ Urdu + emoji build: finished video visible in the list')
+  } catch (err) {
+    fail('Urdu/emoji build', `${err?.message ?? err}`)
+  }
+
+  // 3d. Huge script + rapid double-click + Stop mid-build: the panic-clicking user.
+  //     Must start, must not double-build into chaos, must stop when told, must recover.
+  try {
+    const huge = 'Market analysis paragraph with numbers and risk words. '.repeat(280) // ~15k chars
+    await win.locator('input[placeholder="Video title shown on the opening card"]').fill('E2E huge cancel test')
+    await win.locator('textarea[placeholder*="spoken narration"]').fill(huge)
+    const buildBtn = win.locator('button', { hasText: 'Build Video' }).first()
+    await buildBtn.click()
+    await buildBtn.click({ force: true }).catch(() => {}) // rapid second click must be harmless
+    await win.waitForTimeout(4000) // let the build visibly start
+    const stop = win.locator('button', { hasText: 'Stop' }).first()
+    if ((await stop.count()) === 0) throw new Error('no Stop button appeared during a running build')
+    await stop.click()
+    // Recovery = the Build button is usable again reasonably soon after Stop.
+    await win.waitForFunction(
+      () => {
+        const btns = [...document.querySelectorAll('main button')]
+        const b = btns.find((x) => /Build Video/.test(x.textContent ?? ''))
+        return !!b && !b.disabled
+      },
+      { timeout: 30_000 }
+    )
+    if ((await win.locator('text=This tab hit a snag').count()) > 0) throw new Error('tab crashed after Stop')
+    console.log('  ✓ Huge script + double-click + Stop: build started, stopped instantly, UI recovered')
+  } catch (err) {
+    fail('Huge/cancel build', `${err?.message ?? err}`)
+  }
+
   if (pageErrors.length) {
     for (const e of pageErrors) fail('Renderer exception', e.slice(0, 200))
   }

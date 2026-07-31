@@ -473,7 +473,10 @@ const api = {
     // Opens the studio folder with the setup exe selected — but only when that exe is as
     // new as the advertised build; otherwise opens the download page.
     revealSetup: (remoteTag?: string): Promise<{ ok: boolean; opened: string }> =>
-      ipcRenderer.invoke(IPC.updateRevealSetup, remoteTag)
+      ipcRenderer.invoke(IPC.updateRevealSetup, remoteTag),
+    /** One-click update for the installed app: the ship already swapped the code on
+     * disk, so this relaunches onto it. ok:false = not applicable (portable/stale). */
+    restart: (): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.updateRestart)
   },
   health: {
     // Live self-test of every dependency (validates saved keys with a cheap request).

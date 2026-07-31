@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { moodsFromText, normalizeMoods, parseMoodReply } from './mood'
+import { freeLibraryLinks, moodsFromText, normalizeMoods, parseMoodReply, synthMoodFromText } from './mood'
 
 describe('mood keywords', () => {
   it('always returns at least two keywords, even for empty text', () => {
@@ -16,6 +16,32 @@ describe('mood keywords', () => {
 
   it('never returns more than three keywords', () => {
     expect(moodsFromText('crash crisis growth profit business market future dream history').length).toBeLessThanOrEqual(3)
+  })
+
+  // The app is bilingual: a Roman Urdu or Urdu-script script must land on the same
+  // music as its English twin, not fall through to the generic defaults.
+  it('understands Roman Urdu subject words', () => {
+    expect(moodsFromText('rupay ki girawat aur qarza ka bohran sab ke liye khatra hai')).toContain('tense')
+    expect(moodsFromText('company ka munafa barha, zabardast taraqqi aur kamyabi')).toContain('uplifting')
+  })
+
+  it('understands Urdu-script subject words', () => {
+    expect(moodsFromText('معیشت کا بحران اور قرضہ ایک بڑا خطرہ ہے')).toContain('tense')
+    expect(moodsFromText('منافع میں اضافہ اور ترقی کی کہانی')).toContain('uplifting')
+  })
+
+  it('routes the detected vibe to category pages on the free libraries', () => {
+    const links = freeLibraryLinks(['tense', 'documentary'])
+    expect(links.some((l) => l.url === 'https://pixabay.com/music/search/tense/')).toBe(true)
+    expect(links.some((l) => l.url.startsWith('https://freemusicarchive.org/search?quicksearch=documentary'))).toBe(true)
+    // Never more than 2 moods' worth of links — the UI is a hint row, not a directory.
+    expect(links.length).toBeLessThanOrEqual(4)
+  })
+
+  it('maps the subject onto a mood the built-in synthesizer can actually play', () => {
+    expect(synthMoodFromText('the debt crisis is a danger to everyone')).toBe('tense')
+    expect(synthMoodFromText('the history and analysis behind the story')).toBe('cinematic')
+    expect(synthMoodFromText('')).toBe('calm') // empty text lands on the always-safe default
   })
 
   // The search takes a keyword, not prose — an AI that ignores the instruction and

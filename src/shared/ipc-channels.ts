@@ -60,6 +60,8 @@ export const IPC = {
   updateAvailable: 'update:available',
   updateGet: 'update:get',
   updateRevealSetup: 'update:reveal-setup',
+  // Restart onto code the ship pipeline already swapped in place (installed app only).
+  updateRestart: 'update:restart',
   healthRun: 'health:run',
   advisorHistory: 'advisor:history',
   advisorDelete: 'advisor:delete',

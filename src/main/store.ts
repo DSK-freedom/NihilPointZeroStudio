@@ -45,6 +45,8 @@ interface PersistedSettings {
   /** Open the studio when Windows starts. Absent means "never chosen" and defaults to
    * on; see getStartWithWindows for why the default is not stored eagerly. */
   startWithWindows?: boolean
+  /** Last time the single-disk backup reminder was shown. */
+  lastBackupNudgeAt?: string
 }
 
 const DEFAULT_SETTINGS: PersistedSettings = {
@@ -189,6 +191,18 @@ export function getSettings(): ProviderSettings {
 export function getSecondBackupDir(): string | null {
   const v = readSettings().secondBackupDir
   return v && v.trim() ? v : null
+}
+
+/** When the "your work is on one disk" reminder was last shown. See backupNudge.ts. */
+export function getLastBackupNudgeAt(): string | null {
+  const v = readSettings().lastBackupNudgeAt
+  return typeof v === 'string' && v ? v : null
+}
+
+export function setLastBackupNudgeAt(iso: string): void {
+  const s = readSettings()
+  s.lastBackupNudgeAt = iso
+  writeSettings(s)
 }
 
 export function setSecondBackupDir(dir: string): void {

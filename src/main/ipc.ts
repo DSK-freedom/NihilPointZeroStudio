@@ -45,8 +45,9 @@ import { importPhoneProject, importPhoneProjectJson } from './project/import'
 import { closeTeleprompter, openTeleprompter, setTeleprompterProtection, teleprompterState } from './teleprompter/window'
 import { APP_GUIDE } from './appGuide'
 import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
-import { runSelfUpdate, type SelfUpdateDeps } from './selfUpdate'
+import { fetchLatestRelease, runSelfUpdate, type SelfUpdateDeps } from './selfUpdate'
 import { applyOpenAtLogin } from './autoStart'
+import { describeUpdateStatus } from './updateStatus'
 
 /**
  * The real-world wiring for a self-update: where to download, how to read free space,
@@ -834,6 +835,20 @@ export function registerIpcHandlers(): void {
     const applied = applyOpenAtLogin(saved, app)
     logActivity('user', saved ? 'Studio will open when Windows starts' : 'Studio will not open when Windows starts')
     return { on: saved, applied }
+  })
+
+  /**
+   * Reads the download page NOW and says where this app stands.
+   *
+   * A live fetch rather than the cached startup result, because the question being asked
+   * is "is it working?" and answering that from a value read minutes ago would not settle
+   * it. The published tag comes out of the release notes, which is the same line the
+   * startup check reads, so the two can never disagree.
+   */
+  ipcMain.handle(IPC.updateStatus, async () => {
+    const rel = await fetchLatestRelease()
+    const published = rel.ok ? (/Build (v[^\n*]+)/.exec(rel.body)?.[1]?.trim() ?? null) : null
+    return { ...describeUpdateStatus(__BUILD_TAG__, published), checkedAt: new Date().toISOString() }
   })
 
   ipcMain.handle(IPC.updateInstall, async (e) =>

@@ -1,6 +1,8 @@
 ==============================  NIHILPOINTZERO — 1-PAGE CHEAT SHEET  ==============================
 (Full manual: NIHILPOINTZERO-GUIDE.txt · Start here: HOW-TO-USE.txt · What's real/free/online: MEGA-DIAGNOSTIC-REPORT.md)
 
+AM I CURRENT? ..... Settings -> Version box at the top. Says up to date / newer available /
+                    could not check, and shows both version stamps. "Check now" re-checks.
 UPDATES ........... nothing to do. The studio opens when Windows starts and installs
                     anything new right then, before you sit down. Never during a render,
                     and never when YOU opened the app yourself. Off switch: Settings ->

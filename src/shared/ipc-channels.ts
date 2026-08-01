@@ -192,6 +192,8 @@ export const IPC = {
   sceneGenerateFromPhoto: 'scene:generate-from-photo',
   sceneProgress: 'scene:progress',
   sceneSaveImage: 'scene:save-image',
+  // Watch ONE scene before committing to the whole render.
+  scenePreview: 'scene:preview',
   sceneSaveAllImages: 'scene:save-all-images',
   videoMakeShorts: 'video:make-shorts',
   videoPostMeta: 'video:post-meta',

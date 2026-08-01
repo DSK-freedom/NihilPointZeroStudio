@@ -544,6 +544,16 @@ const api = {
     markSeen: (ids: string[]): Promise<import('../shared/whatsNew').WhatsNewReport> =>
       ipcRenderer.invoke(IPC.whatsNewMarkSeen, ids)
   },
+  // Watch ONE scene before committing to the whole render. Returns a PATH — the page turns
+  // it into a playable link, which is what makes it work on the phone too.
+  scenePreview: (
+    imagePath: string,
+    seconds: number,
+    motion: string,
+    aspect?: string,
+    template?: string
+  ): Promise<{ ok: true; path: string; seconds: number } | { ok: false; error: string }> =>
+    ipcRenderer.invoke(IPC.scenePreview, imagePath, seconds, motion, aspect, template),
   // The render queue: line up an evening's work and walk away. Written to disk, so it
   // survives the app closing, and one failure costs exactly one item.
   queue: {

@@ -79,6 +79,14 @@ export default function SceneStudioPage(): React.JSX.Element {
   // deleting a scene, or rewriting a prompt you liked, was final for the session — and it
   // is the surface where a scene can represent several minutes of generation.
   const sceneHistory = useHistory(scenes, setScenes)
+  // Watch ONE scene before committing to the whole render. A still cannot show whether the
+  // camera move drifts the subject out of frame, or whether the grade suits this picture.
+  const [previewingIndex, setPreviewingIndex] = useState<number | null>(null)
+  // Which scene the CURRENT preview belongs to. Separate from previewingIndex, which only
+  // means "busy" — the player has to stay visible after the render finishes, and it must
+  // appear under the right scene rather than under whichever one was last touched.
+  const [previewedIndex, setPreviewedIndex] = useState<number | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   // Persist the generated scenes too — NOT just the script. The images are files on disk,
   // so a restored scene shows its picture again; a scene that was mid-generation when you
   // left comes back as ready (idle) rather than stuck "generating". Without this, all your
@@ -308,6 +316,39 @@ export default function SceneStudioPage(): React.JSX.Element {
       setBuilding(false)
       setStage(null)
       setBuildPreview(null)
+    }
+  }
+
+  // The same four moves the render cycles through, in the same order, so the preview shows
+  // the move this scene will really get. Named here rather than imported because they live
+  // in src/main and the renderer cannot reach into that — the main process validates the
+  // name it receives and falls back to zoom-in, so a drift here cannot break a preview.
+  const PREVIEW_MOTIONS = ['zoom-in', 'pan-right', 'zoom-out', 'pan-left'] as const
+
+  /** Renders this one scene, exactly as the final video will treat it, and plays it. */
+  async function handleScenePreview(scene: Scene): Promise<void> {
+    if (!scene.img) return
+    setPreviewingIndex(scene.index)
+    setPreviewUrl(null)
+    setPreviewedIndex(null)
+    try {
+      const imagePath = plainPath(scene.img)
+      const res = await window.api.scenePreview(
+        imagePath,
+        scene.seconds ?? 4,
+        PREVIEW_MOTIONS[scene.index % PREVIEW_MOTIONS.length],
+        aspect,
+        template
+      )
+      // fileUrl() here in the page, not in main — that is what makes it play on the phone.
+      if (res.ok) {
+        setPreviewUrl(`${fileUrl(res.path)}?t=${Date.now()}`)
+        setPreviewedIndex(scene.index)
+      } else toast(res.error, 'error')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Could not make the preview', 'error')
+    } finally {
+      setPreviewingIndex(null)
     }
   }
 
@@ -578,8 +619,43 @@ export default function SceneStudioPage(): React.JSX.Element {
                       ⬇ Save
                     </button>
                   )}
+                  {/* Watch just this one, with its real camera move and grade, instead of
+                      rendering the whole video to check six seconds. */}
+                  {s.img && s.status === 'done' && (
+                    <button
+                      onClick={() => void handleScenePreview(s)}
+                      disabled={previewingIndex !== null}
+                      title="Renders just this scene with the camera move and look the final video will use — a few seconds"
+                      className="rounded border border-gold-500/40 px-2 py-1 text-[11px] text-gold-400 hover:bg-gold-500/10 disabled:opacity-40"
+                    >
+                      {previewingIndex === s.index ? 'Making it…' : '▶ Watch this scene'}
+                    </button>
+                  )}
                   <MicButton onText={(t) => patchScene(s.index, { prompt: appendDictation(s.prompt, t) })} />
                 </div>
+                {/* Only under the scene it belongs to, so there is never any doubt about
+                    which one you are looking at. */}
+                {previewUrl && previewedIndex === s.index && (
+                  <div className="mt-2 rounded border border-gold-500/30 bg-ink-950 p-2">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-[11px] text-gold-400">Scene {s.index + 1}, as the video will show it</span>
+                      <button
+                        onClick={() => {
+                          setPreviewUrl(null)
+                          setPreviewedIndex(null)
+                        }}
+                        className="text-[11px] text-ink-500 hover:text-ink-300"
+                      >
+                        close
+                      </button>
+                    </div>
+                    <video src={previewUrl} controls autoPlay loop className="w-full rounded" />
+                    <div className="mt-1 text-[10px] text-ink-600">
+                      No sound — the narration is the same either way. This is here to show the camera move and the
+                      look on this particular picture.
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

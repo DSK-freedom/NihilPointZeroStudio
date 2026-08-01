@@ -51,6 +51,14 @@ import { mineQuestions, summarise as summariseQuestions } from '../shared/commen
 import { seriesReport } from '../shared/series'
 import { gapReport, searchQueries } from '../shared/competitorGap'
 import { checkCopyright } from '../shared/copyrightCheck'
+import {
+  cancel as cancelQueued,
+  clearFinished as clearFinishedQueued,
+  current as currentQueued,
+  reorder as reorderQueued,
+  retry as retryQueued
+} from '../shared/renderQueue'
+import { runQueue } from './renderQueueRunner'
 import { searchYouTubeSignals } from './data/youtube'
 import { fetchComments, fetchMyChannelVideos } from './data/youtube'
 import { buildCutArgs, planSilenceCut } from './video/silence'
@@ -150,6 +158,8 @@ import {
   getYouTubeChannelId,
   getLastHealth,
   getSeenChangeIds,
+  listRenderQueue,
+  saveRenderQueue,
   isPurgeBackupsOnDelete,
   markChangesSeen,
   setLastHealth,
@@ -880,6 +890,81 @@ export function registerIpcHandlers(): void {
     return { scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
   })
 
+  // THE RENDER QUEUE. Batch already worked through a list, but it lived only in memory, so
+  // closing the app lost everything not yet built — and one failure at item three lost items
+  // four to ten, after the app had worked perfectly for two hours. This is written to disk
+  // after every change, can be added to while it runs, and a failure costs exactly one item.
+  const broadcastQueue = (items: import('../shared/renderQueue').QueueItem[]): void => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send(IPC.queueChanged, items)
+    }
+  }
+
+  /** Starts the runner if it is not already going. Safe to call after every add. */
+  const pumpQueue = (): void => {
+    void runQueue({
+      build: async (item, onProgress) => {
+        const job = await performVideoBuild(item.request as VideoBuildRequest, onProgress)
+        return { videoId: job.id }
+      },
+      onChange: broadcastQueue,
+      onProgress: (item, stage) => {
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+            win.webContents.send(IPC.videoProgress, `${item.title}: ${stage}`)
+          }
+        }
+      }
+    })
+  }
+
+  ipcMain.handle(IPC.queueList, () => listRenderQueue())
+
+  ipcMain.handle(IPC.queueAdd, (_e, req: VideoBuildRequest) => {
+    const items = saveRenderQueue([
+      ...listRenderQueue(),
+      {
+        id: randomUUID(),
+        title: req?.title || 'Untitled video',
+        state: 'waiting' as const,
+        addedAt: new Date().toISOString(),
+        request: req
+      }
+    ])
+    logActivity('user', 'Added a video to the render queue', req?.title)
+    broadcastQueue(items)
+    pumpQueue()
+    return items
+  })
+
+  ipcMain.handle(IPC.queueCancel, (_e, id: string) => {
+    const items = saveRenderQueue(cancelQueued(listRenderQueue(), id))
+    // Cancelling the one RENDERING has to stop the actual ffmpeg too — the queue module
+    // records intent, it does not kill processes.
+    if (currentQueued(listRenderQueue()) === null) cancelActiveFfmpeg()
+    broadcastQueue(items)
+    return items
+  })
+
+  ipcMain.handle(IPC.queueRetry, (_e, id: string) => {
+    const items = saveRenderQueue(retryQueued(listRenderQueue(), id))
+    broadcastQueue(items)
+    pumpQueue()
+    return items
+  })
+
+  ipcMain.handle(IPC.queueReorder, (_e, id: string, direction: number) => {
+    const items = saveRenderQueue(reorderQueued(listRenderQueue(), id, direction < 0 ? -1 : 1))
+    broadcastQueue(items)
+    return items
+  })
+
+  ipcMain.handle(IPC.queueClearFinished, () => {
+    const items = saveRenderQueue(clearFinishedQueued(listRenderQueue()))
+    broadcastQueue(items)
+    return items
+  })
+
   // THE CREDIT CHECK BEFORE PUBLISHING. Not a copyright detector — only YouTube's Content
   // ID can answer that, and pretending otherwise would be worse than silence because the
   // user would trust it. This checks the PAPERWORK for what the app fetched itself: a
@@ -1009,7 +1094,20 @@ export function registerIpcHandlers(): void {
     }
   )
 
-  ipcMain.handle(IPC.videoBuild, async (e, req: VideoBuildRequest) => {
+  /**
+   * Builds one video. Extracted from the IPC handler so the RENDER QUEUE calls the same code
+   * path rather than a near-copy of it — the disk guard, the Activity Log bookkeeping and
+   * the optional subtitles all have to behave identically whether a build was started by a
+   * button or by the queue, and two copies of that would drift apart.
+   *
+   * The callbacks are exactly what used to be `e.sender.send(...)`. Nothing else changed.
+   */
+  async function performVideoBuild(
+    req: VideoBuildRequest,
+    onProgress: (stage: string) => void,
+    onPreview?: (pngPath: string) => void,
+    onExtras?: (extras: { videoId: string; srtPath?: string; chapters: string }) => void
+  ): Promise<VideoJob> {
     const id = randomUUID()
     const slug = (req.title || 'video').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 50) || 'video'
     const outPath = join(videosDir(), `${slug}-${id.slice(0, 8)}.mp4`)
@@ -1021,8 +1119,8 @@ export function registerIpcHandlers(): void {
       logActivity('ai', 'Video build refused — the disk is almost full', `Only ${free}MB free where videos are saved. Free some space (a 1080p video needs roughly 100-500MB while rendering) and try again.`)
       throw new Error(`This disk is almost full (${free}MB free) — a video can't be rendered safely. Free some space and try again.`)
     }
-    if (free !== null && free < 2048 && !e.sender.isDestroyed()) {
-      e.sender.send(IPC.videoProgress, `⚠ Low disk space (${Math.round(free / 102.4) / 10}GB free) — a long or 4K video may not fit.`)
+    if (free !== null && free < 2048) {
+      onProgress(`⚠ Low disk space (${Math.round(free / 102.4) / 10}GB free) — a long or 4K video may not fit.`)
     }
     // Bookend the build in the Activity Log. Builds run here in the MAIN process, so they
     // keep going when the user switches tabs — these entries (start / failed / built) are
@@ -1034,7 +1132,7 @@ export function registerIpcHandlers(): void {
         req.body,
         outPath,
         (stage) => {
-          if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, stage)
+          onProgress(stage)
         },
         {
           resolution: req.resolution,
@@ -1053,7 +1151,7 @@ export function registerIpcHandlers(): void {
           // Read the key server-side (never sent from the renderer).
           stockApiKey: req.useStock ? getStockConfig().pixabayKey : undefined,
           onPreview: (png) => {
-            if (!e.sender.isDestroyed()) e.sender.send(IPC.videoPreview, png)
+            onPreview?.(png)
           },
           narrationOutPath
         }
@@ -1084,7 +1182,7 @@ export function registerIpcHandlers(): void {
     // ever been forced, and this keeps it that way while making the choice visible.
     if (req.captionsAndChapters) {
       try {
-        if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, 'Writing subtitles and chapters…')
+        onProgress('Writing subtitles and chapters…')
         const durationSec = await ffprobeDuration(outPath)
         const chapters = formatChapters(buildChapters(req.body, durationSec))
         const segments = await transcribeFileToSegments(existsSync(narrationOutPath) ? narrationOutPath : outPath)
@@ -1093,7 +1191,7 @@ export function registerIpcHandlers(): void {
           srtPath = `${outPath.replace(/\.mp4$/i, '')}.srt`
           writeFileSync(srtPath, buildSrt(segments), 'utf-8')
         }
-        if (!e.sender.isDestroyed()) e.sender.send(IPC.videoExtras, { videoId: id, srtPath, chapters })
+        onExtras?.({ videoId: id, srtPath, chapters })
         logActivity('ai', 'Wrote subtitles and chapter markers', req.title)
       } catch (err) {
         // Extras are a bonus — never let them turn a finished video into a failure.
@@ -1101,7 +1199,22 @@ export function registerIpcHandlers(): void {
       }
     }
     return job
-  })
+  }
+
+  ipcMain.handle(IPC.videoBuild, (e, req: VideoBuildRequest) =>
+    performVideoBuild(
+      req,
+      (stage) => {
+        if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, stage)
+      },
+      (png) => {
+        if (!e.sender.isDestroyed()) e.sender.send(IPC.videoPreview, png)
+      },
+      (extras) => {
+        if (!e.sender.isDestroyed()) e.sender.send(IPC.videoExtras, extras)
+      }
+    )
+  )
 
   // Opens a file picker for a background-music track. Returns the absolute path
   // (or null if canceled). The app never fetches audio — you supply your own file,

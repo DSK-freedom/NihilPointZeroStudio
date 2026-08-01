@@ -203,6 +203,35 @@ export function setLastHealth(failed: string[]): void {
   writeSettings(s)
 }
 
+// ───────────────────────── the render queue ─────────────────────────
+//
+// Its own file rather than a field in settings: it is a LIST that changes constantly
+// while a render runs, and writing the whole settings object on every progress step
+// would risk the settings file for the sake of the queue.
+
+function renderQueuePath(): string {
+  return join(dataDir(), 'render-queue.json')
+}
+
+/** The queue as last written. Never throws — a corrupt file reads as an empty queue
+ *  rather than stopping the app from starting. */
+export function listRenderQueue(): import('../shared/types').QueueItem[] {
+  try {
+    const file = renderQueuePath()
+    if (!existsSync(file)) return []
+    const parsed = JSON.parse(readFileSync(file, 'utf-8'))
+    return Array.isArray(parsed) ? parsed.filter((x) => x && typeof x.id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+export function saveRenderQueue(items: import('../shared/types').QueueItem[]): import('../shared/types').QueueItem[] {
+  const clean = (items ?? []).filter((x) => x && typeof x.id === 'string')
+  atomicWrite(renderQueuePath(), JSON.stringify(clean, null, 2))
+  return clean
+}
+
 /** Which "What changed" entries have been read. Undefined (never set) means first run. */
 export function getSeenChangeIds(): string[] | null {
   const s = readSettings()

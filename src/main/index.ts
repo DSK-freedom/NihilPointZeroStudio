@@ -10,6 +10,7 @@ import { registerIpcHandlers } from './ipc'
 import { captureHandlers } from './remote/registry'
 import { attachRemoteEvents } from './remote/events'
 import { installCrashReporting } from './crashReport'
+import { recoverQueueOnStartup } from './renderQueueRunner'
 import { logAiError } from './llm/errorLog'
 import { dialog } from 'electron'
 
@@ -130,6 +131,17 @@ if (!gotLock) {
       app.exit(1)
     }
   })
+
+  // Pick up anything the last session left half-rendered. Before the window exists, so an
+  // interrupted item is already back in the queue by the time anything can look at it.
+  try {
+    const { recovered } = recoverQueueOnStartup()
+    if (recovered) {
+      logActivity('ai', `Put ${recovered} interrupted render${recovered === 1 ? '' : 's'} back in the queue`)
+    }
+  } catch {
+    // A queue that cannot be read must never stop the app from starting.
+  }
 
   app.whenReady().then(() => {
     // Registers exactly as before, and additionally remembers each handler so the same

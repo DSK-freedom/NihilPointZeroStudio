@@ -77,6 +77,14 @@ export const IPC = {
   channelGaps: 'channel:gaps',
   // Credit check before publishing (NOT a copyright detector — see copyrightCheck.ts).
   copyrightCheck: 'copyright:check',
+  // The render queue: line up an evening's work and walk away. Survives a restart.
+  queueList: 'queue:list',
+  queueAdd: 'queue:add',
+  queueCancel: 'queue:cancel',
+  queueRetry: 'queue:retry',
+  queueReorder: 'queue:reorder',
+  queueClearFinished: 'queue:clear-finished',
+  queueChanged: 'queue:changed',
   // Hear the script read out at speed, to proof it by ear before recording.
   readAloudPlan: 'read-aloud:plan',
   readAloudSpeak: 'read-aloud:speak',

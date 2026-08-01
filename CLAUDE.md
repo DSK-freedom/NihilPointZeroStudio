@@ -152,6 +152,48 @@ Four things make this true. All four are mandatory.
 The test of all of this: the user types **"continue"** and nothing else. If that is not
 enough to pick the work up exactly where it stopped, this rule was not followed.
 
+## PAID FEATURES SLEEP UNTIL THE USER WAKES THEM (hard rule, 2026-08-02)
+
+The user's instruction, after finding a revoked Anthropic key being contacted on every
+health check and reported as a fault: *"the ones that are asking for payments, just make
+them go to sleep for now. Don't delete them. Let the option stay. But unless and until I
+specifically go myself and activate them... write this somewhere so that in future any
+other chat model doesn't go and try and activate them."*
+
+**Do not remove any paid integration.** Anthropic, OpenAI, paid stock footage, paid
+anything — the code, the settings field and the UI all stay exactly where they are. Asleep
+is not deleted.
+
+Asleep means, concretely:
+
+1. **Never contacted unless the user has selected that provider.** No health pings, no
+   "just checking the key is valid", no warm-up call. `checkPaidKey` returns early when the
+   provider is not the active one, and anything new must do the same.
+2. **Never the default**, and never auto-selected as a fallback, however convenient.
+3. **Never reported as a problem.** A dormant paid provider is a note ("saved but NOT in
+   use"), never a red ✗ and never part of a problem count. A red mark next to a paid
+   service reads as *your app is broken, go and spend money*, which is the opposite of the
+   truth.
+4. **Never recommended as the fix for anything.** If a free path is failing, the answer is
+   to fix the free path. "Add a Claude/OpenAI key" is not a diagnosis, and offering it is
+   how this user was told, wrongly, that his output quality was capped by a key he had
+   deliberately never used.
+
+**The free and local options are the default and stay active:** local Ollama as the brain,
+the keyless hosted service as a fallback while it works, the offline Piper voices, and the
+bundled Whisper. No future session may change that default. The user does not open
+Settings and should never need to.
+
+Only an explicit instruction from the user in their own words wakes a paid feature. Not an
+inference, not a convenience, not "it would be better this way".
+
+## OTHER PROJECTS IN THIS ACCOUNT ARE NOT YOURS (2026-08-02)
+
+The user runs more than one project with Claude, in parallel. Work will appear in this
+account — repositories, branches, commits — that another session is responsible for.
+**Leave it alone.** Do not tidy it, review it, merge it, or "fix" it. If something looks
+broken there, say so in one sentence and move on.
+
 ## Architecture
 
 electron-vite + React 19 + TypeScript + Tailwind. Three processes:

@@ -8,7 +8,7 @@ work, not afterwards: before starting anything long, and again when it lands. It
 the repo because the container, the assistant's memory and the harness task list all die
 with the session — only what is pushed to GitHub survives.
 
-Last updated: **2026-08-01, late evening** (after PR #13).
+Last updated: **2026-08-01, night** (after PR #17).
 
 ---
 
@@ -91,6 +91,52 @@ temporary names and renaming), but absolutely worth knowing.
   Once only; the service worker keeps it current after that. The published Pages site
   cannot be fetched from this sandbox (proxy 403 on `github.io`), so the GitHub API is the
   only available evidence — say which is which rather than claiming the page was seen.
+
+## Corrections that cost real time today — do not repeat them
+
+- **Anthropic is PAID.** Never recommend adding or replacing that key as a fix. The user's
+  standing rule: paid features stay inert until he deliberately selects one. A saved key
+  for a non-active provider is now not even contacted (`checkPaidKey` returns early).
+  I also misread its red health line as a live fault and told him his output quality was
+  capped by it. It was not — his active brain is `free`, by choice, and always was.
+- **Ollama is local and has no rate limit.** It is slow on a CPU-only machine, not
+  throttled. The 429s in his log are the free IMAGE service, which is hosted and unrelated.
+- **He asked for identity rotation to evade free-tier limits. That was declined**, and the
+  reasoning should hold: it means impersonating many users to take more than the service
+  offers. The legitimate substitute is P4 below — honour `Retry-After`, back off with
+  jitter, pace requests, cache, and use the free KEYED tiers (AI Horde, Pollinations).
+
+## THE TELEPROMPTER INCIDENT — why the ship guard exists
+
+Committed 04:13, shipped 04:30, and the installed app had **18 tabs where the code had 20**
+(no Teleprompter, no Your Channel). `c81405e` is not an ancestor of the shipped `3354ec9`:
+the ship ran from a tree that did not contain the work. Nothing failed — the tests passed
+because they tested the tree being built, the exe was valid, the badge was honest. Only the
+user noticing found it, days later.
+
+`scripts/ship.ps1` now refuses to build when `git rev-list --count HEAD..origin/main` is
+non-zero. If that guard is ever removed, this class of bug comes straight back.
+
+## Approved by the user, NOT yet built
+
+1. **P4 — image 429 backoff.** Honour `Retry-After`, exponential backoff with jitter,
+   pacing, caching. Replaces "5 fast retries then give up" (45 failures in his log).
+2. **P3 — in-app YouTube API key walkthrough.** Free, 10k units/day. Without it the whole
+   Your Channel tab and every evidence/trend feature is inert.
+3. **P5 — nudge for a second backup home.** His is unset and his own restore log shows
+   8 files had gone missing.
+
+## Autopilot — spine built, rest outstanding
+
+`src/shared/autopilot.ts` (planner + approval gate) is done and merged. Still to do:
+voice catalogue (only 4 Piper voices exist: 2 en_US, 2 ur_PK — he wants 20-30 incl. British
+and kids), per-platform SEO metadata, wiring the planner to the render queue, and
+evidence-backed title scoring from `channelLearn`.
+
+**Automatic PUBLIC posting is gated by the platforms, not by our code.** Google locks
+API-uploaded videos to private until the app passes verification; TikTok's Content Posting
+API is the same until audit. There is no upload code yet at all — `youtube/index.ts` only
+opens the browser upload page.
 
 ## Offered and awaiting a decision — do not start these unsolicited
 

@@ -13,6 +13,7 @@ function freeDiskMB(dir: string): number | null {
   }
 }
 import { tmpdir } from 'os'
+import { spawn } from 'child_process'
 import { basename, dirname, extname, join, sep } from 'path'
 import { backupsRoot, listOrphans, purgeFromBackups, restoreMissing, runBackup } from './autoBackup'
 import { IPC } from '../shared/ipc-channels'
@@ -44,6 +45,18 @@ import { importPhoneProject, importPhoneProjectJson } from './project/import'
 import { closeTeleprompter, openTeleprompter, setTeleprompterProtection, teleprompterState } from './teleprompter/window'
 import { APP_GUIDE } from './appGuide'
 import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
+import {
+  alreadyDownloaded,
+  downloadInstaller,
+  expectedSha256,
+  fetchLatestRelease,
+  freshUpdateDir,
+  INSTALLER_ASSET,
+  NEEDED_FREE_MB,
+  pickInstaller,
+  updateDir,
+  verifyDownload
+} from './selfUpdate'
 import { whatsNewReport } from '../shared/whatsNew'
 import { DEFAULT_SPEED, planReadAloud, type ReadSpeed } from '../shared/readAloud'
 import { learnTitlePatterns, publishTimingReport, scoreTitle } from '../shared/channelLearning'
@@ -784,6 +797,76 @@ export function registerIpcHandlers(): void {
     }
     void shell.openExternal('https://github.com/DSKJazz/NihilPointZeroStudio/releases/latest')
     return { ok: true, opened: 'download-page' }
+  })
+
+  /**
+   * THE WHOLE UPDATE, done by the app: fetch the installer, check it is genuinely the
+   * file GitHub described, run it, quit.
+   *
+   * This exists because the honest description of the old best case was "we opened a web
+   * page for you" — after which the user still had to beat the browser's warning about
+   * .exe downloads, find the file in Downloads, and double-click it. That is not the
+   * app's job to delegate. The two older routes are still tried first / kept as the
+   * fallback, so nothing was taken away.
+   */
+  ipcMain.handle(IPC.updateInstall, async (e) => {
+    const say = (pct: number, stage: string): void => {
+      if (!e.sender.isDestroyed()) e.sender.send(IPC.updateInstallProgress, { pct, stage })
+    }
+    try {
+      say(0, 'Looking up the newest version…')
+      const rel = await fetchLatestRelease()
+      if (!rel.ok) return { ok: false as const, error: rel.error }
+
+      const picked = pickInstaller(rel.assets)
+      if ('error' in picked) return { ok: false as const, error: picked.error }
+      const asset = picked.asset
+      const size = asset.size!
+
+      const dir = updateDir(app.getPath('temp'))
+      const dest = join(dir, INSTALLER_ASSET)
+
+      // Re-use a complete previous download: a retry after a failed launch should not
+      // cost another 210 MB on a connection that may be metered.
+      if (!alreadyDownloaded(dest, size)) {
+        const free = freeDiskMB(app.getPath('temp'))
+        if (free !== null && free < NEEDED_FREE_MB) {
+          return {
+            ok: false as const,
+            error: `There is not enough free space to download the update (${free} MB free, about ${NEEDED_FREE_MB} MB needed).`
+          }
+        }
+        freshUpdateDir(app.getPath('temp'))
+        say(0, 'Downloading the update…')
+        const got = await downloadInstaller(asset.browser_download_url!, dest, (pct) =>
+          say(pct, 'Downloading the update…')
+        )
+        const verdict = verifyDownload(got, { size, sha256: expectedSha256(asset.digest) })
+        if (!verdict.ok) {
+          try {
+            rmSync(dest, { force: true })
+          } catch {
+            // best effort — a file we refuse to run is harmless where it is
+          }
+          return { ok: false as const, error: verdict.error }
+        }
+      }
+
+      say(100, 'Starting the installer…')
+      logActivity('ai', 'Downloaded the update and started the installer')
+      // Detached + unref so the installer outlives this process; it needs the app closed
+      // to replace its files, so the quit below is part of the update, not a side effect.
+      const child = spawn(dest, [], { detached: true, stdio: 'ignore' })
+      child.unref()
+      // A beat so the spawn is definitely away before the event loop stops.
+      setTimeout(() => app.quit(), 1200)
+      return { ok: true as const }
+    } catch (err) {
+      return {
+        ok: false as const,
+        error: err instanceof Error ? err.message : 'The update could not be downloaded.'
+      }
+    }
   })
 
   // "What changed": the new things in the build that is ACTUALLY RUNNING. The build tag

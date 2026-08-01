@@ -9,6 +9,42 @@ The running app shows this in the sidebar (under "OS") as a gold badge. The badg
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
+## New in this build (2026-08-01, evening — updating is no longer your job)
+
+### ⬆ The app installs its own updates
+The honest description of the old "Get the update" button, in its most common case, was
+*"we opened a web page for you"*. After that you still had to get past the browser's
+warning about downloading an .exe, find the file in your Downloads folder, and
+double-click it. That is four things, each of them a place to get stuck — and none of
+them a job a person should be doing.
+
+Now the button does the work: it downloads the installer (with a progress bar), checks
+the file against the checksum GitHub itself published, runs it, and closes the app so the
+installer can replace it. Windows asks once whether to allow it; after that the app
+reopens updated.
+
+Details that matter:
+- **The download is verified, not just finished.** Size *and* sha256 are both checked
+  against GitHub's own values, and a file that fails either is deleted rather than run.
+  An installer is the one download where "probably fine" is not good enough.
+- **An interrupted download is not wasted.** Press the button again and it re-uses what
+  it already has.
+- **It refuses to start without room.** Under ~1.2 GB free, it says so in plain words
+  instead of half-downloading.
+- **Nothing was removed.** The instant restart (when a ship already put the new code on
+  disk) is still tried first because it is faster, and revealing the setup file is still
+  the fallback — now with the reason the download failed printed in the banner, so it
+  can never read as a shrug.
+- **Not available from the phone.** Running a Windows installer and quitting the app
+  would kill the very connection the phone is using, so that channel is refused with an
+  explanation rather than half-working.
+
+### 📱 The phone app publishes itself now
+The phone app was finished and correctly uploaded, but GitHub was storing the files
+without serving them, because publishing was switched off — and that switch is buried in
+settings pages. It is now turned on by the workflow itself, so a push publishes the phone
+app with nobody hunting for a toggle.
+
 ## New in this build (2026-08-01, afternoon — twenty-seven upgrades, and an honest correction)
 
 ### The correction first

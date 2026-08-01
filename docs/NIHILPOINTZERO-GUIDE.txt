@@ -163,9 +163,17 @@ Copy the folder to another PC and:
      but cannot press for you — and like everything AI in this app, it can never delete.
      - → TAKE ME THERE: when an answer mentions a tab, chips appear under it ("→ Open
        Scene Studio") — one click jumps you straight to that tab.
-  ⬆ UPDATE NOTICES: on startup the app quietly checks if a newer version was published.
-     If yes, a small blue notice appears with a "Show me the file" button that opens the
-     studio folder with NIHILPOINTZERO-OS-setup.exe selected — one double-click updates.
+  ⬆ THE APP UPDATES ITSELF: on startup it quietly checks whether a newer version was
+     published. If yes, a small blue notice appears at the bottom of the window. Press
+     "Get the update" and the app does the whole job — downloads the update (you see a
+     progress bar), checks it really is the file GitHub published, starts it, and closes
+     itself so the update can finish. Windows asks once whether to allow it; say yes,
+     and the app reopens updated.
+     You never open a web page, a Downloads folder or File Explorer. If the download is
+     interrupted, press the button again — it keeps the part it already has.
+     Behind that one button are three routes, best first: an instant restart when the
+     new code is already on disk, then the download-and-install above, and only if both
+     fail does it fall back to showing you the setup file and saying so in words.
      Offline? The check silently skips; it never blocks or nags.
   📌 THE FOLDER IS NOW PINNED: the app decides where your work lives ONCE, writes it
      down, and reads that from then on. It used to re-decide on every launch, which is

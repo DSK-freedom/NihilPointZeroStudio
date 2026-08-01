@@ -62,6 +62,10 @@ export const IPC = {
   updateRevealSetup: 'update:reveal-setup',
   // Restart onto code the ship pipeline already swapped in place (installed app only).
   updateRestart: 'update:restart',
+  // Download the installer and run it, with no browser and no file manager. The last
+  // manual step the user had; see main/selfUpdate.ts.
+  updateInstall: 'update:install',
+  updateInstallProgress: 'update:install-progress',
   // "What changed" — the new things in the build that is actually running.
   whatsNewGet: 'whats-new:get',
   whatsNewMarkSeen: 'whats-new:mark-seen',

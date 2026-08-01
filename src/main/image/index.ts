@@ -9,7 +9,6 @@
  */
 import { writeFileSync } from 'fs'
 import { logAiError } from '../llm/errorLog'
-import { styleById } from './styles'
 
 const BASE = 'https://image.pollinations.ai/prompt/'
 
@@ -120,14 +119,8 @@ export async function generateImage(prompt: string, outPath: string, opts: Image
 }
 
 /**
- * Builds a clean image prompt for a scene: the visual style + the scene text + the
- * video's topic, steering away from on-screen text (the renderer adds titles itself).
+ * Re-exported from ./styles, which has no imports and can therefore be bundled by the
+ * phone app. Keeping the name exported here means every existing caller
+ * (`import { sceneImagePrompt } from '../image'`) is completely unaffected.
  */
-export function sceneImagePrompt(style: string, scene: string, title: string): string {
-  // LEAD with the user's own visual concept so the image matches their bracketed direction
-  // (its subject, mood AND colours) instead of being overridden by a fixed dark "dramatic"
-  // style string — that override was why images looked mismatched and washed-out/dark.
-  const styleText = styleById(style).prompt
-  const subject = [scene, title].filter(Boolean).join('. ')
-  return `${subject}. Style: ${styleText}. Accurate rich colour, high detail, professional, no text, no watermark, no letters, no captions, no subtitles.`
-}
+export { sceneImagePrompt } from './styles'

@@ -8,6 +8,7 @@ import MicButton, { appendDictation } from '../components/MicButton'
 import { useProducerTarget } from '../store/ProducerContext'
 import { MOODS, SFX_KINDS, VIDEO_STYLES } from '../../../shared/types'
 import type { BeatSound, ShotSubjectKind, StoryboardBeat, StoryboardDoc, VideoStyle } from '../../../shared/types'
+import type { ImportedProject } from '../../../shared/project'
 
 /**
  * Storyboard Director — write your film shot by shot ("0–15s: I arrive in a Ferrari,
@@ -54,6 +55,9 @@ export default function StoryboardPage(): React.JSX.Element {
   const [progress, setProgress] = useState<string | null>(null)
   const [renderedTimeline, setRenderedTimeline] = useState<unknown | null>(null)
   const [renderedPath, setRenderedPath] = useState<string | null>(null)
+  // Scenes a phone plan marked "my photo goes here" without attaching one. Shown as a
+  // checklist after an import so nothing silently renders with a missing subject.
+  const [needMedia, setNeedMedia] = useState<ImportedProject['needMedia']>([])
 
   const unsub = useRef<(() => void) | null>(null)
   useEffect(() => {
@@ -83,6 +87,49 @@ export default function StoryboardPage(): React.JSX.Element {
     if (v.photoPath !== undefined) setPhotoPath(v.photoPath)
     if (typeof v.beautifyStrength === 'number') setBeautifyStrength(v.beautifyStrength)
   })
+
+  /**
+   * Loads a plan made in the phone app. The import happens in the main process (it
+   * writes any attached photos/recordings to disk); here we just adopt the result.
+   * The previous storyboard is not lost — the draft store keeps it in history.
+   */
+  async function importFromPhone(): Promise<void> {
+    if (beats.length > 0) {
+      const ok = await confirmDialog({
+        title: 'Replace your shots with the phone plan?',
+        message: 'This replaces the shots currently open with the ones from your phone. (Your last version stays in autosave history.)',
+        confirmLabel: 'Open the plan',
+        danger: true
+      })
+      if (!ok) return
+    }
+    setBusy('Opening your plan…')
+    try {
+      const res = await window.api.project.importPick()
+      if (res.canceled) return
+      if (!res.ok || !res.result) {
+        toast(res.error ?? 'That plan could not be opened.', 'error')
+        return
+      }
+      const p = res.result
+      setMode('auto')
+      setTitle(p.title)
+      if (p.script?.body) setBrief(p.script.body)
+      setBeats(p.storyboardBeats)
+      setStyle(p.style)
+      setResKey(p.resKey)
+      setFps(p.fps)
+      setTotalSeconds(Math.max(10, Math.min(3600, Math.round(p.seconds))))
+      if (p.photoPath) setPhotoPath(p.photoPath)
+      setNeedMedia(p.needMedia)
+      for (const w of p.warnings) toast(w, 'error')
+      toast(`${p.scenes} scenes loaded from your phone.`, 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'That plan could not be opened.', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
 
   async function previewBeautify(): Promise<void> {
     if (!photoPath) return
@@ -344,10 +391,29 @@ export default function StoryboardPage(): React.JSX.Element {
             className="mt-1 w-full rounded-md border border-ink-700 bg-ink-950 p-3 text-sm text-ink-200"
           />
         </div>
-        <button onClick={plan} disabled={!!busy} className="rounded-md bg-gold-500 hover:bg-gold-400 disabled:opacity-40 px-4 py-2 text-sm font-medium text-ink-950">
-          ✦ Direct storyboard
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={plan} disabled={!!busy} className="rounded-md bg-gold-500 hover:bg-gold-400 disabled:opacity-40 px-4 py-2 text-sm font-medium text-ink-950">
+            ✦ Direct storyboard
+          </button>
+          <button onClick={() => void importFromPhone()} disabled={!!busy} className="rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-200 hover:bg-ink-800 disabled:opacity-40">
+            📱 Open a plan from my phone
+          </button>
+        </div>
       </div>
+
+      {/* Scenes the phone marked as "my photo goes here" but had no file for. */}
+      {needMedia.length > 0 && (
+        <div className="mt-3 rounded-md border border-gold-700/50 bg-gold-950/20 p-3 text-sm text-gold-200">
+          <div className="font-medium">{needMedia.length} scene{needMedia.length === 1 ? '' : 's'} from your phone need a photo or clip.</div>
+          <ul className="mt-1 list-disc pl-5 text-xs text-gold-300/90">
+            {needMedia.slice(0, 6).map((n) => (
+              <li key={n.index}>Scene {n.index + 1} ({n.kind}) — {n.visual.slice(0, 70)}</li>
+            ))}
+            {needMedia.length > 6 && <li>…and {needMedia.length - 6} more</li>}
+          </ul>
+          <div className="mt-2 text-xs text-gold-300/80">Set your photo above, or open each shot below and choose its own file.</div>
+        </div>
+      )}
 
       {busy && <div className="mt-3 text-sm text-gold-300">{busy}{progress ? ` — ${progress}` : ''}</div>}
 

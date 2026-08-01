@@ -9,9 +9,27 @@
  */
 import type { LanguageMix, ScriptLength, ScriptStyle } from '../../src/shared/types'
 import { advisorSystem, completeStream, generateIdeas, generateScript, generateThumbnailBrief } from './ai'
-import { getKey, getProvider, listSaved, remove, save, setKey, setProvider, type PhoneProvider, type SavedItem } from './store'
+import {
+  getKey,
+  getPcLink,
+  getProvider,
+  listSaved,
+  remove,
+  save,
+  setKey,
+  setPcLink,
+  setProvider,
+  type PhoneProvider,
+  type SavedItem
+} from './store'
+import * as P from './project'
+import * as Scenes from './scenesUi'
+import { openProjectFile, pushToPc, saveToPhone, shareProject, type SendResult } from './send'
+import { onMediaPicked } from './scenesUi'
 
-type TabName = 'ideas' | 'writer' | 'advisor' | 'saved' | 'settings'
+type TabName = 'ideas' | 'writer' | 'scenes' | 'video' | 'advisor' | 'saved' | 'settings'
+
+const TABS: TabName[] = ['ideas', 'writer', 'scenes', 'video', 'advisor', 'saved', 'settings']
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
 
@@ -50,13 +68,14 @@ function setError(id: string, err: unknown): void {
 // ---------------------------------------------------------------- tabs
 
 function showTab(name: TabName): void {
-  const tabs: TabName[] = ['ideas', 'writer', 'advisor', 'saved', 'settings']
-  for (const t of tabs) {
+  for (const t of TABS) {
     $(`s-${t}`).classList.toggle('hidden', t !== name)
     const btn = document.getElementById(`t-${t}`)
     if (btn) btn.classList.toggle('on', t === name)
   }
   if (name === 'saved') renderSaved()
+  if (name === 'scenes') Scenes.renderScenes()
+  if (name === 'video') Scenes.renderVideoSettings()
   window.scrollTo(0, 0)
 }
 
@@ -225,6 +244,7 @@ function renderSettings(): void {
   const p = getProvider()
   ;($('st-provider') as HTMLSelectElement).value = p
   ;($('st-key') as HTMLInputElement).value = getKey()
+  ;($('st-pclink') as HTMLInputElement).value = getPcLink()
   $('st-keyrow').classList.toggle('hidden', p === 'free')
 }
 
@@ -232,6 +252,7 @@ function saveSettings(): void {
   const p = ($('st-provider') as HTMLSelectElement).value as PhoneProvider
   setProvider(p)
   setKey(val('st-key'))
+  setPcLink(val('st-pclink'))
   $('st-out').innerHTML =
     p === 'free'
       ? '<div class="muted">Saved. Using the free AI — nothing to pay, nothing to type in.</div>'
@@ -276,10 +297,70 @@ function toast(text: string): void {
 
 // ---------------------------------------------------------------- wiring
 
+/** Shows the outcome of a save/share/push, including anything the validator flagged. */
+function showSendResult(elId: string, r: SendResult): void {
+  const warn = r.warnings.length
+    ? `<div class="muted" style="color:#ffcf7a;margin-top:6px">${r.warnings.map(esc).join('<br />')}</div>`
+    : ''
+  $(elId).innerHTML = r.message
+    ? `<div class="${r.ok ? 'muted' : 'err'}">${esc(r.message)}</div>${warn}`
+    : warn
+}
+
+function wireScenes(): void {
+  $('sc-ai').addEventListener('click', () => void Scenes.planWithAi())
+  $('sc-offline').addEventListener('click', () => Scenes.planOffline())
+  $('sc-blank').addEventListener('click', () => Scenes.planBlank())
+  $('sc-add').addEventListener('click', () => {
+    const at = P.addBeat()
+    Scenes.renderScenes()
+    if (at >= 0) Scenes.openEditor(at)
+  })
+  $('ed-close').addEventListener('click', () => Scenes.closeEditor())
+
+  $('sc-save').addEventListener('click', () => showSendResult('sc-send-out', saveToPhone()))
+  $('sc-share').addEventListener('click', async () => showSendResult('sc-send-out', await shareProject()))
+  $('sc-push').addEventListener('click', async () => {
+    $('sc-send-out').innerHTML = '<div class="muted">Sending to your PC…</div>'
+    showSendResult('sc-send-out', await pushToPc())
+  })
+  $('sc-clear').addEventListener('click', () => {
+    if (!confirm('Start a new plan? This clears the scenes on this phone. Your PC is not affected.')) return
+    P.clearProject()
+    Scenes.clearPreviewCache()
+    Scenes.renderScenes()
+  })
+
+  $('pick-media').addEventListener('change', (e) => {
+    const input = e.target as HTMLInputElement
+    const file = input.files?.[0]
+    input.value = '' // let the same file be picked again later
+    if (file) void onMediaPicked(file)
+  })
+
+  $('st-open').addEventListener('click', () => $<HTMLInputElement>('pick-plan').click())
+  $('pick-plan').addEventListener('change', async (e) => {
+    const input = e.target as HTMLInputElement
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+    const r = await openProjectFile(file)
+    showSendResult('st-open-out', r)
+    if (r.ok) {
+      Scenes.clearPreviewCache()
+      showTab('scenes')
+    }
+  })
+
+  Scenes.wireVideoSettings()
+  Scenes.setToast(toast)
+}
+
 function wire(): void {
-  for (const t of ['ideas', 'writer', 'advisor', 'saved', 'settings'] as TabName[]) {
+  for (const t of TABS) {
     document.getElementById(`t-${t}`)?.addEventListener('click', () => showTab(t))
   }
+  wireScenes()
   $('i-go').addEventListener('click', runIdeas)
   $('w-go').addEventListener('click', runScript)
   $('w-thumb').addEventListener('click', runThumbnail)
@@ -292,8 +373,43 @@ function wire(): void {
   // One delegated listener for every generated button, so freshly rendered
   // cards work without re-binding anything.
   document.addEventListener('click', (e) => {
-    const el = (e.target as HTMLElement).closest('button')
+    const target = e.target as HTMLElement
+
+    // Scene thumbnails aren't buttons — a tap draws that scene's picture.
+    const thumb = target.closest<HTMLElement>('.thumb[data-preview]')
+    if (thumb) {
+      Scenes.loadPreview(Number(thumb.getAttribute('data-preview')))
+      return
+    }
+
+    const el = target.closest('button')
     if (!el) return
+
+    // Scene-card actions are prefixed so they can't collide with the Saved list,
+    // which uses a bare data-del carrying an id rather than an index.
+    const scAttr = ['edit', 'up', 'down', 'dup', 'del'].find((a) => el.hasAttribute(`data-sc-${a}`))
+    if (scAttr) {
+      const i = Number(el.getAttribute(`data-sc-${scAttr}`))
+      if (scAttr === 'edit') Scenes.openEditor(i)
+      else if (scAttr === 'up') {
+        P.moveBeat(i, -1)
+        Scenes.clearPreviewCache()
+        Scenes.renderScenes()
+      } else if (scAttr === 'down') {
+        P.moveBeat(i, 1)
+        Scenes.clearPreviewCache()
+        Scenes.renderScenes()
+      } else if (scAttr === 'dup') {
+        P.duplicateBeat(i)
+        Scenes.clearPreviewCache()
+        Scenes.renderScenes()
+      } else if (confirm(`Delete scene ${i + 1}? Your PC is not affected.`)) {
+        P.removeBeat(i)
+        Scenes.clearPreviewCache()
+        Scenes.renderScenes()
+      }
+      return
+    }
     const copy = el.getAttribute('data-copy')
     if (copy !== null) return void copyText(copy)
     const share = el.getAttribute('data-share')
@@ -318,8 +434,29 @@ function wire(): void {
   showTab('ideas')
 }
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire)
-else wire()
+/**
+ * A phone can kill the app at any moment — swiped away, a call comes in, the browser
+ * reclaims memory. Write the plan out the instant the page is hidden rather than
+ * trusting a debounce that may never fire.
+ */
+function wirePersistence(): void {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') void P.flushProject()
+  })
+  window.addEventListener('pagehide', () => void P.flushProject())
+}
+
+async function start(): Promise<void> {
+  wire()
+  wirePersistence()
+  // The plan lives in IndexedDB (it can hold megabytes of photos and recordings), so
+  // it arrives after the first paint. Re-render once it's here.
+  await P.loadProject()
+  if (P.hasStoryboard()) Scenes.renderScenes()
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => void start())
+else void start()
 
 // Offline shell caching. Registration failing is not fatal — the app still runs
 // online, it just won't open without a connection.

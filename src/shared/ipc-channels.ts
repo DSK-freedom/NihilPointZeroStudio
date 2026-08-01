@@ -111,6 +111,8 @@ export const IPC = {
   storyboardPlan: 'storyboard:plan',
   storyboardRender: 'storyboard:render',
   storyboardPickPhoto: 'storyboard:pick-photo',
+  projectImport: 'project:import',
+  projectImportPick: 'project:import-pick',
   photoBeautify: 'photo:beautify',
   producerEdit: 'producer:edit',
   aiEngineStatus: 'ai:engine-status',

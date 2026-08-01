@@ -14,7 +14,7 @@
  */
 import { chromium } from 'playwright-core'
 import { createServer } from 'node:http'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, extname } from 'node:path'
 
@@ -59,7 +59,17 @@ const IDEAS = JSON.stringify([
     suggestedLength: 'long'
   }
 ])
-const SCRIPT = 'TITLE: The Rupee Trap\n===SCRIPT===\n[PATTERN INTERRUPT]\nYeh number dekhein.'
+// Long enough that the offline storyboard builder splits it into several beats,
+// which is what the scene-list assertions below actually exercise.
+const SCRIPT = `TITLE: The Rupee Trap
+===SCRIPT===
+[PATTERN INTERRUPT]
+Yeh number dekhein aur sochein. The rupee has lost more value in five years than in the previous twenty.
+Most people blame one government. That is the comfortable answer and it is wrong.
+The real mechanism is the current account deficit, and it works quietly in the background.
+Every imported barrel of oil is paid for in dollars, not rupees. Demand for dollars rises every month.
+When exports do not keep pace, the gap has to be financed by borrowing. That borrowing has a price.
+The price shows up in your grocery bill about nine months later. This is the part nobody explains.`
 
 const fails = []
 const step = (name, ok, detail = '') => {
@@ -67,17 +77,33 @@ const step = (name, ok, detail = '') => {
   if (!ok) fails.push(name)
 }
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
+/** 1x1 PNG — stands in for a gallery photo and for every scene preview request. */
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64'
+)
+
+const browser = await chromium.launch({
+  executablePath: '/opt/pw-browsers/chromium',
+  // Lets getUserMedia resolve with a synthetic mic so the recording path is exercised
+  // for real rather than being skipped.
+  args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream']
+})
 try {
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 }, // iPhone-class portrait
-    userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36'
+    userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36',
+    permissions: ['microphone'],
+    acceptDownloads: true
   })
   const page = await ctx.newPage()
 
   const pageErrors = []
   page.on('pageerror', (e) => pageErrors.push(e.message))
   page.on('console', (m) => m.type() === 'error' && pageErrors.push(m.text()))
+  // Deletes are confirmed by design. Playwright dismisses dialogs unless told
+  // otherwise, so accept them here — before any test step can trigger one.
+  page.on('dialog', (d) => d.accept())
 
   // Stub the AI so the smoke test is deterministic and costs nothing.
   let aiCalls = 0
@@ -113,12 +139,125 @@ try {
   step('script renders', (await page.locator('#w-out h3').textContent()) === 'The Rupee Trap')
   step('stage directions survive', (await page.locator('#w-out pre').textContent())?.includes('[PATTERN INTERRUPT]'))
 
+  // --- Scenes: plan a whole video ----------------------------------------
+  // Every preview image is stubbed so the run is deterministic and offline.
+  let previewRequests = 0
+  await page.route('https://image.pollinations.ai/**', async (route) => {
+    previewRequests++
+    await route.fulfill({ status: 200, contentType: 'image/png', body: TINY_PNG })
+  })
+
+  await page.click('#t-scenes')
+  step('scenes tab opens on the start screen', await page.locator('#sc-start').isVisible())
+
+  // The script written above should be offerable as the source.
+  const sourceOptions = await page.locator('#sc-source option').count()
+  step('the script just written is offered as a source', sourceOptions >= 2, `${sourceOptions} options`)
+  await page.selectOption('#sc-source', { index: 1 })
+
+  // Offline route: no AI, no network — the studio's own storyboardFromScript.
+  await page.click('#sc-offline')
+  await page.waitForSelector('#sc-list .scene', { timeout: 10_000 })
+  const sceneCount = await page.locator('#sc-list .scene').count()
+  step('scenes are built from the script with no AI', sceneCount >= 1, `${sceneCount} scenes`)
+  step('summary shows a runtime', /\d+s/.test((await page.locator('#sc-summary').textContent()) || ''))
+
+  // Preview picture on demand.
+  await page.locator('.thumb[data-preview]').first().click()
+  await page.waitForFunction(() => !document.querySelector('.thumb[data-preview="0"]'), null, { timeout: 10_000 })
+  step('a scene preview picture loads', previewRequests >= 1, `${previewRequests} image requests`)
+
+  // --- Beat editor --------------------------------------------------------
+  await page.locator('button[data-sc-edit]').first().click()
+  step('the scene editor opens', await page.locator('#editor').isVisible())
+
+  await page.fill('#ed-visual', 'Karachi skyline at dawn, haze over the port')
+  await page.fill('#ed-narration', 'Aaj hum baat karain ge rupee ki.')
+  await page.fill('#ed-caption', 'RECORD LOW')
+  await page.fill('#ed-duration', '12')
+  await page.selectOption('#ed-motion', 'left')
+  await page.selectOption('#ed-music', 'tense')
+  await page.selectOption('#ed-sfx', 'riser')
+
+  // Mark this scene as needing the user's own photo, then actually attach one.
+  await page.selectOption('#ed-subject', 'photo')
+  step('choosing "my photo" reveals the attach control', await page.locator('#ed-attach').isVisible())
+  // Goes through the real path: the button opens the picker, which targets this scene.
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('#ed-attach')])
+  await chooser.setFiles({ name: 'me.png', mimeType: 'image/png', buffer: TINY_PNG })
+  await page.waitForSelector('#ed-detach', { timeout: 10_000 })
+  step('a gallery photo attaches to the scene', await page.locator('#ed-detach').isVisible())
+
+  // Record narration for this scene through the fake microphone.
+  if (await page.locator('#ed-rec').count()) {
+    await page.click('#ed-rec')
+    await page.waitForTimeout(700)
+    await page.click('#ed-rec')
+    await page.waitForSelector('#ed-unrec', { timeout: 10_000 })
+    step('narration records on the phone', await page.locator('#ed-unrec').isVisible())
+  } else {
+    step('narration records on the phone', false, 'record button never appeared')
+  }
+
+  await page.click('#ed-close')
+  step('editor closes back to the list', !(await page.locator('#editor').isVisible()))
+
+  const cardText = (await page.locator('#sc-list .scene').first().textContent()) || ''
+  step('edits show on the scene card', cardText.includes('12s') && cardText.includes('tense'), cardText.slice(0, 80))
+  step('the card shows the attachment and the recording', cardText.includes('photo attached') && cardText.includes('my voice'))
+
+  // --- Add / reorder / delete --------------------------------------------
+  const before = await page.locator('#sc-list .scene').count()
+  await page.click('#sc-add')
+  await page.click('#ed-close')
+  step('adding a scene works', (await page.locator('#sc-list .scene').count()) === before + 1)
+
+  await page.locator('button[data-sc-dup]').first().click()
+  step('copying a scene works', (await page.locator('#sc-list .scene').count()) === before + 2)
+
+  await page.locator('button[data-sc-del]').last().click()
+  await page.waitForTimeout(200)
+  step('deleting a scene works', (await page.locator('#sc-list .scene').count()) === before + 1)
+
+  // --- Video settings -----------------------------------------------------
+  await page.click('#t-video')
+  await page.selectOption('#v-style', 'noir')
+  await page.selectOption('#v-aspect', '9:16')
+  await page.check('#v-captions')
+  step('video settings save', ((await page.locator('#v-out').textContent()) || '').includes('Saved'))
+
+  // --- Export the plan ----------------------------------------------------
+  await page.click('#t-scenes')
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('#sc-save')])
+  const planPath = await download.path()
+  const plan = JSON.parse(readFileSync(planPath, 'utf8'))
+  step('the plan file downloads', download.suggestedFilename().endsWith('.npzproject.json'), download.suggestedFilename())
+  step('the plan carries a versioned storyboard', plan.formatVersion === 1 && Array.isArray(plan.storyboard?.beats))
+  step('the plan carries the video settings', plan.build?.style === 'noir' && plan.build?.aspect === '9:16')
+  step('the plan is 9:16 sized', plan.storyboard.width === 1080 && plan.storyboard.height === 1920)
+  step('the plan carries the attachments', (plan.assets || []).length >= 2, `${(plan.assets || []).length} assets`)
+  step(
+    'a beat references its attachment',
+    plan.storyboard.beats.some((b) => typeof b.subject?.src === 'string' && b.subject.src.startsWith('asset:'))
+  )
+  // Written out for the round-trip test in vitest to consume if desired.
+  writeFileSync(join(ROOT, 'phone', 'dist', '.last-plan.json'), JSON.stringify(plan))
+
+  // --- Persistence across a reload ---------------------------------------
+  // Reloading is the closest thing to the user swiping the app away. It caught a real
+  // bug once: discrete actions were debounced, so a burst of edits then a close wrote
+  // nothing at all. Keep this check.
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.click('#t-scenes')
+  await page.waitForSelector('#sc-list .scene', { timeout: 10_000 })
+  const afterReload = await page.locator('#sc-list .scene').count()
+  step('the plan survives closing and reopening the app', afterReload === before + 1, `${afterReload} vs ${before + 1}`)
+
   // --- Saved --------------------------------------------------------------
   await page.click('#t-saved')
   const savedCount = await page.locator('#sv-out .card').count()
   step('generations are saved on the phone', savedCount >= 2, `${savedCount} items`)
 
-  page.on('dialog', (d) => d.accept())
   await page.locator('#sv-out button[data-del]').first().click()
   await page.waitForTimeout(200)
   step('delete removes exactly one item', (await page.locator('#sv-out .card').count()) === savedCount - 1)

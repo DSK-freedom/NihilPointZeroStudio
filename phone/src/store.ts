@@ -20,6 +20,7 @@ export interface SavedItem {
 const KEY_PROVIDER = 'npz.provider'
 const KEY_APIKEY = 'npz.apikey'
 const KEY_SAVED = 'npz.saved'
+const KEY_PCLINK = 'npz.pclink'
 
 /** Storage can throw in private-browsing modes; never let that crash the app. */
 function read(key: string): string | null {
@@ -53,6 +54,18 @@ export function getKey(): string {
 
 export function setKey(k: string): void {
   write(KEY_APIKEY, k.trim())
+}
+
+/**
+ * The tokenized link the studio shows in Settings → "Phone access (same Wi-Fi)".
+ * Kept on the phone only, exactly like an API key, and only ever sent to that PC.
+ */
+export function getPcLink(): string {
+  return read(KEY_PCLINK) ?? ''
+}
+
+export function setPcLink(v: string): void {
+  write(KEY_PCLINK, v.trim())
 }
 
 export function listSaved(): SavedItem[] {

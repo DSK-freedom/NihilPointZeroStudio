@@ -40,6 +40,7 @@ let cachedHardware: HardwareReport | null = null
 import { freeLibraryLinks, MOOD_PROMPT_HINT, moodsFromText, parseMoodReply, synthMoodFromText } from './music/mood'
 import { getOllamaStatus, ollamaChatStream, type ChatTurn } from './llm/ollama'
 import { buildAdvisorSystemPrompt } from './prompts'
+import { importPhoneProject, importPhoneProjectJson } from './project/import'
 import { APP_GUIDE } from './appGuide'
 import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
 
@@ -2235,6 +2236,34 @@ export function registerIpcHandlers(): void {
     }
     const res = win ? await dialog.showOpenDialog(win, dialogOptions) : await dialog.showOpenDialog(dialogOptions)
     return res.canceled || !res.filePaths.length ? null : res.filePaths[0]
+  })
+
+  // ── Plans made on the phone ──
+  // Opens a .npzproject.json the user transferred over, and loads it into the
+  // Storyboard tab. Never destructive: the previous storyboard stays in draft history.
+  ipcMain.handle(IPC.projectImportPick, async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const dialogOptions: Electron.OpenDialogOptions = {
+      title: 'Open a plan made on your phone',
+      properties: ['openFile'],
+      filters: [{ name: 'NihilPointZero plan', extensions: ['json'] }]
+    }
+    const res = win ? await dialog.showOpenDialog(win, dialogOptions) : await dialog.showOpenDialog(dialogOptions)
+    if (res.canceled || !res.filePaths.length) return { ok: false, canceled: true }
+    try {
+      return { ok: true, result: importPhoneProjectJson(readFileSync(res.filePaths[0], 'utf-8')) }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'That plan could not be opened.' }
+    }
+  })
+
+  // Same import, but for a plan already in hand (the phone pushes one over Wi-Fi).
+  ipcMain.handle(IPC.projectImport, async (_e, raw: unknown) => {
+    try {
+      return { ok: true, result: importPhoneProject(raw) }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'That plan could not be opened.' }
+    }
   })
 
   // Plan a storyboard from either the user's own beats (guided) or a pasted script (auto).

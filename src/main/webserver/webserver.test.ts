@@ -7,6 +7,9 @@
  * HTTP server and make real requests rather than poking at internals, because
  * that is the only way to prove the gate actually holds.
  */
+import { mkdtempSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../store', () => ({
@@ -22,7 +25,10 @@ vi.mock('../store', () => ({
     actor: 'user',
     action: `action ${i}`
   })),
-  logActivity: vi.fn()
+  logActivity: vi.fn(),
+  // Used by the project importer behind POST /api/project.
+  phoneAssetsDir: () => mkdtempSync(join(tmpdir(), 'npz-ws-assets-')),
+  setDraft: vi.fn()
 }))
 
 vi.mock('../services', () => ({
@@ -55,6 +61,13 @@ describe('phone web server auth gate', () => {
       const res = await fetch(`${base}${path}`)
       expect(res.status, `${path} must be gated`).toBe(401)
     }
+    // The one route that WRITES must be gated just as hard as the reads.
+    const push = await fetch(`${base}/api/project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{"formatVersion":1}'
+    })
+    expect(push.status).toBe(401)
   })
 
   it('rejects a wrong token', async () => {
@@ -97,6 +110,35 @@ describe('read-only phone routes', () => {
     const res = await fetch(`${base}/api/activity`, { headers: { 'X-Token': token } })
     const body = await res.json()
     expect(body).toHaveLength(100)
+  })
+
+  it('accepts a plan pushed from the phone and reports what arrived', async () => {
+    const { base, token } = await boot()
+    const res = await fetch(`${base}/api/project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Token': token },
+      body: JSON.stringify({
+        formatVersion: 1,
+        title: 'From the phone',
+        storyboard: { title: 'From the phone', style: 'noir', beats: [{ durationSec: 5, visual: 'A skyline' }] },
+        build: { style: 'noir' },
+        assets: []
+      })
+    })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, scenes: 1, needMedia: 0 })
+  })
+
+  it('rejects a pushed plan that is not a plan, without crashing the server', async () => {
+    const { base, token } = await boot()
+    const res = await fetch(`${base}/api/project`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Token': token },
+      body: JSON.stringify({ definitely: 'not a plan' })
+    })
+    expect(res.status).toBe(400)
+    // The server must still be answering afterwards.
+    expect((await fetch(`${base}/api/library`, { headers: { 'X-Token': token } })).status).toBe(200)
   })
 
   it('refuses to mutate anything — no write verb is routed', async () => {

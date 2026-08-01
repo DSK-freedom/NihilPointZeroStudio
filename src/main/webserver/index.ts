@@ -7,6 +7,7 @@ import { getModel, getSettings, listActivityLog, listLibrary, logActivity } from
 import { ollamaChatStream, type ChatTurn } from '../llm/ollama'
 import { getActiveProvider } from '../llm'
 import { buildAdvisorSystemPrompt } from '../prompts'
+import { importPhoneProject } from '../project/import'
 import { MOBILE_PAGE } from './page'
 
 let server: Server | null = null
@@ -155,6 +156,24 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   }
   if (path === '/api/advisor' && req.method === 'POST') {
     await handleAdvisor(res, await readBody(req))
+    return
+  }
+  // A whole video plan pushed straight from the phone, so at home the user never has
+  // to move a file by hand. It only ever CREATES a storyboard draft — the previous one
+  // stays in draft history, and nothing on disk is deleted or overwritten.
+  if (path === '/api/project' && req.method === 'POST') {
+    try {
+      const result = importPhoneProject(await readBody(req))
+      sendJson(res, 200, {
+        ok: true,
+        scenes: result.scenes,
+        seconds: Math.round(result.seconds),
+        needMedia: result.needMedia.length,
+        warnings: result.warnings
+      })
+    } catch (err) {
+      sendJson(res, 400, { error: err instanceof Error ? err.message : 'That plan could not be read.' })
+    }
     return
   }
   sendJson(res, 404, { error: 'Not found' })

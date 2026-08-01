@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc-channels'
+import type { ImportedProject } from '../shared/project'
 import type {
   AdvisorRequest,
   IdeaGenRequest,
@@ -267,6 +268,13 @@ const api = {
     ): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; error?: string }> =>
       ipcRenderer.invoke(IPC.timelineRender, doc, title)
     // Progress reuses video.onProgress (same 'video:progress' channel).
+  },
+  /** Plans made on the phone: open one from a file, or take one pushed over Wi-Fi. */
+  project: {
+    importPick: (): Promise<{ ok: boolean; canceled?: boolean; error?: string; result?: ImportedProject }> =>
+      ipcRenderer.invoke(IPC.projectImportPick),
+    import: (raw: unknown): Promise<{ ok: boolean; error?: string; result?: ImportedProject }> =>
+      ipcRenderer.invoke(IPC.projectImport, raw)
   },
   storyboard: {
     pickPhoto: (): Promise<string | null> => ipcRenderer.invoke(IPC.storyboardPickPhoto),

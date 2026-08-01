@@ -940,6 +940,9 @@ export interface AiErrorEntry {
   body?: string
 }
 
+/** One video waiting to be built. See shared/renderQueue.ts for the rules around it. */
+export type { QueueItem, QueueState, QueueSummary } from './renderQueue'
+
 /** A stretch of the recording to KEEP. See main/video/silence.ts — spans to keep are
  * planned rather than spans to remove, which makes an overlap or a backwards span
  * structurally impossible. */

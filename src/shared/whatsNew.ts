@@ -55,6 +55,14 @@ export const CHANGELOG: ChangeEntry[] = [
     where: 'Settings → What changed'
   },
   {
+    id: 'render-queue',
+    date: '2026-08-01',
+    title: 'Line up an evening of videos and walk away',
+    detail:
+      'Queue as many videos as you like and they build one after another. The list is written down, so closing the app — or a power cut — does not lose what has not been built yet, and anything interrupted goes back in the queue next time you open the studio. If one fails, only that one fails: the rest carry on, and the failure stays on the list with its reason so you can try it again.',
+    where: 'Video Studio → "＋ Queue it" instead of Build'
+  },
+  {
     id: 'crash-report',
     date: '2026-08-01',
     title: 'A crash can no longer close the app without a word',

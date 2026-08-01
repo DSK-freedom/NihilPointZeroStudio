@@ -55,6 +55,14 @@ export const CHANGELOG: ChangeEntry[] = [
     where: 'Settings → What changed'
   },
   {
+    id: 'credit-check',
+    date: '2026-08-01',
+    title: 'A credit check before you publish',
+    detail:
+      'It is not a copyright detector — nothing on your PC can tell you whether YouTube will claim something, and it says so. What it does check is the paperwork for music and footage the app fetched for you: whether the licence obliges you to credit the artist, and whether that credit is actually in your description. A missing credit is exactly what turns a free track into a claim. It also says plainly when a file came from you, because then only you know.',
+    where: 'Video Studio → Credits → Check before publishing'
+  },
+  {
     id: 'dual-language-upload',
     date: '2026-08-01',
     title: 'Upload in both languages, with the codes right',

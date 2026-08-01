@@ -485,6 +485,13 @@ export interface VideoJob {
   template?: VideoTemplate
   engine?: LookEngine
   style?: VideoStyle
+  /**
+   * What went into the video that might need crediting — the music track the app fetched,
+   * stock footage, images. Recorded at build time so the pre-publish credit check has
+   * something to check: without it the app knew a track needed attribution and had no way
+   * to tell WHICH video it went into. Older jobs simply lack it.
+   */
+  credits?: import('./copyrightCheck').CreditedItem[]
 }
 
 /** How a cut is applied: keep only the selected range, or remove it (see main/video/trim.ts). */

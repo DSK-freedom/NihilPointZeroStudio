@@ -3,6 +3,7 @@ import type { WebServerAddress } from '../../../shared/types'
 import { useEffect, useState } from 'react'
 import { confirmDialog } from '../components/Confirm'
 import { toast } from '../components/Toast'
+import WhatsNewCard from '../components/WhatsNewCard'
 import type {
   AiErrorEntry,
   HardwareReport,
@@ -392,6 +393,10 @@ export default function SettingsPage() {
         Choose what writes your ideas and scripts. The local option is free and runs entirely on this PC; the API
         options cost a small amount per script but write at higher quality.
       </p>
+
+      {/* What changed — an upgrade is otherwise invisible: the app looks identical after
+          one. Sits above health so it is the first thing seen after an update. */}
+      <WhatsNewCard />
 
       {/* Setup health — at-a-glance readiness of every subsystem. */}
       <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4">

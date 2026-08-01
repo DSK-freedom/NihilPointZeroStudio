@@ -44,6 +44,7 @@ import { importPhoneProject, importPhoneProjectJson } from './project/import'
 import { closeTeleprompter, openTeleprompter, setTeleprompterProtection, teleprompterState } from './teleprompter/window'
 import { APP_GUIDE } from './appGuide'
 import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
+import { whatsNewReport } from '../shared/whatsNew'
 
 // Injected at build time by electron.vite.config.ts (same tag the sidebar badge shows).
 declare const __BUILD_TAG__: string
@@ -136,7 +137,9 @@ import {
   getSettings,
   getYouTubeChannelId,
   getLastHealth,
+  getSeenChangeIds,
   isPurgeBackupsOnDelete,
+  markChangesSeen,
   setLastHealth,
   setPurgeBackupsOnDelete,
   setSecondBackupDir,
@@ -756,6 +759,17 @@ export function registerIpcHandlers(): void {
     }
     void shell.openExternal('https://github.com/DSKJazz/NihilPointZeroStudio/releases/latest')
     return { ok: true, opened: 'download-page' }
+  })
+
+  // "What changed": the new things in the build that is ACTUALLY RUNNING. The build tag
+  // comes from __BUILD_TAG__ here rather than from the renderer, so a stale page cannot
+  // make the app claim features it does not have.
+  ipcMain.handle(IPC.whatsNewGet, () => whatsNewReport({ buildTag: __BUILD_TAG__, seenIds: getSeenChangeIds() }))
+
+  ipcMain.handle(IPC.whatsNewMarkSeen, (_e, ids?: unknown) => {
+    const list = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : []
+    markChangesSeen(list)
+    return whatsNewReport({ buildTag: __BUILD_TAG__, seenIds: getSeenChangeIds() })
   })
 
   // The "YouTube Producer": a growth-strategist that critiques/rewrites the creator's

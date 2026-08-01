@@ -38,6 +38,10 @@ interface PersistedSettings {
   /** Last quiet health check: when it ran and which checks failed (for the badge). */
   lastHealthAt?: string
   lastHealthFailed?: string[]
+  /** "What changed" entries the user has already read. Keyed on entry id rather than on
+   * a build date, because this project ships more than once a day and a date-based
+   * marker loses every change that shipped later the same day. */
+  seenChangeIds?: string[]
 }
 
 const DEFAULT_SETTINGS: PersistedSettings = {
@@ -197,6 +201,22 @@ export function setLastHealth(failed: string[]): void {
   s.lastHealthAt = new Date().toISOString()
   s.lastHealthFailed = failed
   writeSettings(s)
+}
+
+/** Which "What changed" entries have been read. Undefined (never set) means first run. */
+export function getSeenChangeIds(): string[] | null {
+  const s = readSettings()
+  return Array.isArray(s.seenChangeIds) ? s.seenChangeIds : null
+}
+
+/** Records entries as read. Merged with what is already stored, never replaced, so
+ * reading the screen on the phone and on the laptop cannot undo each other. */
+export function markChangesSeen(ids: string[]): string[] {
+  const s = readSettings()
+  const merged = new Set([...(s.seenChangeIds ?? []), ...(ids ?? []).filter((x) => typeof x === 'string')])
+  s.seenChangeIds = [...merged]
+  writeSettings(s)
+  return s.seenChangeIds
 }
 
 /** Persists the user's chosen Piper voice. An unknown/invalid id resolves to the default

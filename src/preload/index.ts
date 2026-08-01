@@ -536,6 +536,14 @@ const api = {
      * disk, so this relaunches onto it. ok:false = not applicable (portable/stale). */
     restart: (): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.updateRestart)
   },
+  // "What changed" — what is new in the build actually running. The build tag is read in
+  // the main process, never passed in from here, so a stale page cannot make the app
+  // advertise a feature it does not have.
+  whatsNew: {
+    get: (): Promise<import('../shared/whatsNew').WhatsNewReport> => ipcRenderer.invoke(IPC.whatsNewGet),
+    markSeen: (ids: string[]): Promise<import('../shared/whatsNew').WhatsNewReport> =>
+      ipcRenderer.invoke(IPC.whatsNewMarkSeen, ids)
+  },
   health: {
     // Live self-test of every dependency (validates saved keys with a cheap request).
     run: (): Promise<import('../shared/types').HealthReport> => ipcRenderer.invoke(IPC.healthRun),

@@ -62,6 +62,9 @@ export const IPC = {
   updateRevealSetup: 'update:reveal-setup',
   // Restart onto code the ship pipeline already swapped in place (installed app only).
   updateRestart: 'update:restart',
+  // "What changed" — the new things in the build that is actually running.
+  whatsNewGet: 'whats-new:get',
+  whatsNewMarkSeen: 'whats-new:mark-seen',
   healthRun: 'health:run',
   advisorHistory: 'advisor:history',
   advisorDelete: 'advisor:delete',

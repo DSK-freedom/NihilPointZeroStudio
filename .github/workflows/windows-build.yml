@@ -68,6 +68,12 @@ jobs:
       # `dist:win` now also builds out/remote/bridge.js — the script that lets the
       # studio's own screens run in a phone browser. electron-builder ships out/**,
       # so it travels with the exe.
+      #
+      # It passes --publish never. electron-builder auto-detects CI and tries to
+      # publish the release ITSELF, which failed the first run with "GitHub Personal
+      # Access Token is not set" AFTER both exes had already built successfully. The
+      # release is handled explicitly further down, with a token, so its implicit
+      # attempt is pure downside.
       - name: Build the Windows exes
         run: npm run dist:win
 

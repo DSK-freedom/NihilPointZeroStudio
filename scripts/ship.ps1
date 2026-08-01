@@ -131,6 +131,10 @@ Step 'Build (portable + installer)' {
     $global:LASTEXITCODE = 0
 }
 
+# NOTE: dist:win passes --publish never. This script does its own release upload
+# further down, and electron-builder's implicit CI publishing broke the GitHub build
+# once by failing after the exes were already made.
+
 Step 'Verify the phone bridge was built' {
     # `npm run dist:win` builds out/remote/bridge.js and electron-builder ships out/**.
     # Without it the phone shows the studio's screens and none of the buttons work, so

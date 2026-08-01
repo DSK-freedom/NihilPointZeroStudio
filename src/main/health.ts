@@ -93,6 +93,26 @@ async function checkPaidKey(provider: 'anthropic' | 'openai'): Promise<HealthChe
     return warn(label, 'saved key could not be read on this machine (copied portable copy?)')
   }
   if (!key) return warn(label, 'not set (only needed if you pick this provider)')
+
+  /**
+   * A PAID SERVICE YOU HAVE NOT CHOSEN IS NOT A PROBLEM WITH YOUR STUDIO.
+   *
+   * The user's standing rule: paid features exist, but they stay inert until he
+   * deliberately selects one and supplies a key. "If it's a paid thing and I've not paid,
+   * why is it even trying to run?"
+   *
+   * A key left over from an old experiment was being contacted on every health check and
+   * reported as a red ✗ "1 problem — paste a fresh key". That reads as *your app is
+   * broken, go and spend money*, when in fact the app is working exactly as chosen: the
+   * free brain is active and writing everything. It also sends the key to a paid API when
+   * the user never asked for anything paid to happen.
+   *
+   * So when this provider is not the active one, do not contact the service at all. Say
+   * plainly that it is not in use, and leave it as a note rather than a fault.
+   */
+  if (getSettings().activeProvider !== provider) {
+    return warn(label, 'saved but NOT in use — you are on a different AI brain, so nothing here costs money')
+  }
   const code =
     provider === 'anthropic'
       ? await ping('https://api.anthropic.com/v1/models', 12000, {

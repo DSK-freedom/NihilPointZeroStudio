@@ -1,4 +1,5 @@
 import type { YouTubeSignal } from '../../shared/types'
+import { classifyKeyResponse, type ChannelReadProblem } from '../../shared/youtubeKeySetup'
 import { getYouTubeApiKey, getYouTubeChannelId } from '../store'
 
 const BASE_URL = 'https://www.googleapis.com/youtube/v3'
@@ -83,10 +84,38 @@ export interface MyVideo {
  * honest answer when the data could not be read.
  */
 export async function fetchMyChannelVideos(maxVideos = 200): Promise<MyVideo[]> {
+  return (await readMyChannel(maxVideos)).videos
+}
+
+/**
+ * The same read, but it says WHY it came back empty.
+ *
+ * `fetchMyChannelVideos` above returns `[]` for a missing key, a missing channel id, a
+ * key Google refuses, a dead connection and a channel with no videos alike, and its
+ * callers then printed one sentence covering all five. Four of them are fixable by the
+ * user in a minute; the fifth is not a fault. This is the same code path, keeping the
+ * reason instead of throwing it away — see `ChannelReadProblem`. Existing callers that
+ * only want the list keep working unchanged.
+ */
+export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[]; problem: ChannelReadProblem | null }> {
   const apiKey = getYouTubeApiKey()
   const channelId = getYouTubeChannelId()
-  if (!apiKey || !channelId) return []
+  if (!apiKey) return { videos: [], problem: { kind: 'no-key' } }
+  if (!channelId) return { videos: [], problem: { kind: 'no-channel' } }
   const keyHeader = { 'X-Goog-Api-Key': apiKey }
+
+  /** Google said no: turn its reply into the same plain sentence the walkthrough uses. */
+  const refused = async (res: Response): Promise<{ videos: MyVideo[]; problem: ChannelReadProblem }> => {
+    let body: unknown = null
+    try {
+      body = await res.json()
+    } catch {
+      /* an unreadable error body still leaves the status, which carries most of it */
+    }
+    const verdict = classifyKeyResponse(res.status, body)
+    const detail = verdict.state === 'broken' ? `${verdict.title}.` : verdict.state === 'unknown' ? `${verdict.title}.` : ''
+    return { videos: [], problem: { kind: 'refused', detail } }
+  }
 
   try {
     // The uploads playlist id is the channel id with its second character switched.
@@ -94,10 +123,13 @@ export async function fetchMyChannelVideos(maxVideos = 200): Promise<MyVideo[]> 
       headers: keyHeader,
       signal: AbortSignal.timeout(20_000)
     })
-    if (!chRes.ok) return []
+    if (!chRes.ok) return refused(chRes)
     const chData = await chRes.json()
     const uploads: string | undefined = chData?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads
-    if (!uploads) return []
+    if (!uploads) {
+      // The request itself succeeded, so the key is fine — the id points at nothing.
+      return { videos: [], problem: { kind: 'no-channel' } }
+    }
 
     const found: { id: string; title: string; publishedAt: string }[] = []
     let pageToken = ''
@@ -107,7 +139,12 @@ export async function fetchMyChannelVideos(maxVideos = 200): Promise<MyVideo[]> 
         `${BASE_URL}/playlistItems?part=snippet&maxResults=50&playlistId=${uploads}` +
         (pageToken ? `&pageToken=${pageToken}` : '')
       const res = await fetch(url, { headers: keyHeader, signal: AbortSignal.timeout(20_000) })
-      if (!res.ok) break
+      // A refusal on the FIRST page means nothing was read at all, and that is a reason
+      // worth reporting. Refused later, we keep whatever pages did come back.
+      if (!res.ok) {
+        if (!found.length) return refused(res)
+        break
+      }
       const data = await res.json()
       for (const it of (data.items ?? []) as PlaylistItem[]) {
         const id = it.snippet?.resourceId?.videoId
@@ -118,7 +155,7 @@ export async function fetchMyChannelVideos(maxVideos = 200): Promise<MyVideo[]> 
       pageToken = data.nextPageToken ?? ''
       if (!pageToken) break
     }
-    if (!found.length) return []
+    if (!found.length) return { videos: [], problem: { kind: 'empty-channel' } }
 
     // Statistics come 50 ids at a time.
     const stats = new Map<string, { views: number; likes?: number; comments?: number }>()
@@ -142,9 +179,14 @@ export async function fetchMyChannelVideos(maxVideos = 200): Promise<MyVideo[]> 
       }
     }
 
-    return found.slice(0, maxVideos).map((v) => ({ ...v, views: stats.get(v.id)?.views ?? 0, ...stats.get(v.id) }))
+    return {
+      videos: found.slice(0, maxVideos).map((v) => ({ ...v, views: stats.get(v.id)?.views ?? 0, ...stats.get(v.id) })),
+      problem: null
+    }
   } catch {
-    return []
+    // Timed out, DNS failed, offline. NOT the same as "this channel has no videos", and
+    // it must never be shown as though it were.
+    return { videos: [], problem: { kind: 'unreachable' } }
   }
 }
 

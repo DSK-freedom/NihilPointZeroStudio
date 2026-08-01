@@ -91,7 +91,8 @@ import { buildScenePreviewArgs, previewSeconds } from './video/scenePreview'
 import { buildProxyArgs, proxyIsTrustworthy, proxySize, worthProxying } from './video/proxy'
 import { KEN_BURNS_MOTIONS } from './video/render'
 import { searchYouTubeSignals } from './data/youtube'
-import { fetchComments, fetchMyChannelVideos } from './data/youtube'
+import { fetchComments, fetchMyChannelVideos, readMyChannel } from './data/youtube'
+import { resolveYouTubeChannel, verifySavedYouTubeKey, verifyYouTubeKey } from './data/youtubeKeyCheck'
 import { buildCutArgs, planSilenceCut } from './video/silence'
 import { buildVideoEncoderArgs, chooseEncoderForJob } from './video/encoder'
 import { buildSpeedArgs } from './audio/speed'
@@ -250,6 +251,26 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.settingsSetYouTubeKey, (_e, key: string) => {
     logActivity('user', `${key ? 'Updated' : 'Removed'} YouTube API key`)
     return setYouTubeApiKey(key)
+  })
+
+  /**
+   * Does this key actually work? One 1-unit request to Google, and a plain sentence back.
+   * Nothing is saved here — verifying and saving are separate on purpose, so a key is
+   * never stored on the strength of having been typed.
+   */
+  ipcMain.handle(IPC.youtubeKeyVerify, async (_e, rawKey: string) => {
+    const verdict = rawKey ? await verifyYouTubeKey(rawKey) : await verifySavedYouTubeKey()
+    // Logged either way: a check that came back "could not tell" is exactly the event
+    // that used to leave no trace at all and cost an evening to find.
+    logActivity('user', 'Checked the YouTube key', verdict.state === 'working' ? 'works' : verdict.title)
+    return verdict
+  })
+
+  /** @handle / channel URL / UC id → the id and the channel's NAME, to confirm by eye. */
+  ipcMain.handle(IPC.youtubeChannelResolve, async (_e, input: string, rawKey: string) => {
+    const found = await resolveYouTubeChannel(input, rawKey)
+    logActivity('user', 'Looked up a YouTube channel', found.ok ? found.title : found.problem)
+    return found
   })
 
   ipcMain.handle(IPC.ollamaStatus, () => getOllamaStatus())
@@ -927,7 +948,9 @@ export function registerIpcHandlers(): void {
   // videos for a year. When the history is too short, the modules refuse to answer and
   // say so; an empty fetch reads as exactly that rather than as "nothing works".
   ipcMain.handle(IPC.channelLearn, async () => {
-    const videos = await fetchMyChannelVideos()
+    // `problem` travels with the result so the page can say WHY it read nothing. An
+    // empty answer used to mean five different things and named none of them.
+    const { videos, problem } = await readMyChannel()
     const past = videos.map((v) => ({
       title: v.title,
       publishedAt: v.publishedAt,
@@ -936,6 +959,7 @@ export function registerIpcHandlers(): void {
       comments: v.comments
     }))
     return {
+      problem,
       videoCount: past.length,
       titleFindings: learnTitlePatterns(past),
       timing: publishTimingReport(past),
@@ -956,7 +980,7 @@ export function registerIpcHandlers(): void {
   // verbatim from a real comment, so it can be checked — a model summary of "what people
   // are asking" reads well and may match nothing anybody actually wrote.
   ipcMain.handle(IPC.channelComments, async (_e, videoLimit?: number) => {
-    const videos = await fetchMyChannelVideos()
+    const { videos, problem } = await readMyChannel()
     // Newest first, and only the recent ones: a question from three years ago has usually
     // been answered, and each video costs a quota unit.
     const recent = [...videos]
@@ -964,7 +988,7 @@ export function registerIpcHandlers(): void {
       .slice(0, Math.max(1, Math.min(30, typeof videoLimit === 'number' ? videoLimit : 12)))
     const comments = await fetchComments(recent.map((v) => v.id))
     const clusters = mineQuestions(comments)
-    return { scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
+    return { problem, scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
   })
 
   // A SMALL STAND-IN for scrubbing. The Timeline plays the real file, and a 4K clip is
@@ -1143,7 +1167,8 @@ export function registerIpcHandlers(): void {
   // plus subjects it has never touched — searching only what it already covers can never
   // find a gap, it can only confirm coverage.
   ipcMain.handle(IPC.channelGaps, async () => {
-    const mine = (await fetchMyChannelVideos()).map((v) => ({ title: v.title, views: v.views, publishedAt: v.publishedAt }))
+    const read = await readMyChannel()
+    const mine = read.videos.map((v) => ({ title: v.title, views: v.views, publishedAt: v.publishedAt }))
     const queries = searchQueries(mine)
     const theirs: { title: string; channelTitle: string; viewCount: number; publishedAt?: string }[] = []
     const mineTitles = new Set(mine.map((m) => m.title.toLowerCase()))
@@ -1155,7 +1180,7 @@ export function registerIpcHandlers(): void {
         if (!mineTitles.has(s.title.toLowerCase())) theirs.push(s)
       }
     }
-    return { ...gapReport(mine, theirs), myVideos: mine.length, competitorVideos: theirs.length, queries }
+    return { ...gapReport(mine, theirs), problem: read.problem, myVideos: mine.length, competitorVideos: theirs.length, queries }
   })
 
   // Proof the script BY EAR. The plan is pure and instant — what to listen for, and how

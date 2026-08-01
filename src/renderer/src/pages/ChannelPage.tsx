@@ -21,6 +21,7 @@ import { useState } from 'react'
 import { formatHour } from '../../../shared/channelLearning'
 import { seriesHeadline, seriesLinks, type Series } from '../../../shared/series'
 import type { QuestionCluster } from '../../../shared/commentMining'
+import ChannelProblem from '../components/ChannelProblem'
 
 type Learned = Awaited<ReturnType<typeof window.api.channel.learn>>
 type Mined = Awaited<ReturnType<typeof window.api.channel.comments>>
@@ -58,8 +59,9 @@ export default function ChannelPage(): React.JSX.Element {
         average across millions of channels that are not yours. This is not that.
       </p>
       <p className="text-ink-500 text-xs mt-2">
-        Needs your YouTube key and channel ID in Settings. Reading a hundred of your own videos costs about four of
-        the ten thousand daily free requests, so this is effectively free to run.
+        Needs the free YouTube connection — Settings has a three-minute walkthrough that finds your channel from your
+        @name. Reading a hundred of your own videos costs about four of the ten thousand daily free requests, so this
+        is effectively free to run.
       </p>
 
       {error && <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/5 p-3 text-xs text-red-300">{error}</div>}
@@ -78,10 +80,12 @@ export default function ChannelPage(): React.JSX.Element {
         </div>
 
         {learned && learned.videoCount === 0 && (
-          <p className="text-xs text-ink-400">
-            No videos could be read. Check the YouTube key and channel ID in Settings — with no data the honest answer
-            is nothing, so nothing is claimed.
-          </p>
+          <div className="space-y-2">
+            {/* Was one sentence — "check the key and channel ID in Settings" — printed for
+                five different situations, four of which it described wrongly. */}
+            <ChannelProblem problem={learned.problem} />
+            <p className="text-xs text-ink-500">With no data the honest answer is nothing, so nothing is claimed.</p>
+          </div>
         )}
 
         {learned && learned.videoCount > 0 && (
@@ -215,6 +219,12 @@ export default function ChannelPage(): React.JSX.Element {
             ? gaps.headline
             : 'Trending tells you what is popular. This tells you what is popular that YOU have never made — demonstrated demand, with nothing of your own competing for it.'}
         </p>
+        {gaps?.problem && (
+          <div className="mt-3">
+            <ChannelProblem problem={gaps.problem} />
+          </div>
+        )}
+
         {gaps && (
           <div className="text-[11px] text-ink-600 mt-1">
             Compared {gaps.myVideos} of your videos against {gaps.competitorVideos} from other channels
@@ -278,6 +288,12 @@ export default function ChannelPage(): React.JSX.Element {
             ? mined.summary
             : 'Nobody reads two thousand comments. The same question asked forty times is a video with an audience before you record a frame.'}
         </p>
+        {mined?.problem && (
+          <div className="mt-3">
+            <ChannelProblem problem={mined.problem} />
+          </div>
+        )}
+
         {mined && mined.clusters.length > 0 && (
           <div className="mt-3 space-y-2">
             {mined.clusters.map((c: QuestionCluster) => (

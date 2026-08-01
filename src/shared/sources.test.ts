@@ -4,7 +4,7 @@
  * the deduplication and the "no source" list are all asserted hard.
  */
 import { describe, expect, it } from 'vitest'
-import { auditSources, screenCredit, sourcedFromRows, sourcesList, type SourcedFigure } from './sources'
+import { auditSources, screenCredit, sourcedFromNotes, sourcedFromRows, sourcesList, type SourcedFigure } from './sources'
 
 const SOURCES: SourcedFigure[] = [
   {
@@ -197,5 +197,77 @@ describe('it never invents a citation', () => {
 
   it('copes with an empty script', () => {
     expect(auditSources('', SOURCES).headline).toMatch(/No figures/)
+  })
+})
+
+describe('reading the figures out of pasted notes', () => {
+  const NOTES = [
+    'Source: State Bank of Pakistan | https://sbp.org.pk/ecodata',
+    'Reserves, 2026-07-31: 11.2 billion',
+    'Import cover: 2.1 months',
+    '',
+    'just a note to myself with no number relevance',
+    'Source: PSX',
+    'KSE-100 close: 78,412'
+  ].join('\n')
+
+  it('reads label and value from each line', () => {
+    const figs = sourcedFromNotes(NOTES)
+    expect(figs.map((f) => f.value)).toEqual([11.2, 2.1, 78412])
+    expect(figs[0].label).toBe('Reserves, 2026-07-31')
+  })
+
+  it('applies a Source: line to every figure BELOW it', () => {
+    const figs = sourcedFromNotes(NOTES)
+    expect(figs[0].publisher).toBe('State Bank of Pakistan')
+    expect(figs[0].url).toBe('https://sbp.org.pk/ecodata')
+    // …and the second Source: line takes over from there.
+    expect(figs[2].publisher).toBe('PSX')
+  })
+
+  it('takes the LAST number on the line, because labels contain numbers too', () => {
+    // "KSE-100 close: 78,412" must be 78412, not 100.
+    expect(sourcedFromNotes('KSE-100 close: 78,412')[0].value).toBe(78412)
+  })
+
+  it('does NOT rescale "11.2 billion" — the script says 11.2 too', () => {
+    // Turning it into 11200000000 here would make it fail to match the figure the
+    // viewer actually sees on screen, which is the whole point of the check.
+    const f = sourcedFromNotes('Reserves: 11.2 billion')[0]
+    expect(f.value).toBe(11.2)
+  })
+
+  it('picks up the as-of date when the line carries one', () => {
+    expect(sourcedFromNotes('Reserves, 2026-07-31: 11.2')[0].asOf).toBe('2026-07-31')
+  })
+
+  it('skips lines with no number instead of refusing the whole field', () => {
+    // It is free text the user writes for themselves. Erroring on their own notes is
+    // how a check gets switched off.
+    expect(sourcedFromNotes('remember to mention the auction\nRate: 22').map((f) => f.value)).toEqual([22])
+  })
+
+  it('records the line number, so a figure can be found again', () => {
+    expect(sourcedFromNotes('a: 1\nb: 2')[1].row).toBe(2)
+  })
+
+  it('survives junk', () => {
+    expect(sourcedFromNotes('')).toEqual([])
+    expect(() => sourcedFromNotes(undefined as unknown as string)).not.toThrow()
+  })
+
+  it('feeds auditSources end to end — a mistyped figure is caught', () => {
+    const figs = sourcedFromNotes('Source: SBP\nReserves: 11.2')
+    // The script says 11.7. The user looked up 11.2 and typed it wrong.
+    const audit = auditSources('Reserves stand at 11.7 billion dollars today.', figs)
+    expect(audit.fullyTraceable).toBe(false)
+    expect(audit.uncited.some((u) => u.raw.includes('11.7'))).toBe(true)
+  })
+
+  it('and passes a figure that really does match', () => {
+    const figs = sourcedFromNotes('Source: SBP\nReserves: 11.2')
+    const audit = auditSources('Reserves stand at 11.2 billion dollars today.', figs)
+    expect(audit.cited.some((c) => c.written.includes('11.2'))).toBe(true)
+    expect(audit.cited[0].source.publisher).toBe('SBP')
   })
 })

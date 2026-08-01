@@ -174,3 +174,40 @@ export function summarise(cues: BrollCue[], durationSec: number): BrollSummary {
 export function cueEnableExpr(cue: BrollCue): string {
   return `between(t,${cue.startSec.toFixed(3)},${cue.endSec.toFixed(3)})`
 }
+
+/**
+ * Turns a script into timed lines using reading speed, for when there is no transcript.
+ *
+ * The narration does not exist yet when b-roll is being planned — it is generated later
+ * in the same build — so the timing has to come from the words. Time is shared out in
+ * proportion to WORD COUNT rather than sentence count: a twenty-word sentence takes
+ * roughly twice as long to say as a ten-word one, and splitting evenly puts every cue
+ * progressively further from the word that earned it.
+ *
+ * Stage directions are dropped. They are not spoken, so counting them would push every
+ * later cue late by however long the brackets would have taken to read.
+ */
+export function timedLinesFromScript(body: string, durationSec: number): TimedLine[] {
+  const total = Math.max(0, durationSec)
+  const spoken = (body ?? '')
+    .split('\n')
+    .filter((line) => !/^\s*\[[^\]]*\]\s*$/.test(line))
+    .join(' ')
+    .replace(/\[[^\]]*\]/g, ' ')
+  const sentences = spoken
+    .split(/(?<=[.!?۔])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (!sentences.length || !total) return []
+
+  const words = sentences.map((s) => Math.max(1, s.split(/\s+/).filter(Boolean).length))
+  const totalWords = words.reduce((a, b) => a + b, 0)
+  const lines: TimedLine[] = []
+  let at = 0
+  sentences.forEach((text, i) => {
+    const span = (total * words[i]) / totalWords
+    lines.push({ startSec: at, endSec: Math.min(total, at + span), text })
+    at += span
+  })
+  return lines
+}

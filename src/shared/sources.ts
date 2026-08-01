@@ -180,3 +180,74 @@ export function sourcedFromRows(
   })
   return out
 }
+
+/**
+ * Reads the figures out of the "verified data" the user pasted in.
+ *
+ * This field already exists in the Writer and is where the user puts the numbers they
+ * looked up. Nothing was reading it back to check the script against it, so a figure
+ * could be pasted in and then mistyped into the narration with nothing noticing.
+ *
+ * The expected shape is one figure per line, `label: value`, which is how people write
+ * notes anyway:
+ *     Reserves, 31 July 2026: 11.2 billion
+ *     KSE-100 close: 78,412
+ *     Source: State Bank of Pakistan | https://sbp.org.pk/ecodata
+ *
+ * A `Source:` line applies to every figure after it, so the publisher does not have to be
+ * repeated on each one. A line with no number is skipped rather than treated as an error —
+ * the field is free text the user writes for themselves, and rejecting their notes because
+ * of a stray comment would make the check something they turn off.
+ */
+export function sourcedFromNotes(notes: string, file = 'your verified data'): SourcedFigure[] {
+  const out: SourcedFigure[] = []
+  let publisher: string | undefined
+  let url: string | undefined
+  const lines = (notes ?? '').split(/\r?\n/)
+
+  lines.forEach((line, i) => {
+    const raw = line.trim()
+    if (!raw) return
+
+    // A source/publisher line sets the attribution for everything below it.
+    const src = /^(?:source|from|publisher)\s*[:\-–]\s*(.+)$/i.exec(raw)
+    if (src) {
+      const rest = src[1]
+      const link = /(https?:\/\/\S+)/.exec(rest)
+      url = link?.[1]
+      publisher = rest.replace(/\s*[|,]?\s*https?:\/\/\S+/, '').replace(/[|,\s]+$/, '').trim() || undefined
+      return
+    }
+
+    // label: value — the value is the LAST number on the line, because a label can
+    // legitimately contain one ("KSE-100 close" has 100 in it).
+    // A colon anywhere, or a SPACED dash. An unspaced hyphen is not a separator: it is
+    // inside the date. "Reserves, 2026-07-31: 11.2" was splitting at the first hyphen
+    // and losing most of its own label.
+    const split = /^(.{1,120}?)\s*(?::|\s[-–=]\s)\s*(.+)$/.exec(raw)
+    const labelPart = split ? split[1].trim() : ''
+    const valuePart = split ? split[2] : raw
+    const numbers = [...valuePart.matchAll(/-?\d[\d,]*(?:\.\d+)?/g)]
+    if (!numbers.length) return
+    const written = numbers[numbers.length - 1][0]
+    const value = Number(written.replace(/,/g, ''))
+    if (!Number.isFinite(value)) return
+
+    // "11.2 billion" is 11,200,000,000 in the script's terms only if the script also
+    // says billion — and it usually does, so the scale word is kept in the LABEL and the
+    // value left as written. Scaling here would make "11.2 billion" fail to match the
+    // script's own "11.2", which is the number actually on screen.
+    const asOf = /\b(\d{4}-\d{2}-\d{2})\b/.exec(raw)?.[1] ?? /\b(\d{1,2}\s+\w+\s+\d{4})\b/.exec(raw)?.[1]
+
+    out.push({
+      label: labelPart || valuePart.trim().slice(0, 60) || `line ${i + 1}`,
+      value,
+      file,
+      row: i + 1,
+      publisher,
+      url,
+      asOf
+    })
+  })
+  return out
+}

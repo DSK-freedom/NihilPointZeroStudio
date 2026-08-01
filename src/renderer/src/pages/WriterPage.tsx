@@ -11,6 +11,7 @@ import { useProducerTarget } from '../store/ProducerContext'
 
 import { fileUrl } from '../../../shared/mediaUrl'
 import HookRebuildPanel from '../components/HookRebuildPanel'
+import SourcesPanel from '../components/SourcesPanel'
 import ReadAloudPanel from '../components/ReadAloudPanel'
 import RepurposePanel from '../components/RepurposePanel'
 
@@ -500,6 +501,13 @@ export default function WriterPage() {
                 >
                   {generatingThumbnail ? 'Designing…' : 'Thumbnail Brief'}
                 </button>
+              </div>
+
+              {/* One wrong figure is the comment that gets pinned, and a published video
+                  cannot be edited. This reads the "Verified data" box back against the
+                  script — the field existed, nothing was checking against it. */}
+              <div className="mt-3">
+                <SourcesPanel script={writer.body} notes={writer.verifiedData ?? ''} />
               </div>
 
               {/* The first fifteen seconds decide whether the rest gets watched, and they

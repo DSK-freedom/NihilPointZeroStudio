@@ -10,6 +10,7 @@ import {
   MIN_CUE_SEC,
   cueEnableExpr,
   matchLine,
+  timedLinesFromScript,
   planBroll,
   summarise,
   type TimedLine
@@ -198,5 +199,62 @@ describe('the built-in concept list', () => {
 
   it('every cue is at least the minimum length by construction', () => {
     expect(MIN_CUE_SEC).toBeGreaterThan(1)
+  })
+})
+
+describe('timing lines from a script, before any narration exists', () => {
+  it('shares time out by WORD COUNT, not by sentence', () => {
+    // A twenty-word sentence takes about twice as long to say as a ten-word one.
+    // Splitting evenly puts every later cue progressively further from its word.
+    const body = 'One two three four five six. Seven eight.'
+    const lines = timedLinesFromScript(body, 30)
+    expect(lines).toHaveLength(2)
+    const first = lines[0].endSec - lines[0].startSec
+    const second = lines[1].endSec - lines[1].startSec
+    expect(first / second).toBeCloseTo(3, 1)
+  })
+
+  it('covers the whole duration with no gaps or overlaps', () => {
+    const body = 'Reserves fell sharply this week. Imports rose again. The rupee held steady for now.'
+    const lines = timedLinesFromScript(body, 60)
+    expect(lines[0].startSec).toBe(0)
+    expect(lines[lines.length - 1].endSec).toBeCloseTo(60, 3)
+    for (let i = 1; i < lines.length; i++) {
+      expect(lines[i].startSec).toBeCloseTo(lines[i - 1].endSec, 3)
+    }
+  })
+
+  it('drops stage directions, which are not spoken', () => {
+    // Counting them pushes every later cue late by however long they would take to read.
+    const withDirections = '[PAUSE]\nReserves fell sharply.\nImports [beat] rose again.'
+    const lines = timedLinesFromScript(withDirections, 30)
+    expect(lines.map((l) => l.text).join(' ')).not.toMatch(/PAUSE|beat/)
+  })
+
+  it('feeds planBroll well enough to land cues on the right words', () => {
+    const body =
+      'Welcome to the update, here is what happened this week in short. ' +
+      'The reserves figure fell again and that is the number to watch closely. ' +
+      'Meanwhile gold kept climbing through the whole of the trading week.'
+    const lines = timedLinesFromScript(body, 60)
+    const cues = planBroll(lines, FINANCE_CONCEPTS, { durationSec: 60, minSec: 1 })
+    expect(cues.length).toBeGreaterThan(0)
+    // The cue must start inside the sentence that actually contains its trigger word.
+    // The window is [start, end) with no slack: sentence N+1 starts exactly where
+    // sentence N ends, so an epsilon on the END makes every boundary cue look like it
+    // belongs to the sentence before it — which is a fault in the check, not the cue.
+    for (const cue of cues) {
+      const owner = lines.find((l) => cue.startSec >= l.startSec && cue.startSec < l.endSec)
+      expect(owner, `cue at ${cue.startSec} has no sentence`).toBeTruthy()
+      expect(owner!.text.toLowerCase(), `trigger "${cue.trigger}" not in its own sentence`).toContain(
+        cue.trigger.toLowerCase()
+      )
+    }
+  })
+
+  it('survives an empty script and a zero duration', () => {
+    expect(timedLinesFromScript('', 30)).toEqual([])
+    expect(timedLinesFromScript('Some words here.', 0)).toEqual([])
+    expect(() => timedLinesFromScript(undefined as unknown as string, 30)).not.toThrow()
   })
 })

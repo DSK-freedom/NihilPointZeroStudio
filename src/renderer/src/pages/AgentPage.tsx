@@ -6,10 +6,7 @@ import BusyTimer from '../components/BusyTimer'
 import { useAutosave } from '../hooks/useAutosave'
 import { toast } from '../components/Toast'
 
-/** Turns an absolute path into a file:// URL usable in a <video>/<img src>. */
-function fileUrl(p: string): string {
-  return `file:///${p.replace(/\\/g, '/').replace(/^\/+/, '')}`
-}
+import { fileUrl } from '../../../shared/mediaUrl'
 
 const EXAMPLES = [
   'Write a 2-minute anime-style script about Pakistan\'s rupee and build it in 4K with calm music',

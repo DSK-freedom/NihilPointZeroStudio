@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAutosave } from '../hooks/useAutosave'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../components/Confirm'
+import { fileUrl } from '../../../shared/mediaUrl'
 import type {
   TimelineAudioClip,
   TimelineDoc,
@@ -195,7 +196,6 @@ export default function TimelinePage(): React.JSX.Element {
     }
   }
 
-  const fileUrl = (p: string): string => `file:///${p.replace(/\\/g, '/').replace(/^\/+/, '')}`
 
   return (
     <div className="max-w-6xl mx-auto p-8">
@@ -395,7 +395,7 @@ function Waveform({ src }: { src: string }): React.JSX.Element {
     let cancelled = false
     void (async () => {
       try {
-        const url = `file:///${src.replace(/\\/g, '/').replace(/^\/+/, '')}`
+        const url = fileUrl(src)
         const buf = await (await fetch(url)).arrayBuffer()
         const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
         const ctx = new Ctx()

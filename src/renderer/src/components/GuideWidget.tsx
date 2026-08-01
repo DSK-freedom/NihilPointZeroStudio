@@ -4,6 +4,14 @@ import MicButton, { appendDictation } from './MicButton'
 import { toast } from './Toast'
 import { releaseAgentRun, tryAcquireAgentRun } from '../store/agentRunLock'
 import type { AgentPlan } from '../../../shared/types'
+import { APP_GUIDE } from '../../../shared/appGuide'
+import { GUIDE_EXAMPLES, buildGuideIndex, searchGuide } from '../../../shared/guideSearch'
+
+/**
+ * The manual, indexed once for INSTANT mode. Built at module load because it is pure
+ * string work over a fixed document — a few milliseconds, done before the panel opens.
+ */
+const GUIDE_INDEX = buildGuideIndex(APP_GUIDE)
 
 interface Msg {
   role: 'user' | 'assistant'
@@ -64,7 +72,10 @@ function mentionedTabs(content: string, currentPath: string): [string, string][]
 export default function GuideWidget(): React.JSX.Element {
   const location = useLocation()
   const [open, setOpen] = useState(false)
-  const [mode, setMode] = useState<'ask' | 'execute'>('ask')
+  // INSTANT is the default on purpose: it always works. The AI modes depend on a free
+  // service that is regularly down, and a helper that answers nothing is worse than a
+  // plain one that answers immediately.
+  const [mode, setMode] = useState<'instant' | 'ask' | 'execute'>('instant')
   const [format, setFormat] = useState<string | null>(null)
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
@@ -83,6 +94,23 @@ export default function GuideWidget(): React.JSX.Element {
 
   function push(m: Msg): void {
     setMsgs((cur) => [...cur, m])
+  }
+
+  /**
+   * Answers straight from the manual — no AI, no internet, no waiting. Every word
+   * returned is quoted from the manual, so it can never invent a button that isn't
+   * there. When nothing matches it says so and offers examples rather than guessing.
+   */
+  function answerInstantly(text: string): void {
+    const hits = searchGuide(GUIDE_INDEX, text)
+    const content = hits.length
+      ? hits.map((h) => h.section.body).join('\n\n———\n\n')
+      : `I don't have that written down in the manual.\n\nTry one of these, or switch to "Ask AI" above for a freer answer:\n${GUIDE_EXAMPLES.map((e) => `• ${e}`).join('\n')}`
+    setMsgs((cur) => [
+      ...cur,
+      { role: 'user', content: text },
+      { role: 'assistant', content, executable: hits.length > 0 }
+    ])
   }
 
   /** Ask the Expert (streaming), honoring the selected answer format. */
@@ -205,7 +233,8 @@ export default function GuideWidget(): React.JSX.Element {
     const text = input.trim()
     if (!text || busy) return
     setInput('')
-    if (mode === 'execute') await planFrom(text, text.slice(0, 80))
+    if (mode === 'instant') answerInstantly(text)
+    else if (mode === 'execute') await planFrom(text, text.slice(0, 80))
     else await ask(text)
   }
 
@@ -245,6 +274,9 @@ export default function GuideWidget(): React.JSX.Element {
           {/* Mode toggle */}
           <div className="flex items-center gap-2 px-3 py-2 border-b border-ink-800">
             <div className="inline-flex rounded-md border border-ink-700 overflow-hidden text-[11px]">
+              <button onClick={() => setMode('instant')} className={`px-2.5 py-1 ${mode === 'instant' ? 'bg-gold-500 text-ink-950' : 'text-ink-300'}`}>
+                Instant
+              </button>
               <button onClick={() => setMode('ask')} className={`px-2.5 py-1 ${mode === 'ask' ? 'bg-gold-500 text-ink-950' : 'text-ink-300'}`}>
                 Ask
               </button>
@@ -253,12 +285,16 @@ export default function GuideWidget(): React.JSX.Element {
               </button>
             </div>
             <div className="ml-auto text-[10px] text-ink-600">
-              {mode === 'execute' ? 'Write orders — you approve with Run.' : 'Knows every tab & button.'}
+              {mode === 'execute'
+                ? 'Write orders — you approve with Run.'
+                : mode === 'instant'
+                  ? 'Straight from the manual — no AI, works offline.'
+                  : 'Knows every tab & button. Needs the AI.'}
             </div>
           </div>
 
           {/* Answer-format chips (Ask mode) */}
-          {mode === 'ask' && (
+          {mode !== 'execute' && (
             <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b border-ink-800">
               {FORMATS.map((f) => (
                 <button
@@ -352,7 +388,13 @@ export default function GuideWidget(): React.JSX.Element {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && onSend()}
-              placeholder={mode === 'execute' ? 'Write the orders to execute…' : 'Ask me anything about this app…'}
+              placeholder={
+                mode === 'execute'
+                  ? 'Write the orders to execute…'
+                  : mode === 'instant'
+                    ? 'Ask how to do anything — typos are fine…'
+                    : 'Ask me anything about this app…'
+              }
               className="flex-1 rounded-md bg-ink-800 border border-ink-700 px-3 py-2 text-xs text-ink-100 outline-none focus:border-gold-500"
             />
             <MicButton onText={(t) => setInput((prev) => appendDictation(prev, t))} className="px-2 py-2" />
@@ -361,7 +403,7 @@ export default function GuideWidget(): React.JSX.Element {
               disabled={busy || !input.trim()}
               className="rounded-md bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-ink-950 text-xs font-medium px-3 py-2 transition-colors"
             >
-              {busy ? '…' : mode === 'execute' ? 'Plan' : 'Send'}
+              {busy ? '…' : mode === 'execute' ? 'Plan' : mode === 'instant' ? 'Find' : 'Send'}
             </button>
           </div>
         </div>

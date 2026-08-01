@@ -20,6 +20,7 @@ import TimelinePage from './pages/TimelinePage'
 import StoryboardPage from './pages/StoryboardPage'
 import PresenterPage from './pages/PresenterPage'
 import RecorderPage from './pages/RecorderPage'
+import TeleprompterPage from './pages/TeleprompterPage'
 import ChartsPage from './pages/ChartsPage'
 import PsxPage from './pages/PsxPage'
 import NccplPage from './pages/NccplPage'
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="/storyboard" element={<StoryboardPage />} />
             <Route path="/presenter" element={<PresenterPage />} />
             <Route path="/recorder" element={<RecorderPage />} />
+            <Route path="/teleprompter" element={<TeleprompterPage />} />
             <Route path="/timeline" element={<TimelinePage />} />
             <Route path="/charts" element={<ChartsPage />} />
             <Route path="/psx" element={<PsxPage />} />

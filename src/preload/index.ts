@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '../shared/ipc-channels'
+import type { ImportedProject } from '../shared/project'
 import type {
   AdvisorRequest,
   IdeaGenRequest,
@@ -125,8 +126,17 @@ const api = {
   recorder: {
     screenSources: (): Promise<{ id: string; name: string; thumbnail: string }[]> =>
       ipcRenderer.invoke(IPC.recorderScreenSources),
-    save: (bytes: Uint8Array, kind: string, enhance?: boolean): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; error?: string }> =>
-      ipcRenderer.invoke(IPC.recorderSave, bytes, kind, enhance)
+    // `kind` is 'camera' | 'screen' | 'voice'. 'voice' means narrating with no picture,
+    // and comes back as an audio path instead of a video. `mime` is what the browser
+    // actually recorded, which decides whether the file can be copied rather than
+    // re-encoded — see main/recorder/saveArgs.ts.
+    save: (
+      bytes: Uint8Array,
+      kind: string,
+      enhance?: boolean,
+      mime?: string
+    ): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; audioPath?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.recorderSave, bytes, kind, enhance, mime)
   },
   activity: {
     list: () => ipcRenderer.invoke(IPC.activityList),
@@ -267,6 +277,26 @@ const api = {
     ): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; error?: string }> =>
       ipcRenderer.invoke(IPC.timelineRender, doc, title)
     // Progress reuses video.onProgress (same 'video:progress' channel).
+  },
+  /**
+   * The teleprompter's own window. Separate from the main window so a screen capture
+   * can exclude it; hiddenFromCapture additionally asks the OS to leave it out of any
+   * recording (best-effort — the UI says "asked for", never "guaranteed").
+   */
+  teleprompter: {
+    open: (opts?: { hiddenFromCapture?: boolean }): Promise<{ open: boolean; hiddenFromCapture: boolean }> =>
+      ipcRenderer.invoke(IPC.teleprompterOpen, opts),
+    close: (): Promise<{ open: boolean; hiddenFromCapture: boolean }> => ipcRenderer.invoke(IPC.teleprompterClose),
+    state: (): Promise<{ open: boolean; hiddenFromCapture: boolean }> => ipcRenderer.invoke(IPC.teleprompterState),
+    setHiddenFromCapture: (on: boolean): Promise<{ open: boolean; hiddenFromCapture: boolean }> =>
+      ipcRenderer.invoke(IPC.teleprompterProtect, on)
+  },
+  /** Plans made on the phone: open one from a file, or take one pushed over Wi-Fi. */
+  project: {
+    importPick: (): Promise<{ ok: boolean; canceled?: boolean; error?: string; result?: ImportedProject }> =>
+      ipcRenderer.invoke(IPC.projectImportPick),
+    import: (raw: unknown): Promise<{ ok: boolean; error?: string; result?: ImportedProject }> =>
+      ipcRenderer.invoke(IPC.projectImport, raw)
   },
   storyboard: {
     pickPhoto: (): Promise<string | null> => ipcRenderer.invoke(IPC.storyboardPickPhoto),

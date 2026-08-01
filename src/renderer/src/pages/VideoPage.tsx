@@ -69,10 +69,7 @@ const ENGINE_INFO: Record<LookEngine, { label: string; badge: string; blurb: str
 
 const SCRIPTPAD_KEY = '__scriptpad__'
 
-/** Turns an absolute Windows/POSIX path into a file:// URL usable in a <video src>. */
-function fileUrl(p: string): string {
-  return `file:///${p.replace(/\\/g, '/').replace(/^\/+/, '')}`
-}
+import { fileUrl } from '../../../shared/mediaUrl'
 
 /** Legitimately free / royalty-free music libraries. Downloading here is legal —
  * unlike ripping arbitrary YouTube videos, which would violate YouTube's terms.

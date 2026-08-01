@@ -846,6 +846,24 @@ export interface HealthReport {
 
 export type ActivityActor = 'ai' | 'user'
 
+/** One way in to the phone web-view server: a network this PC is on, and its link. */
+export interface WebServerAddress {
+  /** Plain-English label, e.g. "Home Wi-Fi" or "Private VPN". */
+  label: string
+  address: string
+  url: string
+  /** True for a private-VPN address — the one that keeps working on mobile data. */
+  remote: boolean
+}
+
+export interface WebServerStatus {
+  running: boolean
+  /** The best single link, kept for existing callers. */
+  url: string | null
+  /** Every network this PC can be reached on, so the user picks the right one. */
+  addresses: WebServerAddress[]
+}
+
 export interface ActivityLogEntry {
   id: string
   timestamp: string

@@ -1,3 +1,5 @@
+import QRCode from 'qrcode'
+import type { WebServerAddress } from '../../../shared/types'
 import { useEffect, useState } from 'react'
 import { confirmDialog } from '../components/Confirm'
 import { toast } from '../components/Toast'
@@ -41,6 +43,9 @@ export default function SettingsPage() {
   const [health, setHealth] = useState<HealthReport | null>(null)
   const [healthBusy, setHealthBusy] = useState(false)
   const [webUrl, setWebUrl] = useState<string | null>(null)
+  // Every network this PC can be reached on, plus a scannable code for each.
+  const [webAddresses, setWebAddresses] = useState<WebServerAddress[]>([])
+  const [qrCodes, setQrCodes] = useState<Record<string, string>>({})
   const [webBusy, setWebBusy] = useState(false)
   const [aiCloudEndpoint, setAiCloudEndpoint] = useState('')
   const [aiCloudModel, setAiCloudModel] = useState('')
@@ -78,7 +83,7 @@ export default function SettingsPage() {
       setYtChannel(s.youtubeChannelId || '')
     })
     checkOllama()
-    window.api.webServer.status().then((s) => setWebUrl(s.url))
+    void window.api.webServer.status().then(adoptWebStatus)
     window.api.ai.getConfig().then((c) => {
       setAiCloudEndpoint(c.cloudEndpoint)
       setAiCloudModel(c.cloudModel)
@@ -275,10 +280,30 @@ export default function SettingsPage() {
     setAiPollinTest(r.detail)
   }
 
+  /**
+   * Renders a QR for every reachable address. Scanning beats typing a link that
+   * carries a long secret token, and with a VPN installed there is more than one
+   * address — showing them all is what stops the user picking the wrong network.
+   */
+  async function adoptWebStatus(s: { url: string | null; addresses?: WebServerAddress[] }): Promise<void> {
+    setWebUrl(s.url)
+    const list = s.addresses ?? []
+    setWebAddresses(list)
+    const codes: Record<string, string> = {}
+    for (const a of list) {
+      try {
+        codes[a.address] = await QRCode.toDataURL(a.url, { margin: 1, width: 220 })
+      } catch {
+        // A missing code is cosmetic — the link itself is still shown.
+      }
+    }
+    setQrCodes(codes)
+  }
+
   async function toggleWebServer(): Promise<void> {
     setWebBusy(true)
     const s = webUrl ? await window.api.webServer.stop() : await window.api.webServer.start()
-    setWebUrl(s.url)
+    await adoptWebStatus(s)
     setWebBusy(false)
   }
 
@@ -1031,6 +1056,12 @@ export default function SettingsPage() {
           write scripts, and chat with the Advisor — your PC does all the work and everything saves to this PC's
           Library. Only works while this app is running and your phone is on the same network.
         </p>
+        <p className="text-xs text-ink-500">
+          <b className="text-ink-300">Want it to work when you leave the house?</b> Install{' '}
+          <b className="text-ink-300">Tailscale</b> (free) on this PC and on your phone and sign into both. Your phone
+          then reaches this PC over mobile data as if it were on your home Wi-Fi — nothing is opened to the internet.
+          A "Private VPN" link will appear below; use that one when you're out.
+        </p>
         <button
           onClick={toggleWebServer}
           disabled={webBusy}
@@ -1043,12 +1074,41 @@ export default function SettingsPage() {
           {webBusy ? 'Working…' : webUrl ? 'Turn off phone access' : 'Turn on phone access'}
         </button>
         {webUrl && (
-          <div className="rounded-md border border-ink-700 bg-ink-800 p-3">
-            <div className="text-xs text-ink-400 mb-1">Open this on your phone's browser:</div>
-            <div className="text-sm text-gold-400 break-all font-mono">{webUrl}</div>
-            <div className="text-[11px] text-ink-600 mt-1">
-              The link includes a private access token — anyone on your Wi-Fi with this exact link can use it, so
-              don't share it. Turning phone access off invalidates it.
+          <div className="space-y-2">
+            <div className="text-xs text-ink-400">
+              Point your phone's camera at a code, or type the link. This PC will not go to sleep while phone
+              access is on.
+            </div>
+            {webAddresses.map((a) => (
+              <div key={a.address} className="rounded-md border border-ink-700 bg-ink-800 p-3 flex gap-3 items-start">
+                {qrCodes[a.address] && (
+                  <img
+                    src={qrCodes[a.address]}
+                    alt={`QR code for ${a.label}`}
+                    className="h-28 w-28 shrink-0 rounded bg-white p-1"
+                  />
+                )}
+                <div className="min-w-0">
+                  <div className={`text-xs font-medium ${a.remote ? 'text-emerald-400' : 'text-ink-300'}`}>
+                    {a.label}
+                    {a.remote && ' ✓'}
+                  </div>
+                  <div className="text-xs text-gold-400 break-all font-mono mt-1">{a.url}</div>
+                  <button
+                    onClick={() => {
+                      void navigator.clipboard.writeText(a.url)
+                      toast('Link copied.', 'success')
+                    }}
+                    className="mt-2 rounded border border-ink-700 px-2 py-1 text-[11px] text-ink-300 hover:bg-ink-700"
+                  >
+                    Copy link
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="text-[11px] text-ink-600">
+              Each link includes a private access token — anyone who has the exact link can use it, so don't share
+              it or post a screenshot of the code. Turning phone access off invalidates every link immediately.
             </div>
           </div>
         )}

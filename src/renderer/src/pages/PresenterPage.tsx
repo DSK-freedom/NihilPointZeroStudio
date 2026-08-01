@@ -3,6 +3,7 @@ import { VIDEO_STYLES, type GraftRegion, type VideoStyle } from '../../../shared
 import MicButton, { appendDictation } from '../components/MicButton'
 import { useAutosave } from '../hooks/useAutosave'
 import { toast } from '../components/Toast'
+import { fileUrl } from '../../../shared/mediaUrl'
 
 type Mode = 'video' | 'photo' | 'graft'
 
@@ -86,7 +87,7 @@ export default function PresenterPage(): React.JSX.Element {
     setPreviewBusy(true); setError(null)
     try {
       const res = await window.api.presenter.graftPreview({ photoPath: graftPhotoPath, videoPath: presenterPath, region })
-      if (res.ok && res.path) setGraftPreview(`file:///${res.path.replace(/\\/g, '/').replace(/^\/+/, '')}?t=${Date.now()}`)
+      if (res.ok && res.path) setGraftPreview(`${fileUrl(res.path)}?t=${Date.now()}`)
       else setError(res.error ?? 'Preview failed.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Preview failed.')

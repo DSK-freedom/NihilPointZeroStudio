@@ -1,0 +1,123 @@
+# Builds the Windows app on every push to main and refreshes the GitHub download.
+#
+# WHY THIS EXISTS
+# `npm run ship` can only run on the owner's Windows PC — it needs PowerShell and the
+# Desktop studio folder. That means every change made from anywhere else left the
+# GitHub download stale, with nothing but a reminder to fix it. This closes the half
+# of that problem a machine can close: after this, the download on GitHub always
+# matches main, with nobody touching a PC.
+#
+# WHAT IT STILL CANNOT DO
+# It cannot copy into the Desktop studio folder or update the installed app — only the
+# owner's PC can do that. `npm run ship` remains the way to update the actual laptop.
+# This guarantees GitHub is current; it does not replace ship.
+#
+# COST
+# Windows runners bill at 2x on private repositories, and a full electron build takes
+# roughly 10-15 minutes. It therefore runs ONLY on main (not on feature branches) plus
+# manual dispatch, so ordinary work-in-progress pushes cost nothing.
+name: Build the Windows app
+
+on:
+  push:
+    branches: [main]
+    # Documentation-only pushes do not change the exe, so don't spend a build on them.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'phone/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write # needed to replace the assets on the rolling release
+
+concurrency:
+  group: windows-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` (not install) so the build uses exactly the locked dependency tree.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the tests
+        run: npm run test
+
+      - name: Lint
+        run: npm run lint
+
+      # The phone bridge and the phone app are built by SEPARATE tsconfigs that the
+      # Electron build never touches — so a break in either is invisible until someone
+      # opens it on a handset. Checked here instead.
+      - name: Typecheck the phone bridge and the phone app
+        run: |
+          npx tsc -p tsconfig.remote.json --noEmit
+          npm run typecheck:phone
+
+      # `dist:win` now also builds out/remote/bridge.js — the script that lets the
+      # studio's own screens run in a phone browser. electron-builder ships out/**,
+      # so it travels with the exe.
+      - name: Build the Windows exes
+        run: npm run dist:win
+
+      - name: Fail if the phone bridge is missing from the build
+        shell: bash
+        run: test -s out/remote/bridge.js
+
+      # The studio keeps ONE rolling release tagged 'latest' whose assets are replaced
+      # each time, so the README's /releases/latest/download/... links never change.
+      # This mirrors what ship.ps1 does, using the same tag.
+      - name: Refresh the GitHub download
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=latest
+          STAMP="$(date -u '+%Y-%m-%d %H:%M UTC')"
+
+          # Create the rolling release the first time; afterwards just reuse it.
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "Download NIHILPOINTZERO-OS (always the newest version)" \
+              --notes "Built automatically from main." \
+              --latest
+          fi
+
+          gh release upload "$TAG" \
+            "release/NIHILPOINTZERO-OS-setup.exe" \
+            "release/NIHILPOINTZERO-OS-portable.exe" \
+            --clobber
+
+          gh release edit "$TAG" \
+            --title "Download NIHILPOINTZERO-OS (always the newest version)" \
+            --notes "Built automatically from main on $STAMP (commit ${GITHUB_SHA::7}).
+
+          - **NIHILPOINTZERO-OS-setup.exe** — installs the app (recommended).
+          - **NIHILPOINTZERO-OS-portable.exe** — single file, runs from anywhere.
+
+          Note: this refreshes the GitHub download only. To update the studio folder on
+          your own PC, run \`npm run ship\` there."
+
+      # Keeps the exes reachable for 14 days even if the release step ever fails.
+      - name: Keep a copy of the build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exes
+          path: |
+            release/NIHILPOINTZERO-OS-setup.exe
+            release/NIHILPOINTZERO-OS-portable.exe
+          if-no-files-found: warn
+          retention-days: 14

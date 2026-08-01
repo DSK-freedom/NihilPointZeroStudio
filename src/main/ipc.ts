@@ -40,6 +40,8 @@ let cachedHardware: HardwareReport | null = null
 import { freeLibraryLinks, MOOD_PROMPT_HINT, moodsFromText, parseMoodReply, synthMoodFromText } from './music/mood'
 import { getOllamaStatus, ollamaChatStream, type ChatTurn } from './llm/ollama'
 import { buildAdvisorSystemPrompt } from './prompts'
+import { importPhoneProject, importPhoneProjectJson } from './project/import'
+import { closeTeleprompter, openTeleprompter, setTeleprompterProtection, teleprompterState } from './teleprompter/window'
 import { APP_GUIDE } from './appGuide'
 import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
 
@@ -71,6 +73,7 @@ import { planPresenterStoryboard, type PresenterMode } from './video/presenter'
 import { renderGraftPreview, renderGraftVideo, runGraftTool, sanitizeGraftRegion } from './video/graft'
 import type { GraftRegion } from '../shared/types'
 import { buildEnhanceArgs } from './video/enhance'
+import { recordingAudioArgs, recordingVideoArgs } from './recorder/saveArgs'
 import { generateSceneImage, planScenes } from './scene'
 import { downloadPiper, installedPiperVoiceIds, isPiperInstalled, isPiperVoiceInstalled } from './voice/piper'
 import { PIPER_VOICES, resolvePiperVoiceId } from './voice/piperVoices'
@@ -2237,6 +2240,42 @@ export function registerIpcHandlers(): void {
     return res.canceled || !res.filePaths.length ? null : res.filePaths[0]
   })
 
+  // ── Teleprompter ──
+  // Its own always-on-top window so a screen recording of a different window/screen
+  // cannot contain it, and so it can ask the OS to hide it from capture entirely.
+  ipcMain.handle(IPC.teleprompterOpen, (_e, opts?: { hiddenFromCapture?: boolean }) => openTeleprompter(opts))
+  ipcMain.handle(IPC.teleprompterClose, () => closeTeleprompter())
+  ipcMain.handle(IPC.teleprompterState, () => teleprompterState())
+  ipcMain.handle(IPC.teleprompterProtect, (_e, on: boolean) => setTeleprompterProtection(!!on))
+
+  // ── Plans made on the phone ──
+  // Opens a .npzproject.json the user transferred over, and loads it into the
+  // Storyboard tab. Never destructive: the previous storyboard stays in draft history.
+  ipcMain.handle(IPC.projectImportPick, async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const dialogOptions: Electron.OpenDialogOptions = {
+      title: 'Open a plan made on your phone',
+      properties: ['openFile'],
+      filters: [{ name: 'NihilPointZero plan', extensions: ['json'] }]
+    }
+    const res = win ? await dialog.showOpenDialog(win, dialogOptions) : await dialog.showOpenDialog(dialogOptions)
+    if (res.canceled || !res.filePaths.length) return { ok: false, canceled: true }
+    try {
+      return { ok: true, result: importPhoneProjectJson(readFileSync(res.filePaths[0], 'utf-8')) }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'That plan could not be opened.' }
+    }
+  })
+
+  // Same import, but for a plan already in hand (the phone pushes one over Wi-Fi).
+  ipcMain.handle(IPC.projectImport, async (_e, raw: unknown) => {
+    try {
+      return { ok: true, result: importPhoneProject(raw) }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'That plan could not be opened.' }
+    }
+  })
+
   // Plan a storyboard from either the user's own beats (guided) or a pasted script (auto).
   ipcMain.handle(
     IPC.storyboardPlan,
@@ -2482,31 +2521,51 @@ export function registerIpcHandlers(): void {
     return sources.map((s) => ({ id: s.id, name: s.name, thumbnail: s.thumbnail.toDataURL() }))
   })
 
-  // RECORDER: save an in-app recording (browser webm bytes) → transcode to a standard MP4 →
-  // register in Video Studio so it's saved and usable (Presenter, trim, export…).
-  ipcMain.handle(IPC.recorderSave, async (_e, bytes: Uint8Array, kind: string, enhance?: boolean) => {
-    const id = randomUUID()
-    const scratch = mkdtempSync(join(tmpdir(), 'npz-rec-'))
-    const webm = join(scratch, 'rec.webm')
-    const outPath = join(videosDir(), `recording-${kind || 'clip'}-${id.slice(0, 8)}.mp4`)
-    try {
-      writeFileSync(webm, Buffer.from(bytes))
-      // When enhance is on, clean the voice + polish the picture in the SAME transcode pass;
-      // otherwise just transcode webm → MP4.
-      const args = enhance
-        ? buildEnhanceArgs(webm, outPath, { audio: true, video: true })
-        : ['-y', '-i', webm, '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', outPath]
-      await runFfmpeg(args)
-      const job: VideoJob = { id, title: `Recording (${kind || 'clip'})`, path: outPath, hasCustomVoice: true, createdAt: new Date().toISOString() }
-      appendVideo(job)
-      logActivity('user', 'Saved an in-app recording', kind)
-      return { ok: true, video: job }
-    } catch (err) {
-      return { ok: false, error: err instanceof Error ? err.message : 'Could not save the recording.' }
-    } finally {
-      rmSync(scratch, { recursive: true, force: true })
+  /**
+   * RECORDER: save what was just recorded.
+   *
+   * Two shapes, because the user records two different things. Filming yourself gives a
+   * video, which goes into Video Studio ready to trim, enhance and export. Narrating
+   * WITHOUT appearing on camera gives audio, which belongs with the other narration
+   * tracks, not in the video list pretending to be a video with a black picture.
+   *
+   * `mime` says what the browser actually recorded. It decides whether the file can be
+   * copied straight into an MP4 (H.264 — now the usual case) or has to be converted;
+   * see recorder/saveArgs.ts for why that distinction is worth making.
+   */
+  ipcMain.handle(
+    IPC.recorderSave,
+    async (_e, bytes: Uint8Array, kind: string, enhance?: boolean, mime?: string) => {
+      const id = randomUUID()
+      const scratch = mkdtempSync(join(tmpdir(), 'npz-rec-'))
+      const sourceIsH264 = typeof mime === 'string' && /avc1|h264|mp4/i.test(mime)
+      const inPath = join(scratch, `rec.${sourceIsH264 ? 'mp4' : 'webm'}`)
+      const voiceOnly = kind === 'voice'
+      const outPath = voiceOnly
+        ? join(generatedAudioDir(), `narration-${id.slice(0, 8)}.m4a`)
+        : join(videosDir(), `recording-${kind || 'clip'}-${id.slice(0, 8)}.mp4`)
+      try {
+        writeFileSync(inPath, Buffer.from(bytes))
+        await runFfmpeg(
+          voiceOnly
+            ? recordingAudioArgs(inPath, outPath, { enhance })
+            : recordingVideoArgs(inPath, outPath, { enhance, sourceIsH264 })
+        )
+        if (voiceOnly) {
+          logActivity('user', 'Saved a voice-only narration recording', outPath)
+          return { ok: true, audioPath: outPath }
+        }
+        const job: VideoJob = { id, title: `Recording (${kind || 'clip'})`, path: outPath, hasCustomVoice: true, createdAt: new Date().toISOString() }
+        appendVideo(job)
+        logActivity('user', 'Saved an in-app recording', kind)
+        return { ok: true, video: job }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : 'Could not save the recording.' }
+      } finally {
+        rmSync(scratch, { recursive: true, force: true })
+      }
     }
-  })
+  )
 
   // Enhance an existing built video: voice cleanup + video polish → a NEW video (original kept).
   ipcMain.handle(IPC.videoEnhance, async (_e, videoId: string, opts?: { audio?: boolean; video?: boolean }) => {

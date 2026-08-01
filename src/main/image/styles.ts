@@ -118,3 +118,43 @@ export function styleById(id: string | undefined): StyleSpec {
 export function stylesByFamily(family: StyleFamily): StyleSpec[] {
   return STYLE_CATALOGUE.filter((s) => s.family === family)
 }
+
+/**
+ * Builds a clean image prompt for a scene: the visual style + the scene text + the
+ * video's topic, steering away from on-screen text (the renderer adds titles itself).
+ *
+ * Lives HERE rather than in ./index because this module has no imports at all, so the
+ * phone app can bundle it and preview a scene with the byte-identical prompt the PC
+ * will render from. ./index re-exports it, so every existing caller is unchanged.
+ */
+export function sceneImagePrompt(style: string, scene: string, title: string): string {
+  // LEAD with the user's own visual concept so the image matches their bracketed direction
+  // (its subject, mood AND colours) instead of being overridden by a fixed dark "dramatic"
+  // style string — that override was why images looked mismatched and washed-out/dark.
+  const styleText = styleById(style).prompt
+  const subject = [scene, title].filter(Boolean).join('. ')
+  return `${subject}. Style: ${styleText}. Accurate rich colour, high detail, professional, no text, no watermark, no letters, no captions, no subtitles.`
+}
+
+/** The image endpoint both the desktop renderer and the phone preview call. */
+export const IMAGE_ENDPOINT = 'https://image.pollinations.ai/prompt/'
+
+/**
+ * The exact URL the free image service is asked for. Shared so a phone preview and the
+ * desktop render resolve to the SAME picture: with the same prompt, model and seed,
+ * Pollinations returns the same image.
+ */
+export function sceneImageUrl(
+  prompt: string,
+  opts: { width: number; height: number; seed?: number; model?: string }
+): string {
+  const params = new URLSearchParams({
+    width: String(opts.width),
+    height: String(opts.height),
+    nologo: 'true',
+    model: opts.model || 'flux',
+    referrer: 'nihilpointzero-studio'
+  })
+  if (opts.seed !== undefined) params.set('seed', String(opts.seed))
+  return `${IMAGE_ENDPOINT}${encodeURIComponent(prompt.slice(0, 1500))}?${params.toString()}`
+}

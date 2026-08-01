@@ -23,6 +23,17 @@ function Step([string]$name, [scriptblock]$block) {
 
 Step 'Tests' { npm run test }
 
+Step 'Typecheck the phone bridge and the phone app' {
+    # These build from their OWN tsconfigs, which the Electron build never touches -
+    # so a break in either is invisible until it is opened on a handset. The bridge in
+    # particular is what makes the studio's real screens run in a phone browser, and a
+    # silent break there looks like "the phone page loads and then does nothing", which
+    # is about the hardest thing to diagnose from the other end of a phone call.
+    npx tsc -p tsconfig.remote.json --noEmit
+    if ($LASTEXITCODE) { return }
+    npm run typecheck:phone
+}
+
 Step 'UI click-through of the REAL app (every tab must respond, a video must build)' {
     # Unit tests can all pass while a button in the UI is dead — that class of failure
     # reached the user repeatedly. This launches the actual built app in an isolated
@@ -116,6 +127,17 @@ Step 'Build (portable + installer)' {
         Write-Host "  build failed (attempt $attempt) - likely the antivirus lock on setup.exe; clearing it and retrying in 20s" -ForegroundColor Yellow
         Remove-Item $setup -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 20
+    }
+    $global:LASTEXITCODE = 0
+}
+
+Step 'Verify the phone bridge was built' {
+    # `npm run dist:win` builds out/remote/bridge.js and electron-builder ships out/**.
+    # Without it the phone shows the studio's screens and none of the buttons work, so
+    # this must never ship missing. Cheap check, catastrophic thing to miss.
+    $bridge = Join-Path $repo 'out\remote\bridge.js'
+    if (-not (Test-Path $bridge) -or (Get-Item $bridge).Length -lt 1024) {
+        throw 'FAILED: out\remote\bridge.js is missing or empty - the phone would load the studio and do nothing'
     }
     $global:LASTEXITCODE = 0
 }

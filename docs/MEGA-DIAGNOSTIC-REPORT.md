@@ -9,6 +9,59 @@ The running app shows this in the sidebar (under "OS") as a gold badge. The badg
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
+## New in this build (2026-08-01, morning — the whole studio on your phone)
+
+### 📱 Not a phone version. The studio itself.
+Settings → **Phone access** → open the link on your phone and you get the REAL app: the same
+tabs, the same buttons, the same screens you look at on the laptop. Video Studio, Scene Studio,
+Storyboard, Timeline, Presenter, DJ Station, Charts, PSX, Library, the Agent, Settings — all of
+it. Your PC does the rendering, voice-over and analysis exactly as before; the phone is the
+screen. Finished videos play on the phone straight from the PC, and you can scrub through a long
+one without downloading it first.
+
+**Why this was possible without rewriting anything:** the desktop screens never talk to the app
+directly — everything they do goes through one file. That file was rebuilt a second time for a
+phone browser, pointing at your PC over the private link. So there is no "phone version" to fall
+behind: it is literally the same screens.
+
+**Two things stay on the laptop, and the app says so instead of failing quietly:**
+- anything that opens a "choose a file" window ON the PC (from a phone that would be an invisible
+  box you cannot see or close — it looks exactly like a freeze);
+- recording the PC's own screen. Your phone's camera and mic still record from the phone.
+
+Deleting works exactly as it always did: you ask, it confirms. Nothing here skips that, and the
+AI still cannot delete anything from either device.
+
+### 🎥 Recording that doesn't look like it came off a phone
+The thing that gave phone footage away was never the resolution — it was the **bitrate**, and
+every browser quietly uses about 2.5 Mbps no matter what size you pick. That is a third of what
+1080p needs and a fifteenth of what 4K needs, which is why "4K" recordings came out *bigger than
+1080p and worse*.
+
+The Recorder now sets it from YouTube's own published upload figures:
+
+| | 30 fps | 60 fps |
+|---|---|---|
+| 1080p | 8 Mbps | 12 Mbps |
+| 1440p | 16 Mbps | 24 Mbps |
+| 4K | 45 Mbps | 68 Mbps |
+
+You never have to think about that. The Recorder shows the number and the MB-per-minute before
+you press record, and afterwards tells you what your camera **actually** managed — asking for 4K
+on a 1080p camera now says so, instead of leaving you wondering why it looks soft.
+
+- **Frames per second** is a choice now: 24 (cinematic) · 30 (normal) · 60 (smooth — screens and
+  movement).
+- **🎙 Voice only — no face** opens no camera at all. No permission prompt, no camera light,
+  nothing that could end up in the file. Saved as a narration track for scenes or stock footage,
+  cleaned with the same voice chain the video enhancer uses.
+- **On the phone, "🎥 Film it now" opens your phone's OWN camera app** rather than filming inside
+  a web page. That is the biggest single difference: real sensor, hardware encoding,
+  stabilisation, proper autofocus. 🤳 is the front camera.
+- **Nothing is lost when it saves.** Recordings are captured as H.264 now, which is also what the
+  studio stores — so the file is copied into place rather than re-encoded. When a conversion is
+  genuinely needed it runs at a quality where you cannot see the difference.
+
 ## New in this build (2026-08-01, early morning — the cure, not the bandage)
 
 ### 📌 Your work folder is now decided ONCE and written down

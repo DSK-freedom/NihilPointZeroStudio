@@ -12,10 +12,7 @@ import {
   type VideoJob
 } from '../../../shared/types'
 
-/** Turns an absolute path into a file:// URL usable in <audio>/<video>. */
-function fileUrl(p: string): string {
-  return `file:///${p.replace(/\\/g, '/').replace(/^\/+/, '')}`
-}
+import { fileUrl } from '../../../shared/mediaUrl'
 
 interface PackItem {
   id: string

@@ -553,6 +553,17 @@ export function thumbnailsDir(): string {
   return dir
 }
 
+/**
+ * Photos, clips and voice recordings that arrived inside a plan made on the phone.
+ * Kept in their own folder so they are obviously the user's own material, and so an
+ * import never writes near anything the studio generated.
+ */
+export function phoneAssetsDir(): string {
+  const dir = join(dataDir(), 'phone-assets')
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  return dir
+}
+
 function aiVideoConfigPath(): string {
   return join(dataDir(), 'ai-video.json')
 }

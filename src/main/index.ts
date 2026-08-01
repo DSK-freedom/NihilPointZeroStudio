@@ -7,6 +7,8 @@ import { decideDataHome, holdsUserWork, isUsableDir, readPin, writePin } from '.
 import { getLastHealth, logActivity, setLastHealth } from './store'
 import { join } from 'path'
 import { registerIpcHandlers } from './ipc'
+import { captureHandlers } from './remote/registry'
+import { attachRemoteEvents } from './remote/events'
 
 // E2E harness (scripts/e2e-smoke.mjs, the ship gate): a fully ISOLATED data home so
 // the click-through suite can NEVER touch real user data — it outranks every other
@@ -70,6 +72,10 @@ function createWindow(): void {
     }
   })
 
+  // Lets a phone running the studio see the same live progress the desktop sees.
+  // Everything still reaches this window first and unchanged; see remote/events.ts.
+  attachRemoteEvents(mainWindow.webContents)
+
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
   })
@@ -101,7 +107,10 @@ if (!gotLock) {
   })
 
   app.whenReady().then(() => {
-    registerIpcHandlers()
+    // Registers exactly as before, and additionally remembers each handler so the same
+    // function can be called from the phone. See remote/registry.ts for why it is
+    // wrapped here rather than edited into all 157 registrations.
+    captureHandlers(registerIpcHandlers)
     createWindow()
 
     // Quiet, delayed check for a newer shipped build (silent when offline/failing),

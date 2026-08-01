@@ -115,6 +115,43 @@ When that happens the rule does not become "give the user a list of chores". It 
 is the best that can be offered, that is a bug in the software, and fixing it is the
 work — not the walkthrough. The user does not code, and steps are where things break.
 
+## NOTHING IS LOST IF THE SESSION STOPS DEAD (hard rule, 2026-08-01)
+
+The user's instruction: *"whenever we are working you should make sure that the work or
+upgrade or update etc is being done by you in such a way that if all of a sudden tokens
+end, no work is lost — and when I get tokens, all I say is 'continue', and you continue
+from where you stopped."*
+
+A session can end mid-sentence: tokens run out, the context fills, the container is
+reclaimed. When that happens the assistant's memory, its task list and the whole working
+directory are gone. **Only what is committed and pushed to GitHub still exists.** So
+"don't lose work" is not about being careful, it is about where the work is kept.
+
+Four things make this true. All four are mandatory.
+
+1. **Push at every coherent step, not at the end.** The unit is "this compiles and its
+   tests pass", not "the feature is finished". Ten small pushed commits survive; one
+   perfect unpushed commit does not. If a step is big enough to think of as a step, it is
+   big enough to push.
+
+2. **`.claude/RESUME.md` is kept current, in the repo.** The harness task list dies with
+   the session; a committed file does not. It records what is done, what is in progress,
+   the exact next action, and how to verify. Update it as part of the work — before
+   starting something long, and again when it lands. It is written for a reader with no
+   memory of this conversation, because that is exactly who will read it.
+
+3. **Never leave the tree in a state that does not build.** A resumed session that opens
+   with a broken typecheck spends its first tokens on archaeology. Half-finished is fine;
+   broken is not. If a change must be abandoned mid-way, revert it and say so in
+   RESUME.md rather than leaving it in place.
+
+4. **Commit messages carry the reasoning, not just the diff.** What was tried, what was
+   rejected and why, what is verified and what is only assumed. `git log` is the one
+   record that survives everything, so it has to be readable as a narrative.
+
+The test of all of this: the user types **"continue"** and nothing else. If that is not
+enough to pick the work up exactly where it stopped, this rule was not followed.
+
 ## Architecture
 
 electron-vite + React 19 + TypeScript + Tailwind. Three processes:

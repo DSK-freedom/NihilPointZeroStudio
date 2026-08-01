@@ -4,12 +4,25 @@ import { runAutoBackupIfDue } from './autoBackup'
 import { runHealthCheck } from './health'
 import { scanStranded } from './strandedData'
 import { decideDataHome, holdsUserWork, isUsableDir, readPin, writePin } from './dataHome'
-import { getLastHealth, getSettings, getStartWithWindows, logActivity, setActiveProvider, setLastHealth } from './store'
+import {
+  getLastBackupNudgeAt,
+  getLastHealth,
+  getSecondBackupDir,
+  getSettings,
+  getStartWithWindows,
+  listLibrary,
+  listVideos,
+  logActivity,
+  setActiveProvider,
+  setLastBackupNudgeAt,
+  setLastHealth
+} from './store'
 import { join } from 'path'
 import { registerIpcHandlers, selfUpdateEnv } from './ipc'
 import { applyOpenAtLogin, shouldAutoInstall, shouldFocusOnSecondInstance, wasAutoStarted } from './autoStart'
 import { runSelfUpdate } from './selfUpdate'
 import { rescueMessage, rescueTarget } from './llm/rescueBrain'
+import { nudgeMessage, shouldNudge } from './backupNudge'
 import { isProviderDead } from './llm/deadProviders'
 import { getOllamaStatus } from './llm/ollama'
 import { broadcastAiFallback } from './notify'
@@ -268,6 +281,30 @@ if (!gotLock) {
           }
         })()
       }, 8000)
+
+      /**
+       * ONE DISK IS NOT A BACKUP. His work exists in one place and his own restore log
+       * already reads "8 missing file(s) brought back". Settings has said "not set -
+       * recommended" for weeks, unread, because he does not open Settings. So it comes to
+       * him instead — see backupNudge.ts for why fortnightly and why not on an empty
+       * studio.
+       */
+      setTimeout(() => {
+        try {
+          const nowIso = new Date().toISOString()
+          const workItems = listVideos().length + listLibrary().length
+          if (!shouldNudge({
+            hasSecondHome: !!getSecondBackupDir(),
+            workItems,
+            lastNudgedAt: getLastBackupNudgeAt(),
+            nowIso
+          })) return
+          setLastBackupNudgeAt(nowIso)
+          logActivity('ai', 'Your work is only on this laptop', nudgeMessage(workItems))
+        } catch {
+          // A reminder that cannot be worked out is never worth failing a launch for.
+        }
+      }, 45_000)
 
       // Weekly copy-only backup of the user's work (at most once every 7 days).
       // Delayed well past first paint so it never competes with app startup.

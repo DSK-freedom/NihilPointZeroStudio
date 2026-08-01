@@ -2,10 +2,7 @@ import { useEffect, useState } from 'react'
 import type { GeneratedScript, LibraryEntry, SavedImage, VideoIdea } from '../../../shared/types'
 import { toast } from '../components/Toast'
 import { confirmDialog } from '../components/Confirm'
-
-function fileUrl(p: string): string {
-  return `file:///${p.replace(/\\/g, '/').replace(/^\/+/, '')}`
-}
+import { fileUrl } from '../../../shared/mediaUrl'
 
 type Filter = 'all' | 'idea' | 'script' | 'image' | 'trash'
 

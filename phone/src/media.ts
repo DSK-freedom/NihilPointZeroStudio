@@ -9,6 +9,7 @@
  * browser cannot do that quickly) — the user is told their size instead.
  */
 import { MAX_ASSET_BYTES, base64Bytes, type ProjectAsset, type ProjectAssetKind } from '../../src/shared/project'
+import { AUDIO_MIME_PREFERENCE, audioBitrate, pickMime } from '../../src/shared/recordingQuality'
 
 /** Plenty for compositing a face into a 1080p/4K scene; a fraction of the original bytes. */
 const MAX_PHOTO_EDGE = 1600
@@ -110,13 +111,14 @@ export function kindForFile(file: File): ProjectAssetKind | null {
 
 // ────────────────────────────── microphone ──────────────────────────────
 
-/** The first container the phone actually supports, preferred smallest-first. */
+/**
+ * The same container ranking and the same bitrate the desktop Recorder uses, so a
+ * scene narrated on the phone sounds identical to one narrated at the laptop. Only
+ * the mic differs.
+ */
 function pickAudioMime(): string | undefined {
-  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
-  for (const c of candidates) {
-    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(c)) return c
-  }
-  return undefined
+  if (typeof MediaRecorder === 'undefined') return undefined
+  return pickMime(AUDIO_MIME_PREFERENCE, (t) => MediaRecorder.isTypeSupported?.(t) ?? false)
 }
 
 export interface Recording {
@@ -136,12 +138,20 @@ export async function startRecording(): Promise<Recording> {
   if (!canRecord()) throw new Error('This phone/browser will not allow recording here.')
   let stream: MediaStream
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    stream = await navigator.mediaDevices.getUserMedia({
+      // The same cleanup the laptop applies, done by the phone's own audio hardware.
+      audio: { noiseSuppression: true, echoCancellation: true, autoGainControl: true }
+    })
   } catch {
     throw new Error('Microphone permission was refused. Allow it in your browser settings and try again.')
   }
   const mime = pickAudioMime()
-  const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+  // Explicit bitrate for the same reason as on the laptop: left to itself the browser
+  // picks a low default, and narration is the one thing in a video nobody forgives.
+  const rec = new MediaRecorder(stream, {
+    ...(mime ? { mimeType: mime } : {}),
+    audioBitsPerSecond: audioBitrate('youtube')
+  })
   const chunks: BlobPart[] = []
   rec.ondataavailable = (e) => {
     if (e.data.size) chunks.push(e.data)

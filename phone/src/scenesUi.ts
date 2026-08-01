@@ -331,7 +331,15 @@ function renderEditor(): void {
                    ${media.kind === 'photo' ? `<img class="preview" style="margin-top:8px" src="${assetObjectUrl(media)}" alt="" />` : ''}
                    <div class="row"><button class="mini danger" id="ed-detach">Remove it</button></div>`
                 : `<div class="muted">Nothing attached. Either pick it here, or leave it and your PC will ask you for it when you import the plan.</div>
-                   <div class="row"><button class="mini" id="ed-attach">Pick from my phone</button></div>`
+                   <div class="row">
+                     <button class="mini" id="ed-attach">Pick from my phone</button>
+                     <button class="mini" id="ed-shoot">🎥 Film it now (back camera)</button>
+                     <button class="mini" id="ed-selfie">🤳 Film me (front camera)</button>
+                   </div>
+                   <div class="muted" style="margin-top:6px">
+                     Filming opens your phone's own camera app, so the clip is recorded at your phone's
+                     full quality — the same file you would get from the camera itself.
+                   </div>`
             }
           </div>`
         : ''
@@ -427,6 +435,8 @@ function wireEditor(): void {
   })
 
   on('ed-attach', 'click', () => pickMediaFor(editing))
+  on('ed-shoot', 'click', () => shootFor(editing, 'back'))
+  on('ed-selfie', 'click', () => shootFor(editing, 'front'))
   on('ed-detach', 'click', () => {
     P.detachFromBeat(editing, 'media')
     renderEditor()
@@ -485,6 +495,21 @@ let pickTarget = -1
 export function pickMediaFor(index: number): void {
   pickTarget = index
   $<HTMLInputElement>('pick-media').click()
+}
+
+/**
+ * Films a clip with the phone's OWN camera app rather than in the page.
+ *
+ * This is the route that actually looks professional. A browser recording is limited
+ * to what getUserMedia hands over — no stabilisation, no proper autofocus, software
+ * encoding, and whatever bitrate the browser feels like. The camera app uses the full
+ * sensor pipeline and hardware encoder, which on a modern phone is genuinely hard to
+ * tell from a camera. The clip comes back through the same attachment path as a file
+ * picked from the gallery.
+ */
+export function shootFor(index: number, camera: 'front' | 'back'): void {
+  pickTarget = index
+  $<HTMLInputElement>(camera === 'front' ? 'shoot-selfie' : 'shoot-media').click()
 }
 
 export async function onMediaPicked(file: File): Promise<void> {

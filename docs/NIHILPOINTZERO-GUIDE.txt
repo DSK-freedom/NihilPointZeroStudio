@@ -27,6 +27,9 @@ CONTENTS
   16. Everything this studio can do (quick index)
   17. NEW: the AI outage, free music, the trim bar, and what this PC can't do
   18. NEW: REAL AI video — free cloud today, local GPU when the hardware exists
+  19. NEW: NihilPointZero on your phone (the whole studio, and the offline app)
+  20. NEW: Teleprompter, and the Expert that works without AI
+  21. NEW: Recording that doesn't look like a phone
 
 -------------------------------------------------------------------------------
 1. WHAT THIS IS / FIRST LAUNCH
@@ -802,9 +805,11 @@ things and it's worth knowing which one you want.
 
 FIRST, THE HONEST PART
 The studio itself is a Windows program. A Windows program cannot be installed on
-a phone — there is no Android version and there cannot be one. What you CAN have
-on your phone is the thinking-and-writing half of the studio. Making videos,
-voice-over, subtitles and charts need your PC's tools, so those stay on the PC.
+a phone — there is no Android version and there cannot be one. So there are two
+routes, and which you want depends on one thing: is your PC switched on?
+
+  PC ON  -> Route 2. You get the WHOLE studio. Read that one first.
+  PC OFF -> Route 1. The writing half, anywhere, on mobile data.
 
 ROUTE 1 — THE PHONE APP (works with your PC switched OFF)
 This is a real app icon on your home screen. It works anywhere — on mobile data,
@@ -836,24 +841,46 @@ in another city, with your computer unplugged.
     - charts or file analysis        - open your PC Library
     - feature-length 90/180 min scripts (too long for a phone to finish)
 
-ROUTE 2 — PHONE ACCESS OVER WI-FI (your PC does the work)
-This is the one already in Settings -> "Phone access (same Wi-Fi)". Turn it on,
-open the link it shows on your phone, and your PC does all the heavy lifting.
-It now also shows your LIBRARY and the ACTIVITY log, read-only, plus it gets a
-proper icon when you add it to your home screen.
+ROUTE 2 — THE WHOLE STUDIO, ON YOUR PHONE (your PC does the work)
+Settings -> "Phone access". Turn it on, open the link it shows on your phone, and
+you get the REAL studio. Not a smaller version, not a copy: the same tabs, the
+same buttons, the same screens you look at on the laptop, running on your phone.
 
-  Use this one when you're at home and want the full power of the PC.
-  Use Route 1 when you're out and the PC is off.
+  How it works, in one sentence: the phone shows the app, and every button you
+  press is carried over your private link to the PC, which does the actual work
+  and sends the answer back.
 
-  Your PC must be switched on, the studio must be running, and both devices must
-  be on the same Wi-Fi. The link contains a private key — don't share it. Turning
-  phone access off makes the old link stop working immediately.
+  That means everything is there — Video Studio, Scene Studio, Storyboard,
+  Timeline, Presenter, DJ Station, Charts, PSX, Library, the Agent, Settings.
+  Rendering, voice-over, subtitles and analysis all run on the PC's tools, the way
+  they always did. You watch the progress bar on the phone.
+
+  Finished videos play on the phone straight from the PC, and you can scrub
+  through a long one without downloading it first.
+
+  TWO THINGS STAY ON THE LAPTOP, and the app tells you so when you reach them:
+    - Anything that opens a "choose a file" window ON THE PC. From the phone that
+      would be an invisible box you cannot see or close, so it is refused with a
+      message rather than looking like a freeze. Do that step at the computer.
+    - Recording the PC's own screen. Your phone can record its own camera and
+      microphone here; the PC's screen has to be started at the PC.
+
+  WHAT YOU NEED
+  Your PC switched on with the studio running. On your home Wi-Fi that is all.
+  To use it OUT of the house on mobile data, install Tailscale on both the PC and
+  the phone (free) and use the link labelled "Private VPN" — the app sorts that
+  one to the top for you. While phone access is on, the PC is also stopped from
+  going to sleep, so it is still there when you reach for it.
+
+  The link contains a private key — don't share it. Turning phone access off makes
+  the old link stop working immediately, and a fresh key is made next time.
 
 NOTHING ON YOUR PHONE CAN DAMAGE YOUR WORK
 The phone app keeps its own notes on the phone and has no route to your
-nihilpointzero-data folder at all. Over Wi-Fi, the phone can only READ your
-Library and Activity — it cannot delete or change anything. Deleting is still
-something only you can do, on the PC, with a confirmation.
+nihilpointzero-data folder at all. Route 2 is as powerful as sitting at the
+laptop — and no more. Deleting still works exactly as it does on the desktop: you
+ask, it confirms, and nothing here skips that step. The AI still cannot delete
+anything, from either device.
 
 -------------------------------------------------------------------------------
 20. NEW (2026-08-01): TELEPROMPTER, AND THE EXPERT THAT WORKS WITHOUT AI
@@ -876,8 +903,8 @@ There is a new "Teleprompter" tab in the sidebar, and one in the phone app too.
   On the phone: just tap the text to pause or resume.
   "Mirror" flips the text for a glass teleprompter rig.
 
-FOUR WAYS TO RECORD - PICK YOURS IN THE RECORDER TAB
-The Recorder now asks how you are recording, because the answer decides where the
+FIVE WAYS TO RECORD - PICK YOURS IN THE RECORDER TAB
+The Recorder asks how you are recording, because the answer decides where the
 teleprompter must sit so it does not end up in your video:
 
   1. THIS LAPTOP'S WEBCAM FILMS ME - prompter on this screen under the webcam.
@@ -886,13 +913,80 @@ teleprompter must sit so it does not end up in your video:
      DIFFERENT screen/window to capture. Tick the box and Windows is also asked to
      hide the prompter from any recording completely.
   3. MY PHONE'S CAMERA FILMS ME - prompter on the laptop, stood behind the phone.
-  4. MY PHONE RECORDS ITS OWN SCREEN - use Android's own screen recorder (swipe
+  4. I NARRATE, MY FACE IS NEVER SHOWN - no camera is opened at all. Put the
+     prompter wherever you like, full screen if you want; there is nothing it
+     could appear in.
+  5. MY PHONE RECORDS ITS OWN SCREEN - use Android's own screen recorder (swipe
      down the quick settings). A web app is not allowed to record your phone's
      screen and would stop the moment you switch apps. Prompter on the laptop.
 
   COUNTDOWN: next to the Record button, choose None / 3 / 5 / 10 / 20 / 30
   seconds. Press Record, get into position, and it starts itself when the number
   reaches zero.
+
+-------------------------------------------------------------------------------
+21. NEW (2026-08-01): RECORDING THAT DOESN'T LOOK LIKE A PHONE
+-------------------------------------------------------------------------------
+
+THE THING NOBODY TELLS YOU: IT IS NOT THE RESOLUTION
+Everyone reaches for 4K, and 4K is not what gives a phone recording away. The
+bitrate is — how many bits per second are spent on the picture. Every browser,
+left alone, records at roughly 2.5 megabits per second WHATEVER size you asked
+for. That is about a third of what 1080p needs and a fifteenth of what 4K needs.
+Record 4K at the default and you get a file that is bigger than 1080p and looks
+worse: soft, and blocky whenever anything moves.
+
+The Recorder now sets it properly. The figures come straight from YouTube's own
+published guidance for uploads:
+
+      1080p at 30 fps ....  8 Mbps        1080p at 60 fps ....  12 Mbps
+      1440p at 30 fps ....  16 Mbps       1440p at 60 fps ....  24 Mbps
+      4K    at 30 fps ....  45 Mbps       4K    at 60 fps ....  68 Mbps
+
+You do not have to know any of that. The Recorder shows you the number it is
+using and roughly how many MB a minute will cost, before you press record.
+
+THE CONTROLS
+  Resolution     720p / 1080p / 1440p / 4K.
+  Frames/second  24 (cinematic) · 30 (normal talking head) · 60 (smooth — best
+                 for screens, movement, anything fast).
+  Quality        Balanced (smaller files) · YouTube quality (the right answer
+                 almost always) · Master (well above what YouTube needs, for
+                 footage you are going to cut and re-export).
+
+  It also tells you what your camera ACTUALLY gave. Ask for 4K on a camera that
+  tops out at 1080p and it says so, instead of leaving you wondering why the
+  footage looks soft.
+
+WITH YOUR FACE, OR WITHOUT
+  🎙 VOICE ONLY - NO FACE opens no camera at all. No permission prompt, no camera
+  light, nothing that could end up in the file. Your narration is saved as an
+  audio track, ready to put under scenes, charts, stock footage or your own clips.
+  Tick "Clean up my voice on save" and it gets the same de-noise, levelling and
+  broadcast loudness the video enhancer uses — so you sound identical whether or
+  not you were on camera.
+
+FILMING ON THE PHONE — USE THE PHONE'S OWN CAMERA APP
+  In the phone app's scene editor there are now two filming buttons:
+      🎥 Film it now (back camera)      🤳 Film me (front camera)
+  These open your phone's REAL camera app rather than recording inside the web
+  page. That matters more than any setting here: the camera app uses the actual
+  sensor pipeline, the hardware encoder, stabilisation and proper autofocus. A web
+  page cannot get close. The clip comes back and attaches to the scene exactly
+  like one picked from your gallery.
+
+  When you record inside the studio ON your phone (Route 2), a long take is saved
+  to the phone's own Downloads rather than squeezed over the link — a 4K take runs
+  to gigabytes. Short takes go straight to the PC. Either way the take is never
+  lost; the app tells you which happened.
+
+NOTHING IS THROWN AWAY WHEN IT SAVES
+  Recordings are usually captured as H.264 now, which is also what the studio
+  stores. When that is the case the file is copied into place rather than
+  re-encoded — instant, and not one bit of quality lost. When a conversion is
+  genuinely needed it is done at a quality setting where you cannot see the
+  difference from the original. (Ticking "Enhance on save" always re-encodes,
+  because that is what enhancing means.)
 
 THE EXPERT NOW WORKS WITH NO AI AT ALL
 The 🧭 Expert (bottom-left) has three buttons at the top: Instant, Ask AI,

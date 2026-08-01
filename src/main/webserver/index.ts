@@ -13,6 +13,13 @@ import { extractJson } from '../llm/parse'
 import { STYLE_CATALOGUE, sceneImagePrompt, sceneImageUrl } from '../image/styles'
 import { PROMPT_PACK } from '../promptPack'
 import { importPhoneProject } from '../project/import'
+import { invokeRemote, remoteChannels } from '../remote/registry'
+import { subscribeRemoteEvents } from '../remote/events'
+import { serveFile } from '../remote/files'
+import { mimeFor, resolveStatic, rendererDir, bridgePath, studioPage } from '../remote/site'
+import { decodeWire, encodeWire } from '../../shared/wire'
+import { REMOTE_MEDIA_ROUTE } from '../../shared/mediaUrl'
+import { readFileSync } from 'fs'
 import { MOBILE_PAGE } from './page'
 import type { WebServerAddress, WebServerStatus } from '../../shared/types'
 
@@ -112,15 +119,47 @@ export function getWebServerStatus(): WebServerStatus {
   return { running: true, url: addresses[0]?.url ?? null, addresses }
 }
 
+const COOKIE = 'npz_t'
+
+function cookieToken(req: IncomingMessage): string | null {
+  const raw = req.headers.cookie
+  if (!raw) return null
+  for (const part of raw.split(';')) {
+    const [k, ...rest] = part.trim().split('=')
+    if (k === COOKIE) return decodeURIComponent(rest.join('='))
+  }
+  return null
+}
+
+/**
+ * Three ways to prove you are the one holding the link, because the studio needs all
+ * three: the query string opens the page, the header covers the app's own calls, and
+ * the cookie covers everything the BROWSER fetches on its own — stylesheets, fonts,
+ * the JavaScript bundle, `<video src>` — none of which can be given a header.
+ */
 function authed(req: IncomingMessage): boolean {
   try {
     const url = new URL(req.url ?? '', 'http://x')
-    // Query param opens the page (it's the link the user taps); the page's own API
-    // calls then send the token in the X-Token header instead of the URL.
-    return url.searchParams.get('t') === token || req.headers['x-token'] === token
+    return (
+      url.searchParams.get('t') === token ||
+      req.headers['x-token'] === token ||
+      cookieToken(req) === token
+    )
   } catch {
     return false
   }
+}
+
+/**
+ * Remembers the token in the tab so sub-resources authenticate themselves.
+ *
+ * SameSite=Strict and HttpOnly are both deliberate: the cookie is never sent from
+ * another site, and page scripts cannot read it. The page gets the token it needs from
+ * the injected `__NPZ_TOKEN__` instead. No Expires, so it dies with the tab — the
+ * token is regenerated every time phone access is switched on anyway.
+ */
+function cookieHeader(): string {
+  return `${COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict`
 }
 
 /**
@@ -130,26 +169,42 @@ function authed(req: IncomingMessage): boolean {
  */
 const RATE_WINDOW_MS = 5 * 60_000
 const RATE_MAX = 30
+/**
+ * The full studio is a different shape of traffic entirely: opening it fires dozens of
+ * reads before the user has done anything, and a busy session makes hundreds. Holding
+ * it to the small page's budget would break the app within a minute of opening it, so
+ * it gets its own generous ceiling — still low enough to stop a runaway script.
+ */
+const STUDIO_RATE_MAX = 900
+/** Roughly ten minutes of dictated audio once base64 has inflated it by a third. */
+const STUDIO_BODY_MAX = 64 * 1024 * 1024
 const rateHits = new Map<string, number[]>()
-function rateLimited(req: IncomingMessage): boolean {
+function rateLimited(req: IncomingMessage, max = RATE_MAX): boolean {
   const ip = req.socket.remoteAddress ?? 'unknown'
+  const key = `${ip}|${max}`
   const now = Date.now()
-  const hits = (rateHits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS)
-  if (hits.length >= RATE_MAX) {
-    rateHits.set(ip, hits)
+  const hits = (rateHits.get(key) ?? []).filter((t) => now - t < RATE_WINDOW_MS)
+  if (hits.length >= max) {
+    rateHits.set(key, hits)
     return true
   }
   hits.push(now)
-  rateHits.set(ip, hits)
+  rateHits.set(key, hits)
   return false
 }
 
-function readBody(req: IncomingMessage): Promise<unknown> {
+/**
+ * `max` defaults to the old 2 MB guard. The studio's own calls get far more room
+ * because some of them genuinely carry a lot: a dictated clip is sent as raw audio
+ * bytes, and 2 MB is about ninety seconds of it — short enough that people would hit
+ * the ceiling mid-sentence.
+ */
+function readBody(req: IncomingMessage, max = 2_000_000): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let data = ''
     req.on('data', (c) => {
       data += c
-      if (data.length > 2_000_000) req.destroy() // basic guard
+      if (data.length > max) req.destroy()
     })
     req.on('end', () => {
       try {
@@ -184,6 +239,44 @@ async function handleAdvisor(res: ServerResponse, body: any): Promise<void> {
   res.end()
 }
 
+/**
+ * Holds one long-lived connection open and pushes the app's progress messages down it.
+ *
+ * The 25-second comment ping is not decoration: phone networks and any proxy in
+ * between will quietly drop a connection that has said nothing for a while, and the
+ * symptom — progress bars that freeze after a minute — looks like the render died.
+ */
+function handleEvents(req: IncomingMessage, res: ServerResponse): void {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  })
+  res.write('retry: 3000\n\n')
+  const unsubscribe = subscribeRemoteEvents((channel, args) => {
+    try {
+      res.write(`data: ${JSON.stringify({ channel, args: encodeWire(args) })}\n\n`)
+    } catch {
+      /* the close handler below will clean up */
+    }
+  })
+  const ping = setInterval(() => {
+    try {
+      res.write(': ping\n\n')
+    } catch {
+      /* likewise */
+    }
+  }, 25_000)
+  const stop = (): void => {
+    clearInterval(ping)
+    unsubscribe()
+  }
+  req.on('close', stop)
+  res.on('close', stop)
+  res.on('error', stop)
+}
+
 async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '', 'http://x')
   const path = url.pathname
@@ -194,11 +287,84 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     sendJson(res, 401, { error: 'Unauthorized — open the exact link shown in the app (it includes its key).' })
     return
   }
+
+  // ── The real studio, served to the phone ─────────────────────────────────────────
+  // Not a mirror and not a cut-down copy: these are the exact files the desktop window
+  // loads, plus one script that re-points `window.api` at this server. If the UI has
+  // not been built (a source checkout that has never run a build), the small
+  // hand-written page below is served instead, so the feature degrades to what it
+  // used to be rather than to a blank screen.
   if (path === '/' || path === '/index.html') {
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    const page = studioPage(token)
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Set-Cookie': cookieHeader() })
+    res.end(page ?? MOBILE_PAGE)
+    return
+  }
+  // The small, fast page — kept as its own address so it stays reachable on a weak
+  // connection, and so nothing that already links to it breaks.
+  if (path === '/lite') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Set-Cookie': cookieHeader() })
     res.end(MOBILE_PAGE)
     return
   }
+  if (path === '/bridge.js') {
+    try {
+      const js = readFileSync(bridgePath())
+      res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Content-Length': js.length })
+      res.end(js)
+    } catch {
+      // Explicit, because a silent 404 here shows up as an app that loads and then
+      // does nothing at all — the hardest possible thing to diagnose from a phone.
+      res.writeHead(500, { 'Content-Type': 'text/javascript; charset=utf-8' })
+      res.end('alert("This build is missing its phone bridge. Run a fresh build on the PC.")')
+    }
+    return
+  }
+
+  // ── One remote call = one desktop click ──────────────────────────────────────────
+  if (path === '/api/invoke' && req.method === 'POST') {
+    if (rateLimited(req, STUDIO_RATE_MAX)) {
+      sendJson(res, 429, { error: 'Too many requests — wait a few minutes and try again.' })
+      return
+    }
+    const body = (await readBody(req, STUDIO_BODY_MAX)) as { channel?: unknown; args?: unknown }
+    const channel = String(body?.channel ?? '')
+    const args = Array.isArray(decodeWire(body?.args)) ? (decodeWire(body?.args) as unknown[]) : []
+    try {
+      sendJson(res, 200, { ok: true, value: encodeWire(await invokeRemote(channel, args)) })
+    } catch (err) {
+      // 200 with ok:false, not a 4xx: the phone rejects the promise with this exact
+      // message, so the UI shows the same wording the desktop would have shown.
+      sendJson(res, 200, { ok: false, error: err instanceof Error ? err.message : 'That did not work.' })
+    }
+    return
+  }
+  // What the phone is allowed to ask for — useful when something is refused and the
+  // user wants to know whether it is a bug or a deliberate PC-only step.
+  if (path === '/api/channels' && req.method === 'GET') {
+    sendJson(res, 200, remoteChannels())
+    return
+  }
+  // Progress while long jobs run. One connection carries every channel.
+  if (path === '/api/events') {
+    handleEvents(req, res)
+    return
+  }
+  // Finished videos, scene pictures, recorded audio — streamed with range support so
+  // the phone can scrub a long render instead of downloading it whole. The path is a
+  // single URL segment (see REMOTE_MEDIA_ROUTE) so a page's own `?t=` cache-buster
+  // cannot end up inside the filename.
+  if (path.startsWith(REMOTE_MEDIA_ROUTE)) {
+    let wanted = ''
+    try {
+      wanted = decodeURIComponent(path.slice(REMOTE_MEDIA_ROUTE.length))
+    } catch {
+      /* left empty; serveFile answers 400 */
+    }
+    serveFile(req, res, wanted)
+    return
+  }
+
   if (path.startsWith('/api/') && rateLimited(req)) {
     sendJson(res, 429, { error: 'Too many requests — wait a few minutes and try again.' })
     return
@@ -319,6 +485,24 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     }
     return
   }
+
+  // Anything left is one of the studio's own files — the JavaScript bundle, the CSS,
+  // the fonts. Served straight out of the same build folder the desktop window uses.
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    const file = resolveStatic(rendererDir(), path)
+    if (file) {
+      const bytes = readFileSync(file)
+      res.writeHead(200, {
+        'Content-Type': mimeFor(file),
+        'Content-Length': bytes.length,
+        // The bundle's filename contains its own content hash, so a long cache is
+        // safe and saves re-downloading megabytes over mobile data every time.
+        'Cache-Control': path.startsWith('/assets/') ? 'private, max-age=604800' : 'private, max-age=60'
+      })
+      res.end(req.method === 'HEAD' ? undefined : bytes)
+      return
+    }
+  }
   sendJson(res, 404, { error: 'Not found' })
 }
 
@@ -331,6 +515,12 @@ export async function startWebServer(): Promise<WebServerStatus> {
       else res.end()
     })
   })
+  // Rendering a long video can take half an hour, and the phone holds one request open
+  // for the whole of it. Node's default five-minute request timeout would cut that off
+  // and the UI would report a failure for a job that is in fact still running fine.
+  server.requestTimeout = 0
+  server.headersTimeout = 60_000
+  server.keepAliveTimeout = 120_000
   await new Promise<void>((resolve, reject) => {
     server!.once('error', reject)
     server!.listen(0, '0.0.0.0', () => resolve())

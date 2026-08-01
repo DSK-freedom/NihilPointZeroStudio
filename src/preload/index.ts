@@ -126,8 +126,17 @@ const api = {
   recorder: {
     screenSources: (): Promise<{ id: string; name: string; thumbnail: string }[]> =>
       ipcRenderer.invoke(IPC.recorderScreenSources),
-    save: (bytes: Uint8Array, kind: string, enhance?: boolean): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; error?: string }> =>
-      ipcRenderer.invoke(IPC.recorderSave, bytes, kind, enhance)
+    // `kind` is 'camera' | 'screen' | 'voice'. 'voice' means narrating with no picture,
+    // and comes back as an audio path instead of a video. `mime` is what the browser
+    // actually recorded, which decides whether the file can be copied rather than
+    // re-encoded — see main/recorder/saveArgs.ts.
+    save: (
+      bytes: Uint8Array,
+      kind: string,
+      enhance?: boolean,
+      mime?: string
+    ): Promise<{ ok: boolean; video?: import('../shared/types').VideoJob; audioPath?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC.recorderSave, bytes, kind, enhance, mime)
   },
   activity: {
     list: () => ipcRenderer.invoke(IPC.activityList),

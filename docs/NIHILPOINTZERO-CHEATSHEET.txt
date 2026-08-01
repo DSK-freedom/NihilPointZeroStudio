@@ -137,18 +137,30 @@ Storyboard length: narration decides each shot's length, so speech never gets cu
 Old videos: rebuild once so music-removal/captions work fully
 
 ON YOUR PHONE
-Anywhere (PC off): open https://dskjazz.github.io/nihilpointzero-phone/ once -> browser menu ->
-                   "Install app". Gold circle icon appears. Ideas · Writer · Advisor · Saved.
-                   Free, nothing to type in, same writing style as the PC. No video/voice/Library.
-At home (PC on):   Settings -> "Phone access (same Wi-Fi)" -> open the link on your phone. Full PC
-                   power, now with read-only Library + Activity tabs. Don't share that link.
+PC ON  (best):     Settings -> "Phone access" -> open the link. You get the WHOLE studio - same
+                   tabs, same buttons, the real app - with the PC doing the work. Not a smaller
+                   version. Works on home Wi-Fi; add Tailscale and it works on mobile data too.
+                   Only two things stay on the laptop: windows that ask the PC to choose a file,
+                   and recording the PC's screen. Don't share that link.
+PC OFF (anywhere): open https://dskjazz.github.io/nihilpointzero-phone/ once -> browser menu ->
+                   "Install app". Gold circle icon appears. Ideas · Writer · Scenes · Prompter ·
+                   Advisor · Saved. Free, nothing to type in, same writing style as the PC.
 Move a script to the PC: tap "Send to PC" -> WhatsApp/email/Drive to yourself -> paste into studio.
+
+RECORDING QUALITY (new)
+Recorder -> Camera / Screen / 🎙 Voice only - no face. Resolution + frames-per-second + Quality.
+Bitrate is set to YouTube's own upload figures (1080p30 = 8 Mbps, 4K30 = 45) - browsers otherwise
+default to ~2.5 Mbps at any size, which is why phone video looks soft. The figure and the MB-per-
+minute are shown before you record, and it tells you what the camera actually gave.
+Voice only = no camera opened at all; saved as an audio track for scenes/stock footage.
+On the phone app: "🎥 Film it now" opens your phone's OWN camera app (real sensor, hardware
+encoding, stabilisation) - much better than filming inside a web page. 🤳 = front camera.
 
 TELEPROMPTER (new)
 Sidebar -> 🧾 Teleprompter (also a Prompter tab in the phone app). Paste script -> Start.
 Speed is in words-per-minute; "Finish in: 10 min" sets it exactly. Your [BRACKETED] notes show
 dimmed and are never counted in the timing. Space = pause · arrows = speed · phone: tap the text.
-Recorder tab now asks HOW you record (laptop webcam / laptop screen / phone camera / phone screen)
+Recorder asks HOW you record (laptop webcam / laptop screen / phone camera / phone screen / voice only)
 and tells you where to put the prompter so it stays out of the shot. Countdown: None/3/5/10/20/30s.
 Prompter opens in its own window and can ask Windows to hide it from screen recordings.
 

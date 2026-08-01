@@ -333,12 +333,16 @@ function wireScenes(): void {
     Scenes.renderScenes()
   })
 
-  $('pick-media').addEventListener('change', (e) => {
-    const input = e.target as HTMLInputElement
-    const file = input.files?.[0]
-    input.value = '' // let the same file be picked again later
-    if (file) void onMediaPicked(file)
-  })
+  // Gallery pick and both camera-app routes all end in the same place: whatever came
+  // back is attached to the scene that asked for it.
+  for (const id of ['pick-media', 'shoot-media', 'shoot-selfie']) {
+    $(id).addEventListener('change', (e) => {
+      const input = e.target as HTMLInputElement
+      const file = input.files?.[0]
+      input.value = '' // let the same file be picked again later
+      if (file) void onMediaPicked(file)
+    })
+  }
 
   $('st-syncpack').addEventListener('click', async () => {
     const out = $('st-pack-out')

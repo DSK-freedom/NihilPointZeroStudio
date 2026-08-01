@@ -120,15 +120,36 @@ YOUR WORK IS SAFE
 
 ON YOUR PHONE
    Two ways, and they're different:
-   1) THE PHONE APP - works with your PC switched OFF, anywhere, on mobile data.
-      Open https://dskjazz.github.io/nihilpointzero-phone/ on your phone once, then use
-      your browser's menu -> "Install app". A gold circle icon lands on your home screen.
-      It does ideas, scripts, thumbnail briefs and the Advisor. It's free and there is
-      nothing to type in. It CANNOT make videos, do voice-over or open your PC Library -
-      those need your computer.
-   2) PHONE ACCESS OVER WI-FI - Settings -> "Phone access (same Wi-Fi)". Your PC does the
-      work, so you get more, but the PC must be on and both on the same Wi-Fi.
+   1) THE WHOLE STUDIO, ON YOUR PHONE - Settings -> "Phone access". Open the link it
+      shows. You get the REAL studio: the same tabs, the same buttons, the same
+      everything you see on the laptop. Not a smaller version - the actual app. Your PC
+      does all the heavy work (rendering, voice, analysis) and the phone is the screen.
+      The PC has to be switched on. On your home Wi-Fi it just works; with Tailscale
+      installed it also works out of the house on mobile data.
+      Two things stay on the laptop, and the app says so when you reach them: anything
+      that opens a "choose a file" window on the PC, and recording the PC's screen.
+   2) THE PHONE APP - for when your PC is OFF. Open
+      https://dskjazz.github.io/nihilpointzero-phone/ once, then browser menu ->
+      "Install app". A gold circle icon lands on your home screen. Ideas, scripts,
+      scenes, thumbnail briefs, the prompter and the Advisor, anywhere, on mobile data.
    Nothing on the phone can change or delete your work on the PC.
+
+RECORDING SO IT DOESN'T LOOK LIKE A PHONE
+   Recorder tab -> pick Camera, Screen, or "Voice only - no face".
+   • The number that matters is the bitrate, and the Recorder now sets it to exactly
+     what YouTube asks uploads to be (8 Mbps at 1080p30, 45 at 4K30). Browsers
+     otherwise default to about 2.5 Mbps at ANY size, which is why phone recordings
+     usually look soft. The Recorder shows you the figure and the size per minute.
+   • Choose the frame rate too: 24 (cinematic), 30 (normal), 60 (smooth, best for
+     screens and movement).
+   • "Voice only" opens no camera at all - no permission prompt, no camera light. Your
+     narration is saved as an audio track to put under scenes or stock footage.
+   • Filming on the phone: in the phone app, "Film it now" opens your phone's OWN camera
+     app rather than recording inside the page. That uses the real sensor, hardware
+     encoding, stabilisation and autofocus, and is by a distance the best-looking
+     option. Front camera for your face, back camera for everything else.
+   • Long takes recorded on the phone are saved to the phone's Downloads rather than
+     squeezed over the link. Short ones go straight to the PC.
 
 WHERE TO LOOK NEXT
    • Need a quick reminder of a button or choice?  ->  NIHILPOINTZERO-CHEATSHEET.txt

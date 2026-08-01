@@ -9,6 +9,7 @@ import { useProducerTarget } from '../store/ProducerContext'
 import { MOODS, SFX_KINDS, VIDEO_STYLES } from '../../../shared/types'
 import type { BeatSound, ShotSubjectKind, StoryboardBeat, StoryboardDoc, VideoStyle } from '../../../shared/types'
 import type { ImportedProject } from '../../../shared/project'
+import { fileUrl } from '../../../shared/mediaUrl'
 
 /**
  * Storyboard Director — write your film shot by shot ("0–15s: I arrive in a Ferrari,
@@ -136,7 +137,7 @@ export default function StoryboardPage(): React.JSX.Element {
     setBusy('Beautifying preview…')
     try {
       const res = await window.api.storyboard.beautify(photoPath, beautifyStrength)
-      if (res.ok && res.path) setBeautyPreview(`file:///${res.path.replace(/\\/g, '/').replace(/^\/+/, '')}?t=${Date.now()}`)
+      if (res.ok && res.path) setBeautyPreview(`${fileUrl(res.path)}?t=${Date.now()}`)
       else toast(res.error ?? 'Beautify failed.', 'error')
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Beautify failed.', 'error')
@@ -280,7 +281,6 @@ export default function StoryboardPage(): React.JSX.Element {
     }
   }
 
-  const fileUrl = (p: string): string => `file:///${p.replace(/\\/g, '/').replace(/^\/+/, '')}`
 
   return (
     <div className="max-w-5xl mx-auto p-8">

@@ -329,6 +329,15 @@
 </div>
 
 <input type="file" id="pick-media" accept="image/*,video/*" class="hidden" />
+<!--
+  Opens the phone's own camera app rather than a browser preview. That is deliberate
+  and it is the single biggest quality decision in this app: the native camera uses
+  the real sensor pipeline, hardware encoding, stabilisation and autofocus, and
+  records at the phone's full quality. A web page cannot get near it. `capture` is
+  what makes the camera app open instead of the gallery.
+-->
+<input type="file" id="shoot-media" accept="video/*" capture="environment" class="hidden" />
+<input type="file" id="shoot-selfie" accept="video/*" capture="user" class="hidden" />
 <input type="file" id="pick-plan" accept=".json,application/json" class="hidden" />
 
 <div id="toast" class="hidden"></div>

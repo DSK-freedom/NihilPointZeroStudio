@@ -9,10 +9,7 @@ import { confirmDialog } from '../components/Confirm'
 import { useStudio } from '../store/StudioContext'
 import { useProducerTarget } from '../store/ProducerContext'
 
-/** Turns an absolute path into a file:// URL usable in <img>. */
-function fileUrl(p: string): string {
-  return `file:///${p.replace(/\\/g, '/').replace(/^\/+/, '')}`
-}
+import { fileUrl } from '../../../shared/mediaUrl'
 
 const lengthOptions: { value: ScriptLength; label: string }[] = [
   { value: 'short', label: 'Short (6-8 min)' },

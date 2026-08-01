@@ -6,14 +6,7 @@ import MicButton, { appendDictation } from '../components/MicButton'
 import { useAutosave } from '../hooks/useAutosave'
 import { toast } from '../components/Toast'
 
-function fileUrl(p: string): string {
-  return `file:///${p.replace(/\\/g, '/').replace(/^\/+/, '')}`
-}
-
-/** Undoes fileUrl(): strips the file:/// wrapper + cache-buster back to a disk path. */
-function plainPath(img: string): string {
-  return decodeURI(img.replace(/^file:\/\/\//, '').split('?')[0])
-}
+import { fileUrl, pathFromFileUrl as plainPath } from '../../../shared/mediaUrl'
 
 type SceneStatus = 'idle' | 'generating' | 'done' | 'error'
 interface Scene {
@@ -277,8 +270,8 @@ export default function SceneStudioPage(): React.JSX.Element {
     const unsub = window.api.video.onProgress((s) => setStage(s))
     const unsubP = window.api.video.onPreview((png) => setBuildPreview(`${fileUrl(png)}?t=${Date.now()}`))
     try {
-      // Strip the file:// wrapper back to a plain path for the builder.
-      const imagePaths = ready.map((s) => decodeURI((s.img as string).replace(/^file:\/\/\//, '').split('?')[0]))
+      // Strip the preview link back to a plain path for the builder.
+      const imagePaths = ready.map((s) => plainPath(s.img as string))
       // Did the user set any pacing? Then send per-scene shots: every scene exactly
       // once, in order, with their seconds + transitions. Untouched = the classic
       // varied Ken-Burns cut every ~6s.

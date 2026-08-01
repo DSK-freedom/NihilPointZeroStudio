@@ -16,10 +16,7 @@ const BRAIN_LABEL: Record<LLMProviderId, string> = {
   openai: 'OpenAI (paid)'
 }
 
-/** Turns an absolute path into a file:// URL usable in <video>. */
-function fileUrl(p: string): string {
-  return `file:///${p.replace(/\\/g, '/').replace(/^\/+/, '')}`
-}
+import { fileUrl } from '../../../shared/mediaUrl'
 
 const EXAMPLES = [
   'Keep only the first 90 seconds.',

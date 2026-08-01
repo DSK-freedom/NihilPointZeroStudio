@@ -15,6 +15,7 @@
 import { chromium } from 'playwright-core'
 import { createServer } from 'node:http'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, extname } from 'node:path'
 
@@ -263,8 +264,10 @@ try {
     'a beat references its attachment',
     plan.storyboard.beats.some((b) => typeof b.subject?.src === 'string' && b.subject.src.startsWith('asset:'))
   )
-  // Written out for the round-trip test in vitest to consume if desired.
-  writeFileSync(join(ROOT, 'phone', 'dist', '.last-plan.json'), JSON.stringify(plan))
+  // Kept for inspection after a failure. Deliberately NOT written into phone/dist:
+  // the publish step copies that folder verbatim, so anything left there ends up on
+  // the public site — which is exactly how a test artifact got published once.
+  writeFileSync(join(tmpdir(), 'npz-last-plan.json'), JSON.stringify(plan))
 
   // --- Persistence across a reload ---------------------------------------
   // Reloading is the closest thing to the user swiping the app away. It caught a real

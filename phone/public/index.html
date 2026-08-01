@@ -236,7 +236,22 @@
     <div id="st-out"></div>
 
     <div class="note">
+      <div style="font-size:12px;color:#f5e9c8;font-weight:600;margin-bottom:6px">Writing with your PC switched off</div>
+      <div class="muted">
+        Your writing instructions live on your PC, not in this app — this app is a public web
+        page, so anything inside it could be read by anyone. Copy them to this phone once and
+        you can write ideas and scripts anywhere, with your PC off. They stay on this handset.
+      </div>
       <div class="row">
+        <button class="mini" id="st-syncpack">Copy my prompts to this phone</button>
+        <button class="mini danger" id="st-forgetpack">Remove them</button>
+      </div>
+      <div id="st-pack-out" class="muted"></div>
+    </div>
+
+    <div class="note">
+      <div class="row">
+        <button class="mini" id="st-testpc">Test my PC connection</button>
         <button class="mini" id="st-open">Open a plan file</button>
       </div>
       <div class="muted" style="margin-top:6px">Loads a .npzproject.json plan back into this phone.</div>

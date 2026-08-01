@@ -14,7 +14,7 @@
     "lint": "eslint src",
     "dist:win": "electron-vite build && electron-builder --win",
     "ship": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ship.ps1",
-    "typecheck:phone": "tsc -p tsconfig.phone.json --noEmit",
+    "typecheck:phone": "tsc -p tsconfig.phone.json --noEmit && tsc -p tsconfig.phone-test.json --noEmit",
     "build:phone": "node scripts/build-phone.mjs",
     "publish:phone": "node scripts/build-phone.mjs && node scripts/publish-phone.mjs"
   },

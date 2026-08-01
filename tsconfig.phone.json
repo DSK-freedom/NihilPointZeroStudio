@@ -21,7 +21,13 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  // The shared/prompt/parser files are pulled in through imports from phone/src;
-  // listing phone/src alone keeps the check focused on what actually ships.
-  "include": ["phone/src/**/*"]
+  // The shared/parser files are pulled in through imports from phone/src; listing
+  // phone/src alone keeps the check focused on what actually ships.
+  //
+  // Tests are excluded because they legitimately use node APIs (they read the built
+  // bundle from disk to prove no prompt wording leaked into it). Keeping them out
+  // preserves the useful guarantee that SHIPPED phone code cannot touch node at all.
+  // They are typechecked by tsconfig.phone-test.json instead.
+  "include": ["phone/src/**/*"],
+  "exclude": ["phone/src/**/*.test.ts"]
 }

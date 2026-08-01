@@ -11,8 +11,8 @@
  * firing twenty of them would burn the user's data and make the app feel broken.
  */
 import { MOODS, SFX_KINDS, VIDEO_STYLES, VIDEO_TEMPLATES, VIDEO_ASPECTS } from '../../src/shared/types'
+import { listStyles, pcConfigured, type PcStyle } from './pc'
 import type { BeatSound, Mood, SfxKind, ShotMotion, ShotSubjectKind, StoryboardBeat } from '../../src/shared/types'
-import { styleById } from '../../src/main/image/styles'
 import { beatsNeedingMedia } from '../../src/shared/project'
 import * as P from './project'
 import { assetObjectUrl, canRecord, clipAsset, humanBytes, photoAsset, startRecording, type Recording } from './media'
@@ -37,6 +37,27 @@ export function setToast(fn: (msg: string) => void): void {
 
 /** Preview URLs already fetched, so re-rendering the list doesn't re-request them. */
 const previewCache = new Map<number, string>()
+
+/**
+ * Human-readable style names, fetched from the PC. Only the LABELS travel — the style
+ * wording that shapes an image is prompt text and stays on the PC. Until the PC has
+ * been reached, the tidied id is shown, so the picker is never empty or broken.
+ */
+let styleLabels: Record<string, string> = {}
+
+function styleLabel(id: string): string {
+  return styleLabels[id] ?? id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+export async function loadStyleLabels(): Promise<void> {
+  if (!pcConfigured()) return
+  try {
+    const styles: PcStyle[] = await listStyles()
+    styleLabels = Object.fromEntries(styles.map((s) => [s.id, s.label]))
+  } catch {
+    // Offline is fine — the tidied ids are perfectly usable names.
+  }
+}
 
 const MOTIONS: ShotMotion[] = ['still', 'in', 'out', 'left', 'right', 'up', 'down']
 const SUBJECT_KINDS: { id: ShotSubjectKind; label: string }[] = [
@@ -136,7 +157,7 @@ export function renderScenes(): void {
   $('sc-summary').innerHTML =
     `<h3>${esc(P.getProject().title || 'Untitled')}</h3>` +
     `<div class="muted">${list.length} scene${list.length === 1 ? '' : 's'} · ${mmss(P.totalSeconds())} · ` +
-    `${esc(styleById(P.getProject().build.style).label)}${bytes ? ` · ${humanBytes(bytes)} attached` : ''}</div>` +
+    `${esc(styleLabel(P.getProject().build.style))}${bytes ? ` · ${humanBytes(bytes)} attached` : ''}</div>` +
     (needing.length
       ? `<div class="muted" style="margin-top:6px;color:#ffcf7a">${needing.length} scene${needing.length === 1 ? '' : 's'} waiting for a photo or clip on your PC.</div>`
       : '') +
@@ -188,8 +209,14 @@ function sceneCard(b: StoryboardBeat, i: number): string {
   </div>`
 }
 
-/** Loads one preview picture on demand and keeps it for the session. */
-export function loadPreview(index: number): void {
+/**
+ * Loads one preview picture on demand and keeps it for the session.
+ *
+ * The PC builds the image link (the style wording lives there), so this needs the PC
+ * to be reachable. When it isn't, the card says so plainly rather than showing a
+ * broken image — everything else about the scene still works offline.
+ */
+export async function loadPreview(index: number): Promise<void> {
   const el = document.querySelector<HTMLElement>(`.thumb[data-preview="${index}"]`)
   if (!el) return
   const beat = P.beats()[index]
@@ -198,18 +225,22 @@ export function loadPreview(index: number): void {
     return
   }
   el.textContent = 'Drawing…'
-  const url = P.beatPreviewUrl(index)
-  const img = new Image()
-  img.onload = () => {
+  try {
+    const url = await P.beatPreviewUrl(index)
+    await new Promise<void>((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve()
+      img.onerror = () => reject(new Error('image failed'))
+      img.src = url
+    })
     previewCache.set(index, url)
     el.textContent = ''
     el.style.backgroundImage = `url('${url}')`
     el.removeAttribute('data-preview')
+  } catch (err) {
+    el.textContent = err instanceof Error && /PC/i.test(err.message) ? 'Needs your PC' : 'Tap to try again'
+    toastFn(err instanceof Error ? err.message : 'Could not draw that scene')
   }
-  img.onerror = () => {
-    el.textContent = 'Could not draw it — tap again'
-  }
-  img.src = url
 }
 
 // ────────────────────────────── beat editor ──────────────────────────────
@@ -373,19 +404,26 @@ function wireEditor(): void {
   )
 
   on('ed-preview', 'click', () => {
-    previewCache.delete(editing)
-    const url = P.beatPreviewUrl(editing)
-    const btn = $('ed-preview')
-    btn.textContent = 'Drawing…'
-    const img = new Image()
-    img.onload = () => {
-      previewCache.set(editing, url)
-      renderEditor()
-    }
-    img.onerror = () => {
-      btn.textContent = 'Could not draw it — try again'
-    }
-    img.src = url
+    void (async () => {
+      const btn = $('ed-preview')
+      const at = editing
+      previewCache.delete(at)
+      btn.textContent = 'Drawing…'
+      try {
+        const url = await P.beatPreviewUrl(at)
+        await new Promise<void>((resolve, reject) => {
+          const img = new Image()
+          img.onload = () => resolve()
+          img.onerror = () => reject(new Error('image failed'))
+          img.src = url
+        })
+        previewCache.set(at, url)
+        // The editor may have been closed or moved on while the picture loaded.
+        if (editing === at) renderEditor()
+      } catch (err) {
+        btn.textContent = err instanceof Error ? err.message.slice(0, 60) : 'Could not draw it — try again'
+      }
+    })()
   })
 
   on('ed-attach', 'click', () => pickMediaFor(editing))
@@ -470,7 +508,7 @@ export function renderVideoSettings(): void {
   const b = P.getProject().build
   const styleSel = $<HTMLSelectElement>('v-style')
   styleSel.innerHTML = VIDEO_STYLES.map(
-    (s) => `<option value="${esc(s)}"${s === b.style ? ' selected' : ''}>${esc(styleById(s).label)}</option>`
+    (s) => `<option value="${esc(s)}"${s === b.style ? ' selected' : ''}>${esc(styleLabel(s))}</option>`
   ).join('')
   $<HTMLSelectElement>('v-template').innerHTML = opts(VIDEO_TEMPLATES, b.template, {
     clean: 'Clean — no extra grading', news: 'News desk', cinematic: 'Cinematic', bold: 'Bold'

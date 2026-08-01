@@ -8,7 +8,7 @@
  * and are honestly labelled as such in the UI.
  */
 import type { LanguageMix, ScriptLength, ScriptStyle } from '../../src/shared/types'
-import { advisorSystem, completeStream, generateIdeas, generateScript, generateThumbnailBrief } from './ai'
+import { advisorStream, generateIdeas, generateScript, generateThumbnailBrief } from './ai'
 import {
   getKey,
   getPcLink,
@@ -25,6 +25,8 @@ import {
 import * as P from './project'
 import * as Scenes from './scenesUi'
 import { openProjectFile, pushToPc, saveToPhone, shareProject, type SendResult } from './send'
+import { forgetPromptPack, hasPromptPack, loadPromptPack, syncPromptPack } from './promptCache'
+import { ping } from './pc'
 import { onMediaPicked } from './scenesUi'
 
 type TabName = 'ideas' | 'writer' | 'scenes' | 'video' | 'advisor' | 'saved' | 'settings'
@@ -195,11 +197,9 @@ async function runAdvisor(): Promise<void> {
   const btn = $<HTMLButtonElement>('a-go')
   btn.disabled = true
   try {
-    const system = advisorSystem()
-    // The whole conversation is replayed each turn so the advisor keeps context;
-    // the phone has no server session to hold it.
-    const flat = convo.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')
-    const answer = await completeStream(`${flat}\n\nASSISTANT:`, system, 1500, (delta) => {
+    // The whole conversation is sent each turn so the advisor keeps context; the PC
+    // supplies its own system instruction, which never travels to this app.
+    const answer = await advisorStream(convo, (delta: string) => {
       pre.textContent = (pre.textContent ?? '') + delta
       window.scrollTo(0, document.body.scrollHeight)
     })
@@ -338,6 +338,30 @@ function wireScenes(): void {
     if (file) void onMediaPicked(file)
   })
 
+  $('st-syncpack').addEventListener('click', async () => {
+    const out = $('st-pack-out')
+    out.innerHTML = '<div class="muted">Copying from your PC…</div>'
+    const r = await syncPromptPack()
+    out.innerHTML = `<div class="${r.ok ? 'muted' : 'err'}">${esc(r.message)}</div>`
+    renderPackState()
+  })
+  $('st-forgetpack').addEventListener('click', async () => {
+    if (!confirm('Remove your writing instructions from this phone? You can copy them again any time.')) return
+    await forgetPromptPack()
+    $('st-pack-out').innerHTML = '<div class="muted">Removed. Writing now needs your PC.</div>'
+    renderPackState()
+  })
+  $('st-testpc').addEventListener('click', async () => {
+    const out = $('st-pack-out')
+    out.innerHTML = '<div class="muted">Checking…</div>'
+    try {
+      const r = await ping()
+      out.innerHTML = `<div class="muted">Connected. Your PC has ${r.libraryItems} item${r.libraryItems === 1 ? '' : 's'} in its Library.</div>`
+    } catch (err) {
+      out.innerHTML = `<div class="err">${esc(message(err))}</div>`
+    }
+  })
+
   $('st-open').addEventListener('click', () => $<HTMLInputElement>('pick-plan').click())
   $('pick-plan').addEventListener('change', async (e) => {
     const input = e.target as HTMLInputElement
@@ -434,6 +458,16 @@ function wire(): void {
   showTab('ideas')
 }
 
+/** Says plainly whether this phone can currently write with the PC switched off. */
+function renderPackState(): void {
+  const sub = document.querySelector('header .sub')
+  if (sub) {
+    sub.textContent = hasPromptPack()
+      ? 'on your phone · writes without your PC'
+      : 'on your phone · writing needs your PC'
+  }
+}
+
 /**
  * A phone can kill the app at any moment — swiped away, a call comes in, the browser
  * reclaims memory. Write the plan out the instant the page is hidden rather than
@@ -451,7 +485,9 @@ async function start(): Promise<void> {
   wirePersistence()
   // The plan lives in IndexedDB (it can hold megabytes of photos and recordings), so
   // it arrives after the first paint. Re-render once it's here.
-  await P.loadProject()
+  await Promise.all([P.loadProject(), loadPromptPack()])
+  renderPackState()
+  void Scenes.loadStyleLabels().then(() => Scenes.renderVideoSettings())
   if (P.hasStoryboard()) Scenes.renderScenes()
 }
 

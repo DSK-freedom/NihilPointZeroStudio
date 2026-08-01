@@ -8,13 +8,10 @@
  * WHEN to call them and how to show the result; it never invents its own idea of what
  * a storyboard is. That is what keeps a phone-made plan renderable on the PC.
  */
-import {
-  buildStoryboardPrompt,
-  sanitizeStoryboard,
-  storyboardDuration,
-  storyboardFromScript
-} from '../../src/shared/storyboard'
-import { sceneImagePrompt, sceneImageUrl } from '../../src/main/image/styles'
+// Only the PURE, non-secret parts of the studio are bundled here: validation, the
+// duration maths, and the offline script splitter. The prompt builders and the style
+// wording deliberately stay on the PC — see pc.ts.
+import { sanitizeStoryboard, storyboardDuration, storyboardFromScript } from '../../src/shared/storyboard'
 import {
   DEFAULT_BUILD,
   MAX_PROJECT_BYTES,
@@ -31,7 +28,7 @@ import {
   type ProjectAsset
 } from '../../src/shared/project'
 import type { StoryboardBeat, StoryboardDoc } from '../../src/shared/types'
-import { complete } from './ai'
+import * as PC from './pc'
 import { dbGet, dbSet } from './db'
 
 const KEY = 'project'
@@ -156,7 +153,12 @@ export function planFromScriptOffline(input: { title: string; body: string; tota
   )
 }
 
-/** Asks the AI to direct the whole thing, then validates it through the studio's sanitizer. */
+/**
+ * Asks the PC to direct the whole thing. The prompt wording lives there; the phone
+ * sends only the title, the script and the desired length. The PC returns an
+ * already-validated storyboard, which is re-validated here anyway — a reply from the
+ * network is never trusted just because it came from your own machine.
+ */
 export async function planWithAi(input: {
   title: string
   brief: string
@@ -164,13 +166,8 @@ export async function planWithAi(input: {
   totalSeconds?: number
   language?: string
 }): Promise<void> {
-  const prompt = buildStoryboardPrompt(input)
-  const text = await complete(prompt, 6000)
-  // extractJson lives in the studio's parser; complete() returns raw text, and
-  // sanitizeStoryboard tolerates junk — but a fence would defeat JSON.parse, so
-  // reuse the same extraction the desktop uses.
-  const { extractJson } = await import('../../src/main/llm/parse')
-  adopt(extractJson<unknown>(text), input.title)
+  const { width, height } = frameSize(state.build.resolution, state.build.aspect)
+  adopt(await PC.directStoryboard({ ...input, width, height }), input.title)
 }
 
 export function emptyStoryboard(title: string): void {
@@ -304,18 +301,28 @@ export function overSizeLimit(): boolean {
 // ─────────────────────────────── previews ───────────────────────────────
 
 /**
- * The preview URL for a beat. Uses the studio's own `sceneImagePrompt` and the same
- * seed the renderer uses (`index + 1`), so what the phone shows really is the image
- * the PC will produce — not an approximation of it.
+ * The preview URL for a beat, built BY THE PC so the style wording never ships in
+ * this app. The PC uses the same prompt and the same seed (`index + 1`) its renderer
+ * will use, so the preview really is the picture you will get — not an approximation.
+ *
+ * Needs the PC to be reachable; the caller reports that plainly rather than showing
+ * a broken image.
  */
-export function beatPreviewUrl(index: number, opts?: { width?: number }): string {
+export async function beatPreviewUrl(index: number, opts?: { width?: number }): Promise<string> {
   const beat = beats()[index]
   const doc = state.storyboard
   if (!beat || !doc) return ''
-  const prompt = sceneImagePrompt(doc.style, beat.visual, doc.title)
-  const aspect = doc.height / doc.width
   const width = opts?.width ?? 512
-  return sceneImageUrl(prompt, { width, height: Math.round(width * aspect), seed: index + 1 })
+  const height = Math.round(width * (doc.height / doc.width))
+  const { url } = await PC.sceneImage({
+    style: doc.style,
+    visual: beat.visual,
+    title: doc.title,
+    width,
+    height,
+    seed: index + 1
+  })
+  return url
 }
 
 // ─────────────────────────── export / hand-off ───────────────────────────

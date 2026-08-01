@@ -8,6 +8,10 @@ import { getModel, getSettings, listActivityLog, listLibrary, logActivity } from
 import { ollamaChatStream, type ChatTurn } from '../llm/ollama'
 import { getActiveProvider } from '../llm'
 import { buildAdvisorSystemPrompt } from '../prompts'
+import { buildStoryboardPrompt, sanitizeStoryboard } from '../../shared/storyboard'
+import { extractJson } from '../llm/parse'
+import { STYLE_CATALOGUE, sceneImagePrompt, sceneImageUrl } from '../image/styles'
+import { PROMPT_PACK } from '../promptPack'
 import { importPhoneProject } from '../project/import'
 import { MOBILE_PAGE } from './page'
 import type { WebServerAddress, WebServerStatus } from '../../shared/types'
@@ -232,6 +236,69 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   }
   if (path === '/api/advisor' && req.method === 'POST') {
     await handleAdvisor(res, await readBody(req))
+    return
+  }
+  // ── Prompt-bearing work, deliberately kept on this PC ──
+  // The phone used to build these prompts itself, which meant the studio's prompt
+  // wording shipped inside a publicly-hosted page. It doesn't any more: the phone
+  // sends plain parameters, the PC owns the wording, and only the finished text
+  // travels back. Nothing here reveals a prompt.
+  if (path === '/api/storyboard' && req.method === 'POST') {
+    const body = (await readBody(req)) as any
+    const width = Number(body?.width) || 1920
+    const height = Number(body?.height) || 1080
+    // Same one-hour ceiling the desktop planner enforces, for the same reason: a
+    // runaway requested length once produced a 78-minute silent film.
+    const totalSeconds = Math.min(Math.max(Number(body?.totalSeconds) || 0, 0), 3600) || undefined
+    const prompt = buildStoryboardPrompt({
+      mode: body?.mode === 'guided' ? 'guided' : 'auto',
+      title: String(body?.title ?? ''),
+      brief: String(body?.brief ?? ''),
+      totalSeconds,
+      language: body?.language ? String(body.language) : undefined
+    })
+    logActivity('user', 'Directed a storyboard from the phone', String(body?.title ?? ''))
+    const text = await getActiveProvider().generateText(prompt, 6000)
+    sendJson(res, 200, sanitizeStoryboard(extractJson<unknown>(text), { width, height, fps: 30 }))
+    return
+  }
+  if (path === '/api/thumbnail' && req.method === 'POST') {
+    const body = (await readBody(req)) as any
+    const brief = await getActiveProvider().generateThumbnailBrief(
+      String(body?.topic ?? ''),
+      String(body?.title ?? '')
+    )
+    sendJson(res, 200, { brief })
+    return
+  }
+  // Returns the image URL for a scene. The style wording lives only here; the phone
+  // receives a plain link it can put in an <img>.
+  if (path === '/api/scene-image' && req.method === 'POST') {
+    const body = (await readBody(req)) as any
+    const prompt = sceneImagePrompt(String(body?.style ?? ''), String(body?.visual ?? ''), String(body?.title ?? ''))
+    const width = Math.min(Math.max(Number(body?.width) || 512, 128), 1536)
+    const height = Math.min(Math.max(Number(body?.height) || 288, 128), 1536)
+    const seed = Number.isFinite(Number(body?.seed)) ? Number(body.seed) : undefined
+    sendJson(res, 200, { url: sceneImageUrl(prompt, { width, height, seed }) })
+    return
+  }
+  /**
+   * Hands the phone a copy of the studio's prompt wording so it can write with this
+   * PC switched off.
+   *
+   * This is the one route that returns something genuinely secret, which is why it
+   * exists only here, behind the private link and its token: the pack goes from this
+   * PC straight to the user's own handset and is cached there. It is never bundled
+   * into the publicly-hosted phone page.
+   */
+  if (path === '/api/prompt-pack' && req.method === 'GET') {
+    logActivity('user', 'Sent the prompt pack to a phone')
+    sendJson(res, 200, PROMPT_PACK)
+    return
+  }
+  // The style picker's human-readable labels — no prompt wording, safe to hand over.
+  if (path === '/api/styles' && req.method === 'GET') {
+    sendJson(res, 200, STYLE_CATALOGUE.map((s) => ({ id: s.id, label: s.label, family: s.family })))
     return
   }
   // A whole video plan pushed straight from the phone, so at home the user never has

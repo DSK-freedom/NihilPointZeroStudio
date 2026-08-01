@@ -10,6 +10,7 @@ import { useStudio } from '../store/StudioContext'
 import { useProducerTarget } from '../store/ProducerContext'
 
 import { fileUrl } from '../../../shared/mediaUrl'
+import RepurposePanel from '../components/RepurposePanel'
 
 const lengthOptions: { value: ScriptLength; label: string }[] = [
   { value: 'short', label: 'Short (6-8 min)' },
@@ -498,6 +499,10 @@ export default function WriterPage() {
                   {generatingThumbnail ? 'Designing…' : 'Thumbnail Brief'}
                 </button>
               </div>
+
+              {/* One script, everywhere it needs to go. Runs in the page — no AI, no
+                  internet, instant. See components/RepurposePanel.tsx. */}
+              <RepurposePanel title={writer.script.title} body={writer.body} />
               <p className="text-[11px] text-ink-500 mt-2">
                 Want a narrated video of this script? Head to the <span className="text-gold-400">Video Studio</span>{' '}
                 tab — this draft is available there.

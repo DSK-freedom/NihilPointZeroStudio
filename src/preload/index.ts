@@ -544,6 +544,22 @@ const api = {
     markSeen: (ids: string[]): Promise<import('../shared/whatsNew').WhatsNewReport> =>
       ipcRenderer.invoke(IPC.whatsNewMarkSeen, ids)
   },
+  // Hear the script read out at speed, to catch by ear what silent reading hides.
+  readAloud: {
+    // Instant and pure: what to listen for, and how long the listen will take.
+    plan: (script: string, speed?: number): Promise<import('../shared/readAloud').ReadAloudPlan> =>
+      ipcRenderer.invoke(IPC.readAloudPlan, script, speed),
+    // Speaks it and speeds the file up. Returns a PATH — the page turns that into a
+    // playable link with fileUrl(), which is what makes it work on the phone too.
+    speak: (
+      script: string,
+      speed?: number,
+      voice?: 'natural' | 'winnatural' | 'windows'
+    ): Promise<
+      | { ok: true; path: string; engineName: string; plan: import('../shared/readAloud').ReadAloudPlan }
+      | { ok: false; error: string }
+    > => ipcRenderer.invoke(IPC.readAloudSpeak, script, speed, voice)
+  },
   health: {
     // Live self-test of every dependency (validates saved keys with a cheap request).
     run: (): Promise<import('../shared/types').HealthReport> => ipcRenderer.invoke(IPC.healthRun),

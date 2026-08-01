@@ -45,6 +45,9 @@ import { closeTeleprompter, openTeleprompter, setTeleprompterProtection, telepro
 import { APP_GUIDE } from './appGuide'
 import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
 import { whatsNewReport } from '../shared/whatsNew'
+import { DEFAULT_SPEED, planReadAloud, type ReadSpeed } from '../shared/readAloud'
+import { buildSpeedArgs } from './audio/speed'
+import { speakToWav } from './voice/speak'
 
 // Injected at build time by electron.vite.config.ts (same tag the sidebar badge shows).
 declare const __BUILD_TAG__: string
@@ -770,6 +773,41 @@ export function registerIpcHandlers(): void {
     const list = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : []
     markChangesSeen(list)
     return whatsNewReport({ buildTag: __BUILD_TAG__, seenIds: getSeenChangeIds() })
+  })
+
+  // Proof the script BY EAR. The plan is pure and instant — what to listen for, and how
+  // long the listen will take — so the user sees it before deciding to generate audio.
+  ipcMain.handle(IPC.readAloudPlan, (_e, script: string, speed?: number) =>
+    planReadAloud(typeof script === 'string' ? script : '', (speed as ReadSpeed) ?? DEFAULT_SPEED)
+  )
+
+  // Speak it, then speed the file up. Two steps rather than asking the voice engine to
+  // talk fast: the engines cannot, and atempo holds the pitch so it still sounds human.
+  ipcMain.handle(IPC.readAloudSpeak, async (_e, script: string, speed?: number, voice?: string) => {
+    const text = typeof script === 'string' ? script.trim() : ''
+    if (!text) return { ok: false as const, error: 'There is no script to read yet.' }
+    const rate = typeof speed === 'number' && Number.isFinite(speed) ? speed : DEFAULT_SPEED
+    const id = randomUUID().slice(0, 8)
+    const wav = join(generatedAudioDir(), `readaloud-${id}.wav`)
+    const out = join(generatedAudioDir(), `readaloud-${id}-${String(rate).replace('.', '_')}x.m4a`)
+    try {
+      const spoken = await speakToWav(text, wav, (voice as 'natural' | 'winnatural' | 'windows') ?? 'natural')
+      await runFfmpeg(buildSpeedArgs(wav, out, rate))
+      const plan = planReadAloud(text, rate as ReadSpeed)
+      logActivity('ai', `Read the script aloud at ${rate}× to proof it`, `${plan.notes.length} things flagged`)
+      // The PATH, not a URL. fileUrl() belongs in the renderer: called here it would
+      // always produce file:///, which plays on the PC and is dead on the phone.
+      return { ok: true as const, path: out, engineName: spoken.engineName, plan }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Could not read the script aloud.' }
+    } finally {
+      // The spoken original is an intermediate; only the sped-up file is listened to.
+      try {
+        if (existsSync(wav)) rmSync(wav, { force: true })
+      } catch {
+        /* a leftover temp file is not worth failing the feature over */
+      }
+    }
   })
 
   // The "YouTube Producer": a growth-strategist that critiques/rewrites the creator's

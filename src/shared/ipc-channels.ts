@@ -65,6 +65,9 @@ export const IPC = {
   // "What changed" — the new things in the build that is actually running.
   whatsNewGet: 'whats-new:get',
   whatsNewMarkSeen: 'whats-new:mark-seen',
+  // Hear the script read out at speed, to proof it by ear before recording.
+  readAloudPlan: 'read-aloud:plan',
+  readAloudSpeak: 'read-aloud:speak',
   healthRun: 'health:run',
   advisorHistory: 'advisor:history',
   advisorDelete: 'advisor:delete',

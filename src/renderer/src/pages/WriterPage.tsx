@@ -10,6 +10,7 @@ import { useStudio } from '../store/StudioContext'
 import { useProducerTarget } from '../store/ProducerContext'
 
 import { fileUrl } from '../../../shared/mediaUrl'
+import ReadAloudPanel from '../components/ReadAloudPanel'
 import RepurposePanel from '../components/RepurposePanel'
 
 const lengthOptions: { value: ScriptLength; label: string }[] = [
@@ -498,6 +499,12 @@ export default function WriterPage() {
                 >
                   {generatingThumbnail ? 'Designing…' : 'Thumbnail Brief'}
                 </button>
+              </div>
+
+              {/* Proof it by ear before recording it. A script is spoken, not read, and
+                  silent reading hides exactly the faults that cost a retake. */}
+              <div className="mt-3">
+                <ReadAloudPanel script={writer.body} />
               </div>
 
               {/* One script, everywhere it needs to go. Runs in the page — no AI, no

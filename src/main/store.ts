@@ -48,9 +48,23 @@ interface PersistedSettings {
 }
 
 const DEFAULT_SETTINGS: PersistedSettings = {
-  // Free, keyless, no-install hosted AI is the default so the app is fully usable
-  // out of the box (needs internet). Users can switch to local Ollama or a paid key.
-  activeProvider: 'free',
+  /**
+   * OLLAMA IS THE DEFAULT BRAIN. Local, free, no key, no quota, no rate limit, and it
+   * cannot start demanding payment.
+   *
+   * It used to be the hosted 'free' service, on the reasoning that it needs no install.
+   * That reasoning died twice: the service has now demanded payment TWICE (HTTP 402,
+   * seen again 2026-08-02 at 01:27 with 50 logged failures), and each time every user
+   * sitting on the default was silently left with no working AI at all. A default that
+   * can be switched off by someone else's pricing decision is not a default.
+   *
+   * The hosted free service is still in the fallback chain, so when it works it still
+   * helps. It is simply no longer the thing the app *relies* on.
+   *
+   * Paid providers are never the default and are never contacted on their own — see the
+   * PAID FEATURES SLEEP rule in CLAUDE.md.
+   */
+  activeProvider: 'ollama',
   freeModel: 'openai',
   anthropicModel: 'claude-sonnet-5',
   openaiModel: 'gpt-4o',

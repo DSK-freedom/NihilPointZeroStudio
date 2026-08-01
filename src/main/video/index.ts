@@ -24,6 +24,7 @@ import { buildBeautifyArgs, type BeautifyOptions } from './beautify'
 import { buildCompositeArgs, type CompositeOptions } from './composite'
 import { chooseEncoderForJob, probeBestH264Encoder, runEncodeWithFallback } from './encoder'
 import { runPreflight } from '../preflight'
+import { discardCheckpoint, isReusable, openCheckpoint, sweepOldCheckpoints } from './checkpoint'
 import type { TimelineDoc } from '../../shared/types'
 import { ffmpegVersionText, ffprobeVideoSize } from './ffmpeg'
 import { generateCloudFootage } from './aiCloud'
@@ -107,19 +108,46 @@ export async function buildVideoFromScript(
   for (const w of pre.warnings) onProgress?.(`⚠ ${w.name}: ${w.detail}`)
   if (!pre.ok) throw new Error(pre.headline)
 
+  // RESUME. A twenty-minute render that dies at minute eighteen used to throw away all
+  // eighteen, because the scratch folder was a random temp directory deleted in the
+  // `finally`. The narration is the expensive part and it is COMPLETE before anything that
+  // commonly fails has even started — Piper reading a long script is minutes of CPU.
+  //
+  // The checkpoint folder is named after a fingerprint of the inputs that produced its
+  // contents, so a changed script cannot see the old narration at all. That safety is
+  // structural rather than a check somebody has to remember: a different script means a
+  // different folder. See checkpoint.ts for why that matters more than the time saved.
+  sweepOldCheckpoints(tmpdir())
+  const resume = openCheckpoint(tmpdir(), {
+    title,
+    body,
+    narrationVoice: options.narrationVoice,
+    winVoiceId: options.winVoiceId,
+    engine: options.engine,
+    style: options.style
+  })
   const scratch = mkdtempSync(join(tmpdir(), 'finscript-vid-'))
-  const wav = join(scratch, 'narration.wav')
+  const wav = resume.narrationPath
+  let finished = false
   try {
     // Voice priority: use the NATURAL (Piper) voice whenever it's installed, unless the
     // user explicitly picked the robotic Windows voice. This makes "natural" the default
     // for every entry point (Video Studio, Scene Studio, AI Command, batch) instead of
     // silently defaulting to the robotic voice when narrationVoice is left unset.
+    // Already spoken by a previous attempt, for THESE words in THIS voice. A zero-length
+    // or tiny file is what a process killed mid-write leaves behind, and reusing that
+    // would produce a SILENT video — a failure that looks like success — so size is
+    // checked, not just existence.
+    const narrationReady = isReusable(wav)
+    if (narrationReady) {
+      onProgress?.('Picking up where the last attempt left off — the narration is already recorded.')
+    }
     const wantNatural = options.narrationVoice !== 'windows'
     // Windows NATURAL voice first when explicitly chosen — it's the only engine that can
     // speak Urdu (Asad/Uzma), and it beats both other options on quality. Each step falls
     // through to the next so narration NEVER fails outright.
-    let narrated = false
-    if (options.narrationVoice === 'silent') {
+    let narrated = narrationReady
+    if (!narrated && options.narrationVoice === 'silent') {
       // No computer voice at all: lay down silence as long as the script would take to
       // read, so the visuals still have the right pacing for the user to record over.
       onProgress?.('Preparing a silent track (no narration)…')
@@ -366,9 +394,15 @@ export async function buildVideoFromScript(
       }
     }
     onProgress?.('Finalizing…')
+    finished = true
   } finally {
     endRenderSession() // a Stop must not outlive the build it stopped
     rmSync(scratch, { recursive: true, force: true })
+    // KEPT on failure, discarded on success. A finished render has no use for it, and
+    // leaving them behind would quietly fill the disk with narration nobody will hear
+    // again. Anything a user never retried is swept after a week, at the top of the next
+    // build.
+    if (finished) discardCheckpoint(resume.dir)
   }
 }
 

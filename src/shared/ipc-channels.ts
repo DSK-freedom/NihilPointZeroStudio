@@ -133,6 +133,9 @@ export const IPC = {
   videoCancel: 'video:cancel',
   timelineRender: 'timeline:render',
   timelineProbe: 'timeline:probe',
+  // A small stand-in for scrubbing a 4K clip. See main/video/proxy.ts for why it is
+  // built to be time-identical to its source.
+  timelineProxy: 'timeline:proxy',
   timelinePickClips: 'timeline:pick-clips',
   storyboardPlan: 'storyboard:plan',
   storyboardRender: 'storyboard:render',
@@ -192,6 +195,8 @@ export const IPC = {
   sceneGenerateFromPhoto: 'scene:generate-from-photo',
   sceneProgress: 'scene:progress',
   sceneSaveImage: 'scene:save-image',
+  // Watch ONE scene before committing to the whole render.
+  scenePreview: 'scene:preview',
   sceneSaveAllImages: 'scene:save-all-images',
   videoMakeShorts: 'video:make-shorts',
   videoPostMeta: 'video:post-meta',

@@ -59,6 +59,9 @@ import {
   retry as retryQueued
 } from '../shared/renderQueue'
 import { runQueue } from './renderQueueRunner'
+import { buildScenePreviewArgs, previewSeconds } from './video/scenePreview'
+import { buildProxyArgs, proxyIsTrustworthy, proxySize, worthProxying } from './video/proxy'
+import { KEN_BURNS_MOTIONS } from './video/render'
 import { searchYouTubeSignals } from './data/youtube'
 import { fetchComments, fetchMyChannelVideos } from './data/youtube'
 import { buildCutArgs, planSilenceCut } from './video/silence'
@@ -889,6 +892,88 @@ export function registerIpcHandlers(): void {
     const clusters = mineQuestions(comments)
     return { scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
   })
+
+  // A SMALL STAND-IN for scrubbing. The Timeline plays the real file, and a 4K clip is
+  // decoded on every seek — so the picture lags behind the scrubber and trimming to an exact
+  // word becomes guesswork. This makes a low-resolution copy that is TIME-IDENTICAL to its
+  // source, so a cut made against it lands in exactly the same place in the original.
+  //
+  // It is verified rather than assumed: the two durations are compared afterwards, and a
+  // proxy that drifted is refused with a reason rather than silently edited against.
+  ipcMain.handle(IPC.timelineProxy, async (_e, sourcePath: string) => {
+    if (typeof sourcePath !== 'string' || !existsSync(sourcePath)) {
+      return { ok: false as const, error: 'That file could not be found.' }
+    }
+    try {
+      const [width, height] = await ffprobeVideoSize(sourcePath)
+      if (!worthProxying(width, height)) {
+        return {
+          ok: false as const,
+          error: `This is ${width}x${height}, which already scrubs smoothly — a stand-in would cost minutes and buy nothing.`
+        }
+      }
+      const out = join(generatedAudioDir(), `proxy-${randomUUID().slice(0, 8)}.mp4`)
+      await runFfmpeg(buildProxyArgs({ sourcePath, outPath: out, width, height }))
+      const [sourceSeconds, proxySeconds] = await Promise.all([ffprobeDuration(sourcePath), ffprobeDuration(out)])
+      const trust = proxyIsTrustworthy(sourceSeconds, proxySeconds)
+      if (!trust.ok) {
+        // Unusable: remove it rather than leave something tempting on disk.
+        try {
+          rmSync(out, { force: true })
+        } catch {
+          /* a leftover file is not worth failing over */
+        }
+        return { ok: false as const, error: trust.reason }
+      }
+      const size = proxySize(width, height)
+      return {
+        ok: true as const,
+        path: out,
+        note: `${trust.reason} Scrubbing ${size.width}x${size.height} instead of ${width}x${height}.`,
+        seconds: proxySeconds
+      }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Could not make the stand-in.' }
+    }
+  })
+
+  // WATCH ONE SCENE before committing to the whole render. A still cannot tell you whether
+  // the camera move drifts its subject out of frame, or whether the grade suits this
+  // particular picture — and finding out currently means rendering everything, looking at
+  // the six seconds you cared about, and starting again.
+  ipcMain.handle(
+    IPC.scenePreview,
+    async (
+      _e,
+      imagePath: string,
+      seconds: number,
+      motion: string,
+      aspect?: string,
+      template?: string
+    ) => {
+      if (typeof imagePath !== 'string' || !existsSync(imagePath)) {
+        return { ok: false as const, error: 'That scene has no picture yet — generate it first.' }
+      }
+      const outPath = join(generatedAudioDir(), `scene-preview-${randomUUID().slice(0, 8)}.mp4`)
+      try {
+        await runFfmpeg(
+          buildScenePreviewArgs({
+            imagePath,
+            outPath,
+            seconds: typeof seconds === 'number' ? seconds : 4,
+            motion: (KEN_BURNS_MOTIONS as readonly string[]).includes(motion)
+              ? (motion as (typeof KEN_BURNS_MOTIONS)[number])
+              : 'zoom-in',
+            aspect: aspect as '16:9' | '9:16' | '1:1' | undefined,
+            template: template as import('./video/templates').VideoTemplate | undefined
+          })
+        )
+        return { ok: true as const, path: outPath, seconds: previewSeconds(seconds) }
+      } catch (err) {
+        return { ok: false as const, error: err instanceof Error ? err.message : 'Could not make the preview.' }
+      }
+    }
+  )
 
   // THE RENDER QUEUE. Batch already worked through a list, but it lived only in memory, so
   // closing the app lost everything not yet built — and one failure at item three lost items

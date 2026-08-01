@@ -544,6 +544,25 @@ const api = {
     markSeen: (ids: string[]): Promise<import('../shared/whatsNew').WhatsNewReport> =>
       ipcRenderer.invoke(IPC.whatsNewMarkSeen, ids)
   },
+  /**
+   * A small stand-in for scrubbing a big clip, guaranteed time-identical to the original,
+   * so a cut made against it lands in exactly the same place. Refuses (with a reason) when
+   * the file is already small enough, or when the copy came out a different length.
+   */
+  timelineProxy: (
+    sourcePath: string
+  ): Promise<{ ok: true; path: string; note: string; seconds: number } | { ok: false; error: string }> =>
+    ipcRenderer.invoke(IPC.timelineProxy, sourcePath),
+  // Watch ONE scene before committing to the whole render. Returns a PATH — the page turns
+  // it into a playable link, which is what makes it work on the phone too.
+  scenePreview: (
+    imagePath: string,
+    seconds: number,
+    motion: string,
+    aspect?: string,
+    template?: string
+  ): Promise<{ ok: true; path: string; seconds: number } | { ok: false; error: string }> =>
+    ipcRenderer.invoke(IPC.scenePreview, imagePath, seconds, motion, aspect, template),
   // The render queue: line up an evening's work and walk away. Written to disk, so it
   // survives the app closing, and one failure costs exactly one item.
   queue: {

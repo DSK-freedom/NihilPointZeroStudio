@@ -55,6 +55,30 @@ export const CHANGELOG: ChangeEntry[] = [
     where: 'Settings → What changed'
   },
   {
+    id: 'proxy-editing',
+    date: '2026-08-01',
+    title: 'Smooth scrubbing on big videos',
+    detail:
+      'A 4K clip has to be decoded every time you drag the scrubber, so the picture lags behind your finger and trimming to an exact word becomes guesswork. This makes a small stand-in copy to scrub against. It is built to be exactly the same length as the original, and that is checked afterwards rather than assumed — so a cut you make against the stand-in lands in precisely the same place. The finished video is still made from your full-quality file.',
+    where: 'Timeline Editor → "⚡ Scrub smoothly" on any clip bigger than 1080p'
+  },
+  {
+    id: 'resume-render',
+    date: '2026-08-01',
+    title: 'A failed render no longer starts again from nothing',
+    detail:
+      'The narration is the slow part and it is finished before anything that usually goes wrong has even started — so if a render dies twenty minutes in, pressing Build again now picks up the narration it already recorded instead of speaking the whole script over again. It only ever reuses narration recorded for exactly these words in exactly this voice; change one word and it starts fresh, because narration that does not match the words would be far worse than the time lost.',
+    where: 'Automatic — just press Build again'
+  },
+  {
+    id: 'scene-preview',
+    date: '2026-08-01',
+    title: 'Watch one scene before rendering the whole video',
+    detail:
+      'A still picture cannot tell you whether the slow camera move drifts your subject out of the frame, or whether the colour treatment suits that particular photo. Now you can watch any one scene — with the real move and the real look, in a few seconds — instead of rendering the whole video to check six seconds of it.',
+    where: 'Scene Studio → "▶ Watch this scene" under any finished scene'
+  },
+  {
     id: 'render-queue',
     date: '2026-08-01',
     title: 'Line up an evening of videos and walk away',

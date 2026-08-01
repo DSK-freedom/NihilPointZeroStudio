@@ -101,23 +101,32 @@ send you looking for a button that is not there yet. What you have already read 
 remembered per item, not per date, because this project ships more than once a day.
 
 ### Not yet done, so you know
-**Four** of the twenty-seven are still not built, and they are the four that need real
-work inside the render pipeline rather than a new screen:
+**All twenty-seven are now built.** The last three were the render-lifecycle ones, and
+they are the ones where a mistake loses somebody a finished video, so they were left until
+last and each was verified against the real bundled ffmpeg rather than only in tests:
 
-- **Resuming a failed render.** A twenty-minute render that dies at minute eighteen starts
-  again from nothing. Fixing it properly means keeping the half-finished pieces instead of
-  deleting them, and skipping the stages already done — a change to the part of the app
-  where a mistake loses somebody a finished video. Worth doing carefully, not quickly.
-- **A render queue.** Line several videos up and walk away. Batch already exists and does
-  part of this; a real queue that survives a restart does not.
-- **Proxy editing.** Edit against a small stand-in file and apply the cuts to the
-  full-quality one at the end, so scrubbing a 4K video stops being slow.
-- **Scene preview.** Watch a single scene before committing to the whole render.
+- **Resuming a failed render.** A twenty-minute render dying at minute eighteen used to
+  throw away all eighteen. The narration is the slow part and it finishes before anything
+  that usually goes wrong has started, so pressing Build again now reuses it. It only ever
+  reuses a recording made for *exactly* these words in *exactly* this voice — the folder is
+  named after a fingerprint of those inputs, so a changed script cannot even see the old
+  narration. Narration that does not match the words would be far worse than the time lost.
+- **Watching one scene first.** A still cannot show whether the slow camera move drifts
+  your subject out of frame, or whether the colour treatment suits that particular photo.
+  Any finished scene can now be watched on its own in a few seconds, using the render's own
+  camera maths and the same finishing filters — not an approximation of them, because a
+  preview you cannot trust is worse than none.
+- **Smooth scrubbing on big videos.** Editing against a small stand-in instead of decoding
+  4K on every drag. The stand-in is built to be time-identical to the original and that is
+  *checked* afterwards, not assumed: verified on a 4K master at 29.97fps over 37.3 seconds,
+  the copy came out 0.0000s different in length at an identical frame rate, 281.6 MB down
+  to 2.4 MB. A copy that ever drifted is refused with a reason rather than silently edited
+  against, because a cut made on a drifting stand-in lands further and further out as the
+  video goes on — fine at the start, ruined at the end, invisible until somebody watches
+  the whole thing. The finished video is always made from the master.
 
-Since the morning list, four more landed and are described above: thumbnail testing,
-competitor topic gaps, dual-language upload metadata, and the credit check. The crash
-reporter landed too. Undo already existed for the Timeline and Storyboard and has now been
-extended to the Scene Studio, rather than a second undo being written alongside it.
+Undo already existed for the Timeline and Storyboard and was extended to the Scene Studio
+rather than a second undo being written alongside it.
 
 On **thumbnail A/B specifically**, one thing is worth being straight about: a properly
 automated test is not possible from this app. YouTube does not expose click-through per

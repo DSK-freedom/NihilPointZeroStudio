@@ -6,9 +6,23 @@
  * So the tests are about evidence: is it recorded, is it diagnosable a week later, and is
  * it kept out of the log when it is not actually a crash.
  */
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { describeCrash, installCrashReporting, isWorthRecording } from './crashReport'
 import type { AiErrorEntry } from '../shared/types'
+
+/**
+ * A no-op listener kept installed for the whole file.
+ *
+ * Every test here emits a real `uncaughtException`, and that is safe only while something
+ * of ours is listening. The moment ours is the last one removed, the emit reaches vitest's
+ * own handler as the only listener and fails the entire run — which is exactly how this
+ * file broke CI once. This guard makes that impossible regardless of test order.
+ */
+const guard = (): void => {}
+beforeAll(() => process.on('uncaughtException', guard))
+afterAll(() => {
+  process.off('uncaughtException', guard)
+})
 
 const removers: (() => void)[] = []
 afterEach(() => {
@@ -136,21 +150,27 @@ describe('it never throws while handling a throw', () => {
 })
 
 describe('the handlers can be removed', () => {
-  it('stops recording once removed', () => {
+  it('records while installed, and is gone afterwards', () => {
+    // Removal is asserted by the LISTENER BEING GONE, not by emitting another exception
+    // after removing it. That was the original test and it broke CI: with our handler
+    // removed, the emitted exception reaches vitest's own uncaughtException handler, which
+    // correctly reports it as an unhandled error and fails the whole run. It passed
+    // locally by luck of file ordering. Emitting while our handler IS installed is safe —
+    // it absorbs it — which is what every other test in this file does.
     const entries: AiErrorEntry[] = []
-    const remove = installCrashReporting({ record: (e) => entries.push(e), onFatal: () => {} })
-    process.emit('uncaughtException', new Error('one'))
-    remove()
-    process.emit('uncaughtException', new Error('two'))
-    expect(entries).toHaveLength(1)
-  })
+    const exceptionsBefore = process.listenerCount('uncaughtException')
+    const rejectionsBefore = process.listenerCount('unhandledRejection')
 
-  it('does not leave the process without any handler when vitest has its own', () => {
-    // A sanity check on the test harness itself: removing ours must not remove theirs.
-    const before = process.listenerCount('uncaughtException')
-    const remove = installCrashReporting({ record: () => {}, onFatal: () => {} })
-    expect(process.listenerCount('uncaughtException')).toBe(before + 1)
+    const remove = installCrashReporting({ record: (e) => entries.push(e), onFatal: () => {} })
+    expect(process.listenerCount('uncaughtException')).toBe(exceptionsBefore + 1)
+    expect(process.listenerCount('unhandledRejection')).toBe(rejectionsBefore + 1)
+
+    process.emit('uncaughtException', new Error('one'))
+    expect(entries).toHaveLength(1)
+
     remove()
-    expect(process.listenerCount('uncaughtException')).toBe(before)
+    // Both handlers go, and nothing else's listeners were disturbed.
+    expect(process.listenerCount('uncaughtException')).toBe(exceptionsBefore)
+    expect(process.listenerCount('unhandledRejection')).toBe(rejectionsBefore)
   })
 })

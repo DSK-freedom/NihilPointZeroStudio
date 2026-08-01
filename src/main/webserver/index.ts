@@ -1,3 +1,4 @@
+import { powerSaveBlocker } from 'electron'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'http'
 import type { AddressInfo } from 'net'
 import { randomBytes } from 'crypto'
@@ -9,27 +10,102 @@ import { getActiveProvider } from '../llm'
 import { buildAdvisorSystemPrompt } from '../prompts'
 import { importPhoneProject } from '../project/import'
 import { MOBILE_PAGE } from './page'
+import type { WebServerAddress, WebServerStatus } from '../../shared/types'
 
 let server: Server | null = null
 let token = ''
 let boundPort = 0
+let awakeId: number | null = null
 
-export interface WebServerStatus {
-  running: boolean
-  url: string | null
+/**
+ * Holds off sleep while phone access is on.
+ *
+ * Without this the feature quietly fails in the exact situation it exists for: the
+ * user leaves the house, the laptop sleeps a few minutes later, and the phone can no
+ * longer reach anything. It blocks SUSPENSION only — the screen is still free to turn
+ * off — and it is released the moment phone access is switched off.
+ */
+function keepAwake(): void {
+  if (awakeId !== null) return
+  try {
+    awakeId = powerSaveBlocker.start('prevent-app-suspension')
+  } catch {
+    // Not fatal: phone access still works, the PC may just sleep on its own.
+    awakeId = null
+  }
 }
 
-function lanIp(): string {
-  for (const addrs of Object.values(networkInterfaces())) {
+function releaseAwake(): void {
+  if (awakeId === null) return
+  try {
+    if (powerSaveBlocker.isStarted(awakeId)) powerSaveBlocker.stop(awakeId)
+  } catch {
+    /* nothing useful to do */
+  }
+  awakeId = null
+}
+
+/** True while sleep is being held off, so the UI can say so honestly. */
+export function isKeepingAwake(): boolean {
+  return awakeId !== null
+}
+
+/**
+ * Tailscale and similar private-mesh VPNs hand out addresses in 100.64.0.0/10
+ * (CGNAT space). Those are the ones that keep working when the phone leaves the
+ * house and switches to mobile data, so they are labelled and sorted first.
+ */
+function isVpnAddress(ip: string): boolean {
+  const [a, b] = ip.split('.').map(Number)
+  return a === 100 && b >= 64 && b <= 127
+}
+
+function labelFor(name: string, ip: string): string {
+  if (isVpnAddress(ip)) return 'Private VPN — works on mobile data, anywhere'
+  if (/^(wl|wlan|wi-?fi)/i.test(name)) return 'Home Wi-Fi'
+  if (/^(en|eth|ethernet)/i.test(name)) return 'Wired network'
+  return name
+}
+
+/**
+ * Every IPv4 the PC can be reached on. Listing them all matters: picking "the first
+ * one" is a coin flip once a VPN is installed, and handing the user a link on the
+ * wrong network looks exactly like the feature being broken.
+ */
+function localAddresses(): { name: string; address: string }[] {
+  const out: { name: string; address: string }[] = []
+  for (const [name, addrs] of Object.entries(networkInterfaces())) {
     for (const a of addrs ?? []) {
-      if (a.family === 'IPv4' && !a.internal) return a.address
+      if (a.family === 'IPv4' && !a.internal) out.push({ name, address: a.address })
     }
   }
-  return '127.0.0.1'
+  return out
+}
+
+function buildAddresses(): WebServerAddress[] {
+  const found = localAddresses().map(({ name, address }) => ({
+    label: labelFor(name, address),
+    address,
+    url: `http://${address}:${boundPort}/?t=${token}`,
+    remote: isVpnAddress(address)
+  }))
+  // VPN first — that's the one worth copying to a phone that goes outside.
+  found.sort((x, y) => Number(y.remote) - Number(x.remote))
+  if (!found.length) {
+    found.push({
+      label: 'This computer only',
+      address: '127.0.0.1',
+      url: `http://127.0.0.1:${boundPort}/?t=${token}`,
+      remote: false
+    })
+  }
+  return found
 }
 
 export function getWebServerStatus(): WebServerStatus {
-  return { running: !!server, url: server ? `http://${lanIp()}:${boundPort}/?t=${token}` : null }
+  if (!server) return { running: false, url: null, addresses: [] }
+  const addresses = buildAddresses()
+  return { running: true, url: addresses[0]?.url ?? null, addresses }
 }
 
 function authed(req: IncomingMessage): boolean {
@@ -193,9 +269,11 @@ export async function startWebServer(): Promise<WebServerStatus> {
     server!.listen(0, '0.0.0.0', () => resolve())
   })
   boundPort = (server.address() as AddressInfo).port
+  keepAwake()
   // Log WITHOUT the token — the activity log is persistent, and a secret written to a
   // log isn't a secret. The full tokenized link lives only in the Settings UI.
-  logActivity('user', 'Started phone web-view server', `http://${lanIp()}:${boundPort}`)
+  const first = buildAddresses()[0]
+  logActivity('user', 'Started phone web-view server', `http://${first?.address ?? '127.0.0.1'}:${boundPort}`)
   return getWebServerStatus()
 }
 
@@ -203,7 +281,10 @@ export function stopWebServer(): WebServerStatus {
   if (server) {
     server.close()
     server = null
+    releaseAwake()
     logActivity('user', 'Stopped phone web-view server')
   }
   return getWebServerStatus()
 }
+
+export type { WebServerAddress, WebServerStatus }

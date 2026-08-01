@@ -209,13 +209,17 @@ describe('round trip: planned on the phone, rendered on the PC', () => {
     expect(imported.warnings).toEqual([])
     expect(imported.scenes).toBe(storyboard.beats.length)
 
-    // 4. And the studio's REAL compiler turns it into a renderable timeline.
-    const timeline = compileStoryboardToTimeline(
-      { ...storyboard, beats: imported.storyboardBeats },
-      { assets: [], width: 1920, height: 1080, fps: 30 }
-    )
-    expect(timeline.video.length).toBeGreaterThan(0)
+    // 4. And the studio's REAL compiler turns it into a renderable timeline. The
+    //    renderer would have produced one clip per beat by this point; stand those in
+    //    so the compile exercises the actual placement/timing code.
+    const doc = { ...storyboard, beats: imported.storyboardBeats }
+    const rendered = Object.fromEntries(doc.beats.map((b) => [b.id, { clipPath: `/tmp/${b.id}.mp4` }]))
+    const timeline = compileStoryboardToTimeline(doc, rendered)
+
+    expect(timeline.video).toHaveLength(doc.beats.length)
     expect(timeline.width).toBe(1920)
     expect(timeline.fps).toBe(30)
+    // Every beat must land on the timeline with real time on screen.
+    for (const clip of timeline.video) expect(clip.outSec).toBeGreaterThan(clip.inSec)
   })
 })

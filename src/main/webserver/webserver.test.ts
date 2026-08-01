@@ -92,7 +92,23 @@ describe('phone web server auth gate', () => {
   })
 
   it('never puts the token in the status URL of a stopped server', () => {
-    expect(getWebServerStatus()).toEqual({ running: false, url: null })
+    expect(getWebServerStatus()).toEqual({ running: false, url: null, addresses: [] })
+  })
+
+  it('lists every network the PC can be reached on, VPN routes first', async () => {
+    const { token } = await boot()
+    const { addresses } = getWebServerStatus()
+    expect(addresses.length).toBeGreaterThan(0)
+    for (const a of addresses) {
+      // Each entry must be directly usable — a link without its key is useless.
+      expect(a.url).toContain(`t=${token}`)
+      expect(a.url).toContain(a.address)
+      expect(a.label).toBeTruthy()
+    }
+    // A private-VPN route is what works on mobile data, so it must sort first.
+    const firstRemote = addresses.findIndex((a) => a.remote)
+    const lastLocal = addresses.map((a) => a.remote).lastIndexOf(false)
+    if (firstRemote !== -1) expect(firstRemote).toBeLessThan(lastLocal === -1 ? Infinity : lastLocal + 1)
   })
 })
 

@@ -8,7 +8,7 @@ work, not afterwards: before starting anything long, and again when it lands. It
 the repo because the container, the assistant's memory and the harness task list all die
 with the session — only what is pushed to GitHub survives.
 
-Last updated: **2026-08-01, night** (after PR #17).
+Last updated: **2026-08-02** (after PR #21).
 
 ---
 
@@ -123,15 +123,38 @@ He has told me to stop asking and just work: plan, build, test, stress test, fix
 back only when it is done, with a detailed report. Work the queue below in order without
 checking in. See DO NOT ASK in `CLAUDE.md` for the three narrow exceptions.
 
+## Done in the 2026-08-02 run (all merged)
+
+| PR | What |
+|---|---|
+| #21 | Backup nudge — his work is on one disk and 8 files already went missing once |
+| #20 | Honour `Retry-After` on image 429s (backoff already existed; my earlier diagnosis was wrong) |
+| #19 | Rescue a dead brain — switch an EXISTING install off a permanently-refusing provider |
+| #18 | Ollama becomes the default brain; PAID FEATURES SLEEP rule |
+| #17 | Ship-from-behind guard; local-model timeouts; unused paid keys go quiet |
+
+1551 tests passing, 0 lint errors, five clean typechecks, build green.
+
+## BLOCKED FROM THIS SANDBOX — do not attempt blind
+
+**The Piper voice catalogue.** He wants 20-30 voices (British, kids, robotic); only 4 exist
+(2 en_US, 2 ur_PK). Adding more is cheap — it is a data table in
+`src/main/voice/piperVoices.ts` — BUT every id must be exactly right or the download 404s
+on his machine, and `huggingface.co` is unreachable from this container (curl returns 000,
+proxy blocked). Adding unverified ids would ship voices that fail to download.
+
+**Do this from a session that can reach huggingface.co**, or verify each id against
+`https://huggingface.co/rhasspy/piper-voices/resolve/main/<lang>/<locale>/<name>/<quality>/<id>.onnx.json`
+before adding it. Do not guess.
+
 ## Approved by the user, NOT yet built
 
-1. **P4 — image 429 backoff.** Honour `Retry-After`, exponential backoff with jitter,
-   pacing, caching. Replaces "5 fast retries then give up" (45 failures in his log).
-2. **P3 — in-app YouTube API key walkthrough.** Free, 10k units/day. Without it the whole
-   Your Channel tab and every evidence/trend feature is inert.
-3. **P5 — nudge for a second backup home.** His is unset and his own restore log shows
-   8 files had gone missing.
-4. **Dead-brain switch notice.** When the active provider refuses permanently (the hosted
+1. **P3 — in-app YouTube API key walkthrough.** Free, 10k units/day. Without it the whole
+   Your Channel tab and every evidence/trend feature is inert. THE LAST ONE LEFT of the
+   approved four.
+2. ~~P4 image backoff~~ — done in #20.
+3. ~~P5 backup nudge~~ — done in #21.
+4. ~~Dead-brain switch~~ — done in #19. Original note kept for context: **Dead-brain switch notice.** When the active provider refuses permanently (the hosted
    free service returned HTTP 402 twice), say so plainly and move him to Ollama in one
    action. He must never be left pointed at a dead service failing 50 times in silence.
    Partly addressed by defaulting to Ollama, but an EXISTING install keeps its saved

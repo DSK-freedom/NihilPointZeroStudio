@@ -101,9 +101,17 @@ jobs:
               --latest
           fi
 
+          # The exes AND the four docs. The docs were left out until now, so the download
+          # page served a brand-new exe alongside instructions from days earlier — which
+          # is the worst combination, because the docs describe features the user then
+          # cannot find, or omit the ones that are there.
           gh release upload "$TAG" \
             "release/NIHILPOINTZERO-OS-setup.exe" \
             "release/NIHILPOINTZERO-OS-portable.exe" \
+            "docs/HOW-TO-USE.txt" \
+            "docs/NIHILPOINTZERO-GUIDE.txt" \
+            "docs/NIHILPOINTZERO-CHEATSHEET.txt" \
+            "docs/MEGA-DIAGNOSTIC-REPORT.md" \
             --clobber
 
           gh release edit "$TAG" \

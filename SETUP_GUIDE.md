@@ -52,9 +52,43 @@ build the app yourself.
 
 ## Updating later
 
-Run `NIHILPOINTZERO-OS-setup.exe` again (one click) — it updates in place and keeps all
-your work. To confirm you're current, compare the gold badge in the sidebar with the
-`## Build:` line at the top of `MEGA-DIAGNOSTIC-REPORT.md`; they always match.
+**Two ways. Pick whichever you have in front of you.**
+
+### The easy way — one double-click (needs the code folder)
+
+If you have the `NihilPointZeroStudio-workshop` folder on your PC, open it and
+double-click **`UPDATE-MY-STUDIO.cmd`**.
+
+That is the whole procedure. It gets the newest code, installs whatever that code
+needs, builds the app, copies it into your Desktop studio folder, updates the
+installed app, and pushes to GitHub. It takes five to ten minutes and you can walk
+away. If anything goes wrong it stops and says so in plain words rather than
+half-updating — and it never goes near your `nihilpointzero-data` folder, so your
+videos, scripts and settings are not at risk either way.
+
+When it finishes it will tell you to run `NIHILPOINTZERO-OS-setup.exe` once. Do that.
+
+### The other way — download the finished app
+
+If you do NOT have the code folder, or the easy way will not run, just download the
+already-built app:
+
+1. Go to **https://github.com/DSKJazz/NihilPointZeroStudio/releases/latest**
+2. Under **Assets**, click **NIHILPOINTZERO-OS-setup.exe** — it downloads.
+3. Open your Downloads folder and double-click it.
+
+It updates in place and keeps all your work. That page is rebuilt automatically every
+time the code changes, so what you download there is always current — you never have
+to check whether it is the newest one.
+
+### Confirming you are actually current
+
+Open the app and look at **Settings → What changed**. It lists what is new in the
+build you are *running*, and it deliberately withholds anything that is not in it —
+so it can never send you looking for a button that is not there yet.
+
+The gold badge in the sidebar (under "OS") shows the exact build. It always matches
+the `## Build:` line at the top of `MEGA-DIAGNOSTIC-REPORT.md`.
 
 ## System requirements
 

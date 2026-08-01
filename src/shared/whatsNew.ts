@@ -55,6 +55,22 @@ export const CHANGELOG: ChangeEntry[] = [
     where: 'Settings → What changed'
   },
   {
+    id: 'crash-report',
+    date: '2026-08-01',
+    title: 'A crash can no longer close the app without a word',
+    detail:
+      'A tab that stopped working was already caught and written down. The app itself closing was not — it simply vanished, with no message and nothing in the log, which is impossible to report to anyone. Now it tells you it has to close and writes what happened into Known Issues first. Your work is saved either way.',
+    where: 'Settings → Known Issues'
+  },
+  {
+    id: 'scene-undo',
+    date: '2026-08-01',
+    title: 'Undo in the Scene Studio',
+    detail:
+      'Scene Studio was the one place where deleting a scene, or rewriting a prompt you liked, was final for the session — and it is the place where one scene can be several minutes of generating. Ctrl+Z now works there like it already did in the Timeline and Storyboard.',
+    where: 'Scene Studio → the two arrows at the top, or Ctrl+Z'
+  },
+  {
     id: 'thumbnail-test',
     date: '2026-08-01',
     title: 'Test two thumbnails without fooling yourself',

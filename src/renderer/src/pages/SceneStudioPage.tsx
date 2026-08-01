@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useHistory } from '../hooks/useHistory'
 import { useNavigate } from 'react-router-dom'
 import type { SceneTransition, VideoAspect, VideoJob, VideoResolution, VideoStyle, VideoTemplate } from '../../../shared/types'
 import { SCENE_TRANSITIONS, VIDEO_STYLES, VIDEO_TEMPLATES } from '../../../shared/types'
@@ -74,6 +75,10 @@ export default function SceneStudioPage(): React.JSX.Element {
   })
 
   const [scenes, setScenes] = useState<Scene[]>([])
+  // Undo/redo over the scene list. Scene Studio was the one editing surface without it:
+  // deleting a scene, or rewriting a prompt you liked, was final for the session — and it
+  // is the surface where a scene can represent several minutes of generation.
+  const sceneHistory = useHistory(scenes, setScenes)
   // Persist the generated scenes too — NOT just the script. The images are files on disk,
   // so a restored scene shows its picture again; a scene that was mid-generation when you
   // left comes back as ready (idle) rather than stuck "generating". Without this, all your
@@ -312,6 +317,24 @@ export default function SceneStudioPage(): React.JSX.Element {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-serif text-gold-400">Scene Studio</h1>
           <span className="text-[11px] text-ink-500">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved ✓' : ''}</span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={sceneHistory.undo}
+              disabled={!sceneHistory.canUndo}
+              title="Undo (Ctrl+Z)"
+              className="rounded-md border border-ink-700 px-2 py-1.5 text-sm text-ink-200 hover:border-gold-500 disabled:opacity-40"
+            >
+              ↩
+            </button>
+            <button
+              onClick={sceneHistory.redo}
+              disabled={!sceneHistory.canRedo}
+              title="Redo (Ctrl+Y)"
+              className="rounded-md border border-ink-700 px-2 py-1.5 text-sm text-ink-200 hover:border-gold-500 disabled:opacity-40"
+            >
+              ↪
+            </button>
+          </div>
         </div>
         <p className="text-ink-400 text-sm mt-1">
           Generate your video scene by scene and watch each one appear. Pause anytime, rewrite any scene’s

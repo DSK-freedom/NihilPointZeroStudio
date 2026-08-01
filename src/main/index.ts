@@ -9,6 +9,9 @@ import { join } from 'path'
 import { registerIpcHandlers } from './ipc'
 import { captureHandlers } from './remote/registry'
 import { attachRemoteEvents } from './remote/events'
+import { installCrashReporting } from './crashReport'
+import { logAiError } from './llm/errorLog'
+import { dialog } from 'electron'
 
 // E2E harness (scripts/e2e-smoke.mjs, the ship gate): a fully ISOLATED data home so
 // the click-through suite can NEVER touch real user data — it outranks every other
@@ -103,6 +106,28 @@ if (!gotLock) {
     if (win) {
       if (win.isMinimized()) win.restore()
       win.focus()
+    }
+  })
+
+  // BEFORE anything else can throw. A tab crash is already caught by ErrorBoundary; an
+  // unhandled error in THIS process had no handler at all — Electron tears the process
+  // down and the window simply vanishes, leaving nothing to show anyone. That is the only
+  // failure in the app that left no evidence.
+  installCrashReporting({
+    record: (entry) => logAiError(entry),
+    notify: (message) => {
+      // showErrorBox works with no window, which is the case that matters most — a crash
+      // during startup, before there is anything to put a message inside.
+      try {
+        dialog.showErrorBox('NIHILPOINTZERO-OS has to close', message)
+      } catch {
+        /* nothing left to show it with */
+      }
+    },
+    onFatal: () => {
+      // The process state is unknown after this, and carrying on risks writing corrupted
+      // data over the user's work. Recorded, told, and let go.
+      app.exit(1)
     }
   })
 

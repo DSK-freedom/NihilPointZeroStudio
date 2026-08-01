@@ -13,6 +13,7 @@ import { fileUrl } from '../../../shared/mediaUrl'
 import HookRebuildPanel from '../components/HookRebuildPanel'
 import SourcesPanel from '../components/SourcesPanel'
 import DualLanguagePanel from '../components/DualLanguagePanel'
+import ThumbnailTestPanel from '../components/ThumbnailTestPanel'
 import ReadAloudPanel from '../components/ReadAloudPanel'
 import RepurposePanel from '../components/RepurposePanel'
 
@@ -524,6 +525,17 @@ export default function WriterPage() {
                   silent reading hides exactly the faults that cost a retake. */}
               <div className="mt-3">
                 <ReadAloudPanel script={writer.body} />
+              </div>
+
+              {/* Thumbnail variants, plus the arithmetic that tells a real difference from
+                  noise. An automated A/B test is not possible — YouTube exposes no
+                  per-thumbnail figure — and the panel says so rather than pretending. */}
+              <div className="mt-3">
+                <ThumbnailTestPanel
+                  title={writer.script?.title ?? ''}
+                  headline={thumbHeadline}
+                  script={writer.body}
+                />
               </div>
 
               {/* Both languages, with the codes right. Roman Urdu is ur-Latn, not en and

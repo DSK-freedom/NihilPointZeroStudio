@@ -55,6 +55,14 @@ export const CHANGELOG: ChangeEntry[] = [
     where: 'Settings → What changed'
   },
   {
+    id: 'thumbnail-test',
+    date: '2026-08-01',
+    title: 'Test two thumbnails without fooling yourself',
+    detail:
+      'It gives you genuinely different thumbnails to try — a number, a question, the subject alone — built from your own words, plus a plain one to test them against. It warns when a headline is too long to read at the size people see it, or just repeats the title sitting right beside it. And once you have the numbers from YouTube Studio it tells you whether the difference is real or just chance, which is the part nobody can do by eye. YouTube does not let any app read click-through per thumbnail, so the swapping and the reading are yours to do — the app says so instead of pretending.',
+    where: 'Script Writer → Test two thumbnails properly'
+  },
+  {
     id: 'credit-check',
     date: '2026-08-01',
     title: 'A credit check before you publish',

@@ -125,7 +125,28 @@ phone automatically.
 
 ## Docs (shipped to the user, keep them in sync with changes)
 
-`docs/HOW-TO-USE.txt` (orientation), `NIHILPOINTZERO-GUIDE.txt` (full manual),
-`NIHILPOINTZERO-CHEATSHEET.txt` (1-pager), `MEGA-DIAGNOSTIC-REPORT.md` (honest
-status of what works offline/online). Write these in the same plain,
-non-technical voice.
+SIX files, all maintained on the SAME footing — the user's explicit instruction,
+2026-08-01. Any change that touches app code, docs or resources updates every one of
+these that it affects, in the SAME commit, and both workflows upload all six to the
+rolling `latest` release so the download page can never serve a fresh exe beside a
+stale instruction:
+
+1. `docs/HOW-TO-USE.txt` — orientation, read first
+2. `docs/NIHILPOINTZERO-GUIDE.txt` — the full manual
+3. `docs/NIHILPOINTZERO-CHEATSHEET.txt` — the 1-pager
+4. `docs/MEGA-DIAGNOSTIC-REPORT.md` — honest status of what works offline/online,
+   and what is NOT built yet
+5. `SETUP_GUIDE.md` — first-time setup
+6. `UPDATE-MY-STUDIO.cmd` — the one-double-click updater (see below)
+
+`BACKUP-NOW.cmd` ships with them and is checked the same way.
+
+Write all of them in the same plain, non-technical voice.
+
+**Why `UPDATE-MY-STUDIO.cmd` exists and must keep working.** Everything about
+updating was already automatic except the last step, which was "open a terminal and
+type `npm run ship`". That is not a step for somebody who does not code, and asking
+for it anyway is how a laptop ends up three builds behind while GitHub and the phone
+are current. The .cmd checks its tools, names the missing one, pulls, installs, runs
+ship, and stops on the first failure rather than half-updating. If ship's steps ever
+change, that file changes with it — it is the only route the user actually has.

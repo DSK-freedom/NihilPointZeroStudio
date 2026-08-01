@@ -195,6 +195,11 @@ Step 'Deploy docs to Desktop studio' {
     Copy-Item (Join-Path $repo 'SETUP_GUIDE.md') $studio -Force
     # The one-click backup tool the docs point at — must exist wherever the studio does.
     Copy-Item (Join-Path $repo 'BACKUP-NOW.cmd') $studio -Force
+    # The one-click UPDATER. It has to travel with the studio for the same reason the
+    # backup tool does: it is the only route the user actually has, and a copy of it that
+    # stays behind at an old version is worse than none, because it would keep working
+    # and keep shipping whatever it was when it was left there.
+    Copy-Item (Join-Path $repo 'UPDATE-MY-STUDIO.cmd') $studio -Force
 }
 
 Step 'Push to GitHub' {
@@ -259,7 +264,10 @@ If Windows shows "Windows protected your PC": click **More info -> Run anyway** 
     Invoke-RestMethod -Method Patch -Uri "https://api.github.com/repos/$gh/releases/$($rel.id)" -Headers $hdr `
         -Body ([Text.Encoding]::UTF8.GetBytes($patchJson)) -ContentType 'application/json; charset=utf-8' | Out-Null
 
-    # Replace assets: the two exes + the four plain-English docs.
+    # Replace assets: the two exes + every shipped document. SIX documents plus the two
+    # .cmd tools, matching .github/workflows exactly — whichever route publishes, the
+    # download page ends up with the same set, so it can never serve a fresh exe beside
+    # a stale instruction.
     $assets = @(
         (Join-Path $repo 'release\NIHILPOINTZERO-OS-setup.exe'),
         (Join-Path $repo 'release\NIHILPOINTZERO-OS-portable.exe'),
@@ -268,6 +276,7 @@ If Windows shows "Windows protected your PC": click **More info -> Run anyway** 
         (Join-Path $repo 'docs\NIHILPOINTZERO-CHEATSHEET.txt'),
         (Join-Path $repo 'docs\MEGA-DIAGNOSTIC-REPORT.md'),
         (Join-Path $repo 'SETUP_GUIDE.md'),
+        (Join-Path $repo 'UPDATE-MY-STUDIO.cmd'),
         (Join-Path $repo 'BACKUP-NOW.cmd')
     )
     Add-Type -AssemblyName System.Net.Http

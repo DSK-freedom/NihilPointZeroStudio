@@ -30,6 +30,7 @@ CONTENTS
   19. NEW: NihilPointZero on your phone (the whole studio, and the offline app)
   20. NEW: Teleprompter, and the Expert that works without AI
   21. NEW: Recording that doesn't look like a phone
+  22. NEW: One version everywhere — and how to check, on either device
 
 -------------------------------------------------------------------------------
 1. WHAT THIS IS / FIRST LAUNCH
@@ -1003,3 +1004,49 @@ Execute.
   If the AI ever goes quiet, go to Settings -> Setup Health. It sends a real test
   request and tells you exactly what is wrong ("no longer free", "busy", "cannot
   reach it").
+
+-------------------------------------------------------------------------------
+22. NEW (2026-08-01): ONE VERSION EVERYWHERE — AND HOW TO CHECK
+-------------------------------------------------------------------------------
+
+THE RULE
+There is only ever ONE live version of this studio. When something is upgraded,
+the old copy is REPLACED — it is never left running quietly beside the new one.
+Five places, and they always match:
+
+  1. the workshop folder (where the code lives)
+  2. the Desktop studio folder
+  3. the installed Windows app
+  4. GitHub
+  5. YOUR PHONE — both the app you installed from the web, and the studio served
+     from this PC
+
+HOW TO CHECK, IN FIVE SECONDS
+  ON THE LAPTOP: the small gold badge in the sidebar, under "OS". It reads the
+  version, the build date and time, and a short code id like `a1b2c3d`. That code
+  id is the only honest proof of which build is running. If it has not changed
+  after an update, the update did not take.
+
+  ON THE PHONE: Settings, at the very bottom — "This app's version". Same idea,
+  same stamp. There is a "Check for a newer version" button next to it.
+
+WHY THE PHONE NEEDED ITS OWN FIX
+A phone app is stored ON the handset so it can open with no signal — that is the
+point of it. But it means publishing a new version does not remove the old one.
+The phone could go on showing last week's app for days, and nothing on the screen
+would tell you. That actually happened.
+
+Now: every build stamps its own identity into the phone app's storage, so the
+previous version's files are deleted rather than left behind; the app notices a
+new version has arrived and reloads itself once; and the version is printed in
+Settings so you can always read it off the screen.
+
+If the phone ever still looks old — press "Check for a newer version" in Settings,
+or just close the tab and open it again.
+
+ONE THING THAT CATCHES EVERYONE
+Running NIHILPOINTZERO-OS-setup.exe does NOT upgrade anything by itself. It
+installs whichever file is already sitting in the folder. A new file only appears
+after a build — either `npm run ship` on this PC, or the automatic build on
+GitHub. So if you install and the badge has not changed, nothing was wrong: there
+was simply no new file yet.

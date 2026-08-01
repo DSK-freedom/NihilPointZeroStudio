@@ -673,6 +673,30 @@ How to always run the newest build:
    this file. If it's older, you're on a stale copy.
 4. If a taskbar/Start icon shows old code: **unpin it**, then pin the installed app or the
    Desktop shortcut instead.
+5. **Running the installer does NOT upgrade anything on its own.** It installs whichever exe
+   is already sitting in the folder. A new exe only exists after a build — either `npm run ship`
+   on this PC, or the automatic Windows build on GitHub. If the badge does not change after
+   installing, that is why.
+
+## One version everywhere — including the phone
+There is only ever ONE live version. An upgrade REPLACES the old copy; it is never left running
+beside it. Five places, and they always match: this workshop folder, the Desktop studio folder,
+the installed app, GitHub, and **the phone** — both the hosted app and the studio served from
+this PC.
+
+**The phone is the one that used to break this quietly.** A phone app is cached ON the handset so
+it can open with no signal. Publishing a new one did not remove the old one, so the phone could
+keep showing last week's app indefinitely with nothing on screen to say so. That is fixed:
+
+- every build stamps its own identity into the phone app's cache, so the previous version's files
+  are deleted rather than left sitting there;
+- the app notices a new version and reloads itself, once;
+- **Settings → "This app's version"** shows the stamp, with a "Check for a newer version" button
+  beside it. That is the phone's equivalent of the gold sidebar badge, and for the same reason:
+  an old copy looks identical to a new one.
+
+If the phone ever still looks old: open Settings, press "Check for a newer version", or simply
+close the tab and open it again.
 
 _This is a snapshot of the current build. Re-run a check any time; the app tells you plainly
 when something needs internet or setup._

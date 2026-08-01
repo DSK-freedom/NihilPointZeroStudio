@@ -147,6 +147,14 @@ PC OFF (anywhere): open https://dskjazz.github.io/nihilpointzero-phone/ once -> 
                    Advisor · Saved. Free, nothing to type in, same writing style as the PC.
 Move a script to the PC: tap "Send to PC" -> WhatsApp/email/Drive to yourself -> paste into studio.
 
+ONE VERSION EVERYWHERE — HOW TO CHECK (new)
+Laptop:     sidebar, gold badge under "OS" -> version · date-time · code id. The code id is proof.
+Phone app:  Settings -> bottom -> "This app's version" (+ "Check for a newer version" button).
+The old copy is always REPLACED, never left running beside the new one. If the phone looks old,
+it reloads itself now; if not, press that button or close and reopen the tab.
+The installer alone upgrades NOTHING — it installs whichever file is already there. A new file
+only exists after a build.
+
 RECORDING QUALITY (new)
 Recorder -> Camera / Screen / 🎙 Voice only - no face. Resolution + frames-per-second + Quality.
 Bitrate is set to YouTube's own upload figures (1080p30 = 8 Mbps, 4K30 = 45) - browsers otherwise

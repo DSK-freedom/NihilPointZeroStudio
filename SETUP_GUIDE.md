@@ -52,9 +52,27 @@ build the app yourself.
 
 ## Updating later
 
-**Two ways. Pick whichever you have in front of you.**
+**Easiest: let the app do it. You do not have to leave the app at all.**
 
-### The easy way — one double-click (needs the code folder)
+### The app updates itself
+
+Open the app. If a newer version has been published, a blue notice appears at the
+bottom of the window: *"A newer version of the app exists"*. Press **Get the update**.
+
+That is the whole thing. The app downloads the update itself — you will see a progress
+bar — checks that the file really is the one GitHub published, starts it, and closes so
+the update can finish. Windows will ask you once whether to allow it; say **yes**, or
+click **More info → Run anyway** if you get the blue "Windows protected your PC" box.
+The app then reopens, updated.
+
+You do not open a web page. You do not go into Downloads. You do not need File Explorer.
+If the download gets interrupted, press the button again — it keeps what it already got
+rather than starting over.
+
+If it cannot download for some reason, it tells you why in that same notice and then
+offers to show you the setup file instead, so the button never just does nothing.
+
+### Also updating the code folder — one double-click (needs the code folder)
 
 If you have the `NihilPointZeroStudio-workshop` folder on your PC, open it and
 double-click **`UPDATE-MY-STUDIO.cmd`**.

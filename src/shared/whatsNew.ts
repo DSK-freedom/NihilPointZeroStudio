@@ -47,6 +47,14 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    id: 'self-installing-update',
+    date: '2026-08-01',
+    title: 'The app now updates itself',
+    detail:
+      'Updating used to mean opening a web page, getting past a download warning, finding the file and double-clicking it. Now the blue "A newer version exists" notice does the whole thing: it downloads the update, checks it is the right file, starts it, and closes the app so it can finish. You say yes to Windows once and it reopens updated. Nothing to find, nothing to open.',
+    where: 'The blue notice at the bottom of the window → "Get the update"'
+  },
+  {
     id: 'whats-new-screen',
     date: '2026-08-01',
     title: 'A "What changed" screen',

@@ -232,11 +232,22 @@ ONE VERSION, EVERYWHERE — AND HOW TO CHECK
    installs whichever file is sitting there. A new file only appears after a build.
    See "If updates don't show up" in MEGA-DIAGNOSTIC-REPORT.md.
 
-HOW TO UPDATE, WITHOUT TYPING ANYTHING
+HOW TO UPDATE — EASIEST WAY: LET THE APP DO IT
+   Open the app. If a newer version exists, a blue notice appears at the bottom of
+   the window saying "A newer version of the app exists". Press "Get the update".
+   That is everything. The app downloads the update itself, checks it is the right
+   file, starts it, and closes so it can finish. Windows will ask you once whether
+   to allow it — say yes. Then the app reopens, updated.
+
+   You do not open a web page. You do not go looking in Downloads. You do not need
+   File Explorer. If the download is interrupted, press the button again — it keeps
+   what it already got.
+
+HOW TO UPDATE THE WHOLE WORKSHOP TOO (only if you have the code folder)
    Open the NihilPointZeroStudio-workshop folder on your PC and double-click
-   UPDATE-MY-STUDIO.cmd. That is the whole procedure. It fetches the new code,
-   builds it, copies it into your Desktop studio folder, updates the installed app
-   and pushes to GitHub. Five to ten minutes, and you can walk away while it runs.
+   UPDATE-MY-STUDIO.cmd. This does more than the button above: as well as the app,
+   it refreshes the code folder and your Desktop studio folder and pushes to GitHub.
+   Five to ten minutes, and you can walk away while it runs.
 
    It checks its tools first and tells you by name if something is missing. If any
    step fails it STOPS and says so in plain words rather than leaving things

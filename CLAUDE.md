@@ -68,8 +68,52 @@ job by running `npm run ship` (scripts/ship.ps1). Work is NOT done until the
 Desktop studio folder and GitHub both match the source. Ship once per
 completed change/fix/upgrade — not after every individual file edit. If the
 build or push cannot be run for any reason, explicitly tell the user their
-change is NOT yet shipped and the Desktop exe is stale. After shipping, remind
-the user to run NIHILPOINTZERO-OS-setup.exe once to refresh the INSTALLED app.
+change is NOT yet shipped and the Desktop exe is stale.
+
+## THE LAST STEP IS MINE, NOT THE USER'S (hard rule, 2026-08-01)
+
+The user's exact instruction: *"this is your job to get everything updated right
+then and there... my mobile phone, my PC, and my GitHub. This is a hard rule after
+everything, every upgrade, every change we make. Once it's done, that's the last thing
+you do before you even report to me. And you don't even ask me this. You just tell me
+that you did these three things."*
+
+So, before reporting a change as done, all three are brought to the same version, in
+this order, without asking:
+
+1. **GitHub** — commit, push, merge to `main`, and confirm the build ran green and the
+   rolling `latest` release actually carries the new exes AND all six docs. "Pushed" is
+   not "shipped": read the release back and check the asset timestamps.
+2. **The PC** — `npm run ship`, which builds, copies to the Desktop studio folder and
+   updates the INSTALLED app in place.
+3. **The phone** — the phone app is a separate public repo with its own Pages workflow;
+   a push there publishes it. The service worker's build-stamped cache name is what makes
+   the handset drop the old copy (see ONE VERSION EVERYWHERE).
+
+Then report: say which three were updated, and what the user will see. Do not ask
+permission for any of it.
+
+### When a step genuinely cannot be done from here
+
+Some sessions run on the user's Windows PC; others (Claude Code on the web) run in a
+Linux container that can reach GitHub and nothing else on the machine. In a container,
+step 2 is impossible — there is no Desktop, no installed app, no Windows to build on.
+
+When that happens the rule does not become "give the user a list of chores". It becomes:
+
+- Say plainly, in one sentence, that this session cannot reach their PC and why.
+- Do every step that IS possible, in full. The GitHub half covers the exes and the docs,
+  and the CI workflow already builds them — use it.
+- Then make the remaining step require as close to zero human actions as physically
+  possible, and prefer changing the software over instructing the user. The in-app
+  updater (`update:install`, `src/main/selfUpdate.ts`) exists for exactly this reason:
+  the app downloads its own installer, verifies it and runs it, so the answer is "click
+  the button in the app you already have open" rather than a ten-step walkthrough
+  involving a browser, a security warning and File Explorer.
+
+**Never hand the user a manual procedure that a machine could have done.** If a walkthrough
+is the best that can be offered, that is a bug in the software, and fixing it is the
+work — not the walkthrough. The user does not code, and steps are where things break.
 
 ## Architecture
 

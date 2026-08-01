@@ -534,7 +534,16 @@ const api = {
       ipcRenderer.invoke(IPC.updateRevealSetup, remoteTag),
     /** One-click update for the installed app: the ship already swapped the code on
      * disk, so this relaunches onto it. ok:false = not applicable (portable/stale). */
-    restart: (): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.updateRestart)
+    restart: (): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.updateRestart),
+    /** Downloads the installer and runs it — no browser, no Downloads folder. On success
+     * the app quits so the installer can replace it, so nothing follows this call. */
+    install: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke(IPC.updateInstall),
+    /** Download progress for the button above: { pct, stage }. */
+    onInstallProgress: (cb: (p: { pct: number; stage: string }) => void) => {
+      const listener = (_e: unknown, p: { pct: number; stage: string }): void => cb(p)
+      ipcRenderer.on(IPC.updateInstallProgress, listener)
+      return () => ipcRenderer.removeListener(IPC.updateInstallProgress, listener)
+    }
   },
   // "What changed" — what is new in the build actually running. The build tag is read in
   // the main process, never passed in from here, so a stale page cannot make the app

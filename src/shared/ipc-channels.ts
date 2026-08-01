@@ -73,6 +73,8 @@ export const IPC = {
   channelLearn: 'channel:learn',
   channelScoreTitle: 'channel:score-title',
   channelComments: 'channel:comments',
+  // What other channels covered that this one has not.
+  channelGaps: 'channel:gaps',
   // Hear the script read out at speed, to proof it by ear before recording.
   readAloudPlan: 'read-aloud:plan',
   readAloudSpeak: 'read-aloud:speak',

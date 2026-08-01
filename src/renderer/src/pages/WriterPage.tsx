@@ -10,6 +10,10 @@ import { useStudio } from '../store/StudioContext'
 import { useProducerTarget } from '../store/ProducerContext'
 
 import { fileUrl } from '../../../shared/mediaUrl'
+import HookRebuildPanel from '../components/HookRebuildPanel'
+import SourcesPanel from '../components/SourcesPanel'
+import ReadAloudPanel from '../components/ReadAloudPanel'
+import RepurposePanel from '../components/RepurposePanel'
 
 const lengthOptions: { value: ScriptLength; label: string }[] = [
   { value: 'short', label: 'Short (6-8 min)' },
@@ -498,6 +502,32 @@ export default function WriterPage() {
                   {generatingThumbnail ? 'Designing…' : 'Thumbnail Brief'}
                 </button>
               </div>
+
+              {/* One wrong figure is the comment that gets pinned, and a published video
+                  cannot be edited. This reads the "Verified data" box back against the
+                  script — the field existed, nothing was checking against it. */}
+              <div className="mt-3">
+                <SourcesPanel script={writer.body} notes={writer.verifiedData ?? ''} />
+              </div>
+
+              {/* The first fifteen seconds decide whether the rest gets watched, and they
+                  are the hardest part to judge from inside the draft. */}
+              <div className="mt-3">
+                <HookRebuildPanel
+                  script={writer.body}
+                  onUse={(hook) => setWriter({ body: `${hook}\n\n${writer.body}` })}
+                />
+              </div>
+
+              {/* Proof it by ear before recording it. A script is spoken, not read, and
+                  silent reading hides exactly the faults that cost a retake. */}
+              <div className="mt-3">
+                <ReadAloudPanel script={writer.body} />
+              </div>
+
+              {/* One script, everywhere it needs to go. Runs in the page — no AI, no
+                  internet, instant. See components/RepurposePanel.tsx. */}
+              <RepurposePanel title={writer.script.title} body={writer.body} />
               <p className="text-[11px] text-ink-500 mt-2">
                 Want a narrated video of this script? Head to the <span className="text-gold-400">Video Studio</span>{' '}
                 tab — this draft is available there.

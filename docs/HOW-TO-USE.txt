@@ -151,6 +151,65 @@ RECORDING SO IT DOESN'T LOOK LIKE A PHONE
    • Long takes recorded on the phone are saved to the phone's Downloads rather than
      squeezed over the link. Short ones go straight to the PC.
 
+WHAT IS NEW (1 August 2026)
+   You never have to remember this list. Open Settings and read "What changed" — it
+   shows what is new in the build you are actually running, and only things that are
+   really in it. Nothing is ever listed before the code for it has shipped.
+
+   The short version of this round:
+
+   A NEW TAB, "Your Channel". Everything else in the app helps you make a video. This
+   one tells you what has already worked. It reads your own past videos and works out
+   which title shapes did better FOR YOU — not what advice says works in general, which
+   is an average across millions of channels that are not yours. It also tells you which
+   day and hour your videos really get watched, and it always shows how many videos each
+   claim is based on. If there is not enough history to be honest, it says so instead of
+   guessing.
+
+   THE SAME TAB READS YOUR COMMENTS. It finds the questions, groups the ones asking the
+   same thing (in English and Roman Urdu together), and ranks them by how many different
+   people asked. Every question is quoted word for word from a real comment, so you can
+   check it yourself. The same question asked forty times is a video with an audience
+   before you record a frame.
+
+   IT ALSO FINDS YOUR SERIES. If your titles say "#4" or "Part 2" or "Hissa 2", it works
+   out which videos belong together, warns you if a number is missing or used twice, and
+   writes the description links, the pinned comment and the end-screen line for you.
+
+   HEAR YOUR SCRIPT BEFORE YOU RECORD IT. Script Writer -> "Read it to me". A script is
+   spoken, not read, and reading it silently hides the things that cost you a retake: a
+   sentence too long to say in one breath, a number you cannot read off the page, a word
+   written twice in a row that your eye skips over. It reads it to you at double speed —
+   a twelve-minute script takes six minutes to check — and lists what to listen for with
+   the time each one happens.
+
+   FIVE DIFFERENT OPENINGS. Script Writer -> "Show 5 openings". The first fifteen seconds
+   decide whether the rest gets watched, and they are the hardest part to judge from
+   inside your own draft. It shows the same material five ways, using only sentences
+   already in your script, and shows which sentence each one came from.
+
+   YOUR NUMBERS, CHECKED. Put the figures you looked up in the "Verified data" box, one
+   per line, like "Reserves, 2026-07-31: 11.2". The app now reads that back against your
+   script and flags any figure it cannot trace. One wrong number is the comment that gets
+   pinned, and a published video cannot be edited. It also writes the sources block for
+   your description.
+
+   CUT THE DEAD AIR. Video Studio -> any video -> "What would be cut?". It tells you
+   first, then removes the long pauses when you say "Cut it", keeping a quarter-second of
+   breath so it still sounds like a person talking. It makes a NEW video. Your original
+   is never touched.
+
+   CHARTS THAT DRAW THEMSELVES. Charts -> "Draw it on". Record the screen while it plays
+   and lay it over your narration.
+
+   AND SIX THINGS YOU WILL NOT SEE, ONLY NOTICE. Every render now: builds in one pass
+   instead of four, so less picture quality is thrown away; delivers audio at the level
+   YouTube itself wants, so it stops quietly turning your videos down; puts slow camera
+   movement on footage instead of leaving a frozen frame; makes scenes tighten toward the
+   end, where videos lose people; lands b-roll on the word it belongs to; and runs a
+   one-second check first, so a problem stops you before the render does, not twenty
+   minutes in.
+
 ONE VERSION, EVERYWHERE — AND HOW TO CHECK
    There is only ever ONE live version. When something is upgraded, the old copy is
    replaced everywhere, not left running next to it. That means all five of these

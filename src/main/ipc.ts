@@ -44,6 +44,16 @@ import { importPhoneProject, importPhoneProjectJson } from './project/import'
 import { closeTeleprompter, openTeleprompter, setTeleprompterProtection, teleprompterState } from './teleprompter/window'
 import { APP_GUIDE } from './appGuide'
 import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
+import { whatsNewReport } from '../shared/whatsNew'
+import { DEFAULT_SPEED, planReadAloud, type ReadSpeed } from '../shared/readAloud'
+import { learnTitlePatterns, publishTimingReport, scoreTitle } from '../shared/channelLearning'
+import { mineQuestions, summarise as summariseQuestions } from '../shared/commentMining'
+import { seriesReport } from '../shared/series'
+import { fetchComments, fetchMyChannelVideos } from './data/youtube'
+import { buildCutArgs, planSilenceCut } from './video/silence'
+import { buildVideoEncoderArgs, chooseEncoderForJob } from './video/encoder'
+import { buildSpeedArgs } from './audio/speed'
+import { speakToWav } from './voice/speak'
 
 // Injected at build time by electron.vite.config.ts (same tag the sidebar badge shows).
 declare const __BUILD_TAG__: string
@@ -57,7 +67,7 @@ import { buildPriceSeriesFromBars } from './analysis/priceSeries'
 import { buildPriceSeries } from './analysis/priceSeries'
 import { extractPdfText, summarizeStatement } from './analysis/pdf'
 import { attachRecordedVoice, beautifyImage, buildVideoFromScript, exportVideo, ffprobeDuration, formatExtension, renderThumbnail, renderTimeline, setVideoMusic, stitchVideos, trimVideo } from './video'
-import { cancelActiveFfmpeg, ffprobeHasAudio, ffprobeVideoSize, runFfmpeg } from './video/ffmpeg'
+import { cancelActiveFfmpeg, ffprobeHasAudio, ffprobeVideoSize, runFfmpeg, runFfmpegCapture } from './video/ffmpeg'
 import { buildWatermarkArgs, type WatermarkPosition } from './video/watermark'
 import { makeSeparationScratch, separateLocal, separateOnline } from './audio/separate'
 import { deriveTitleFromFilename, normalizeScriptText } from './video/scriptText'
@@ -136,7 +146,9 @@ import {
   getSettings,
   getYouTubeChannelId,
   getLastHealth,
+  getSeenChangeIds,
   isPurgeBackupsOnDelete,
+  markChangesSeen,
   setLastHealth,
   setPurgeBackupsOnDelete,
   setSecondBackupDir,
@@ -756,6 +768,148 @@ export function registerIpcHandlers(): void {
     }
     void shell.openExternal('https://github.com/DSKJazz/NihilPointZeroStudio/releases/latest')
     return { ok: true, opened: 'download-page' }
+  })
+
+  // "What changed": the new things in the build that is ACTUALLY RUNNING. The build tag
+  // comes from __BUILD_TAG__ here rather than from the renderer, so a stale page cannot
+  // make the app claim features it does not have.
+  ipcMain.handle(IPC.whatsNewGet, () => whatsNewReport({ buildTag: __BUILD_TAG__, seenIds: getSeenChangeIds() }))
+
+  ipcMain.handle(IPC.whatsNewMarkSeen, (_e, ids?: unknown) => {
+    const list = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : []
+    markChangesSeen(list)
+    return whatsNewReport({ buildTag: __BUILD_TAG__, seenIds: getSeenChangeIds() })
+  })
+
+  // CUT THE DEAD AIR out of a take. Two steps on purpose: the plan is cheap (two reads,
+  // no encode) and is SHOWN before anything happens, because a silence remover that just
+  // does it to a finished take is one nobody trusts. The cut then writes a NEW file and
+  // the original is never touched — the hard rule of this app is that it does not destroy
+  // the user's work.
+  ipcMain.handle(IPC.silencePlan, async (_e, videoId: string) => {
+    const src = listVideos().find((v) => v.id === videoId)
+    if (!src || !existsSync(src.path)) return { ok: false as const, error: 'That video could not be found.' }
+    try {
+      const plan = await planSilenceCut(src.path, runFfmpegCapture, ffprobeDuration)
+      return { ok: true as const, ...plan }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Could not read the recording.' }
+    }
+  })
+
+  ipcMain.handle(IPC.silenceApply, async (e, videoId: string) => {
+    const src = listVideos().find((v) => v.id === videoId)
+    if (!src || !existsSync(src.path)) return { ok: false as const, error: 'That video could not be found.' }
+    const notify = (stage: string): void => {
+      if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, stage)
+    }
+    try {
+      notify('Listening for dead air…')
+      const { keeps, summary } = await planSilenceCut(src.path, runFfmpegCapture, ffprobeDuration)
+      if (keeps.length < 2) return { ok: false as const, error: summary.headline }
+      const id = randomUUID()
+      const outPath = join(videosDir(), `tight-${id.slice(0, 8)}.mp4`)
+      const [w, h] = await ffprobeVideoSize(src.path).catch(() => [1920, 1080] as [number, number])
+      const encoder = await chooseEncoderForJob(w, h, summary.keptSec)
+      notify(summary.headline)
+      await runFfmpeg(buildCutArgs(src.path, outPath, keeps, buildVideoEncoderArgs(encoder)))
+      const job: VideoJob = {
+        ...src,
+        id,
+        title: `${src.title} (tightened)`,
+        path: outPath,
+        createdAt: new Date().toISOString()
+      }
+      appendVideo(job)
+      logActivity('user', 'Cut the dead air out of a recording', summary.headline)
+      return { ok: true as const, video: job, summary }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Could not cut the recording.' }
+    }
+  })
+
+  // LEARN FROM YOUR OWN CHANNEL rather than from general advice. One fetch of the user's
+  // uploads feeds all three answers: which title shapes have really worked, when the
+  // audience really shows up, and which videos form a series that should be linked.
+  //
+  // Every figure is computed from the fetched table, never asked of a model — these are
+  // arithmetic questions, and a fluent wrong answer here would change how the user titles
+  // videos for a year. When the history is too short, the modules refuse to answer and
+  // say so; an empty fetch reads as exactly that rather than as "nothing works".
+  ipcMain.handle(IPC.channelLearn, async () => {
+    const videos = await fetchMyChannelVideos()
+    const past = videos.map((v) => ({
+      title: v.title,
+      publishedAt: v.publishedAt,
+      views: v.views,
+      likes: v.likes,
+      comments: v.comments
+    }))
+    return {
+      videoCount: past.length,
+      titleFindings: learnTitlePatterns(past),
+      timing: publishTimingReport(past),
+      series: seriesReport(videos.map((v) => ({ id: v.id, title: v.title, publishedAt: v.publishedAt, url: `https://youtu.be/${v.id}` })))
+    }
+  })
+
+  /** Score a proposed title against the channel's OWN history, with reasons. */
+  ipcMain.handle(IPC.channelScoreTitle, async (_e, title: string) => {
+    const videos = await fetchMyChannelVideos()
+    return scoreTitle(
+      typeof title === 'string' ? title : '',
+      videos.map((v) => ({ title: v.title, publishedAt: v.publishedAt, views: v.views }))
+    )
+  })
+
+  // THE VIDEO IDEAS ALREADY SITTING IN THE COMMENTS. Every question returned is quoted
+  // verbatim from a real comment, so it can be checked — a model summary of "what people
+  // are asking" reads well and may match nothing anybody actually wrote.
+  ipcMain.handle(IPC.channelComments, async (_e, videoLimit?: number) => {
+    const videos = await fetchMyChannelVideos()
+    // Newest first, and only the recent ones: a question from three years ago has usually
+    // been answered, and each video costs a quota unit.
+    const recent = [...videos]
+      .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))
+      .slice(0, Math.max(1, Math.min(30, typeof videoLimit === 'number' ? videoLimit : 12)))
+    const comments = await fetchComments(recent.map((v) => v.id))
+    const clusters = mineQuestions(comments)
+    return { scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
+  })
+
+  // Proof the script BY EAR. The plan is pure and instant — what to listen for, and how
+  // long the listen will take — so the user sees it before deciding to generate audio.
+  ipcMain.handle(IPC.readAloudPlan, (_e, script: string, speed?: number) =>
+    planReadAloud(typeof script === 'string' ? script : '', (speed as ReadSpeed) ?? DEFAULT_SPEED)
+  )
+
+  // Speak it, then speed the file up. Two steps rather than asking the voice engine to
+  // talk fast: the engines cannot, and atempo holds the pitch so it still sounds human.
+  ipcMain.handle(IPC.readAloudSpeak, async (_e, script: string, speed?: number, voice?: string) => {
+    const text = typeof script === 'string' ? script.trim() : ''
+    if (!text) return { ok: false as const, error: 'There is no script to read yet.' }
+    const rate = typeof speed === 'number' && Number.isFinite(speed) ? speed : DEFAULT_SPEED
+    const id = randomUUID().slice(0, 8)
+    const wav = join(generatedAudioDir(), `readaloud-${id}.wav`)
+    const out = join(generatedAudioDir(), `readaloud-${id}-${String(rate).replace('.', '_')}x.m4a`)
+    try {
+      const spoken = await speakToWav(text, wav, (voice as 'natural' | 'winnatural' | 'windows') ?? 'natural')
+      await runFfmpeg(buildSpeedArgs(wav, out, rate))
+      const plan = planReadAloud(text, rate as ReadSpeed)
+      logActivity('ai', `Read the script aloud at ${rate}× to proof it`, `${plan.notes.length} things flagged`)
+      // The PATH, not a URL. fileUrl() belongs in the renderer: called here it would
+      // always produce file:///, which plays on the PC and is dead on the phone.
+      return { ok: true as const, path: out, engineName: spoken.engineName, plan }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Could not read the script aloud.' }
+    } finally {
+      // The spoken original is an intermediate; only the sped-up file is listened to.
+      try {
+        if (existsSync(wav)) rmSync(wav, { force: true })
+      } catch {
+        /* a leftover temp file is not worth failing the feature over */
+      }
+    }
   })
 
   // The "YouTube Producer": a growth-strategist that critiques/rewrites the creator's

@@ -10,3 +10,4 @@ release
 # Live status board scratch (see scripts/live.sh) — never committed.
 .live-start
 .live-tests
+.live-log

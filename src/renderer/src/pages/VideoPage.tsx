@@ -213,6 +213,12 @@ export default function VideoPage() {
   // remover that just does it to a finished take is one nobody trusts.
   const [silenceBusyId, setSilenceBusyId] = useState<string | null>(null)
   const [silencePlan, setSilencePlan] = useState<{ id: string; headline: string; cuts: number } | null>(null)
+  // The credit check. Not a copyright detector — it checks the paperwork for what the app
+  // fetched itself, and says plainly when it cannot vouch for something.
+  const [creditsBusyId, setCreditsBusyId] = useState<string | null>(null)
+  const [creditReport, setCreditReport] = useState<
+    ({ id: string } & import('../../../shared/copyrightCheck').CopyrightReport) | null
+  >(null)
   const [publishBusyId, setPublishBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [savedNote, setSavedNote] = useState<string | null>(null)
@@ -470,6 +476,26 @@ export default function VideoPage() {
   async function pickLogo(): Promise<void> {
     const paths = await window.api.video.pickImages()
     if (paths[0]) setWatermarkLogo(paths[0])
+  }
+
+  async function handleCreditCheck(job: VideoJob): Promise<void> {
+    setCreditsBusyId(job.id)
+    setError(null)
+    setCreditReport(null)
+    try {
+      // The description the credit has to appear in is the one the app drafts for this
+      // video. If that cannot be read, an empty description is the right fallback: it
+      // reports a required credit as missing, which errs toward telling the user.
+      const meta = await window.api.shorts.postMeta(job.id, 'youtube').catch(() => null)
+      const description = meta?.description ?? ''
+      const res = await window.api.copyright.check(job.id, description)
+      if (res.found) setCreditReport({ id: job.id, ...res })
+      else setError(res.error)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not check the credits.')
+    } finally {
+      setCreditsBusyId(null)
+    }
   }
 
   /** Reads the take and reports what WOULD be cut. Two cheap reads, no encode. */
@@ -1692,6 +1718,48 @@ export default function VideoPage() {
                         </span>
                       </div>
                     )}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900/60 p-2">
+                      <span className="text-[11px] text-ink-400">© Credits</span>
+                      <button
+                        onClick={() => handleCreditCheck(job)}
+                        disabled={creditsBusyId === job.id}
+                        className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors disabled:opacity-50"
+                      >
+                        Check before publishing
+                      </button>
+                      {creditsBusyId === job.id && <span className="text-[10px] text-gold-300">working…</span>}
+                      {creditReport?.id === job.id && (
+                        <>
+                          <span
+                            className={`w-full text-[11px] ${creditReport.ok ? 'text-emerald-300' : 'text-amber-300'}`}
+                          >
+                            {creditReport.headline}
+                          </span>
+                          {creditReport.creditsBlock && (
+                            <button
+                              onClick={() => {
+                                void navigator.clipboard.writeText(creditReport.creditsBlock)
+                                toast('Credits copied ✓', 'success')
+                              }}
+                              className="rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 text-xs font-medium px-3 py-1 transition-colors"
+                            >
+                              Copy the credits
+                            </button>
+                          )}
+                          {creditReport.verdicts.map((v, i) => (
+                            <span key={`${v.item.title}-${i}`} className="w-full text-[10px] text-ink-500">
+                              {v.item.title} — {v.note}
+                            </span>
+                          ))}
+                        </>
+                      )}
+                      <span className="w-full text-[10px] text-ink-600">
+                        This is NOT a copyright detector — nothing on your PC can tell you whether YouTube will claim
+                        something. It checks the paperwork for music and footage the app fetched itself: whether the
+                        licence needs a credit, and whether that credit is actually in your description. A missing
+                        credit is what turns a free track into a claim.
+                      </span>
+                    </div>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900/60 p-2">
                       <span className="text-[11px] text-ink-400">✂ Dead air</span>
                       <button

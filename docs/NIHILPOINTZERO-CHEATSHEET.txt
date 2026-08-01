@@ -53,6 +53,18 @@ DEAD AIR .......... Video Studio -> any video -> "What would be cut?" then "Cut 
                     pauses, keeps a quarter-second of breath, makes a NEW video (original kept).
 DRAW THE CHART .... Charts -> "Draw it on" -> the chart draws itself over 4 seconds. Record the
                     screen while it plays and lay it over your narration.
+YOUR CHANNEL+ ..... same tab: "Find the gaps" shows subjects other channels get views on
+                    that you have NEVER covered, with their real videos so you can check it
+CREDITS CHECK ..... Video Studio -> any video -> "Check before publishing". NOT a copyright
+                    detector (nothing on a PC can be one) — it checks whether a licence
+                    needs a credit and whether that credit is really in your description
+BOTH LANGUAGES .... Script Writer -> "Upload in both languages". Roman Urdu is ur-Latn, not
+                    en and not ur; the wrong code quietly costs you reach
+THUMBNAILS ........ Script Writer -> "Test two thumbnails properly". Different variants,
+                    plus the sum that says whether a difference is REAL or just chance
+UNDO IN SCENES ..... Scene Studio -> Ctrl+Z, like the Timeline and Storyboard already had
+CRASHES ........... if the app ever closes on its own it now says so and writes it into
+                    Settings -> Known Issues first, instead of vanishing silently
 QUIETLY BETTER .... every render now: one encode instead of four (less quality lost), audio at
                     YouTube's own -14 LUFS target (so it stops turning you down), slow camera
                     movement on footage instead of a frozen frame, scene lengths that tighten

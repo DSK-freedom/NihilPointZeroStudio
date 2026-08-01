@@ -75,6 +75,8 @@ export const IPC = {
   channelComments: 'channel:comments',
   // What other channels covered that this one has not.
   channelGaps: 'channel:gaps',
+  // Credit check before publishing (NOT a copyright detector — see copyrightCheck.ts).
+  copyrightCheck: 'copyright:check',
   // Hear the script read out at speed, to proof it by ear before recording.
   readAloudPlan: 'read-aloud:plan',
   readAloudSpeak: 'read-aloud:speak',

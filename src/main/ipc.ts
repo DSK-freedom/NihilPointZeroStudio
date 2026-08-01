@@ -50,6 +50,7 @@ import { learnTitlePatterns, publishTimingReport, scoreTitle } from '../shared/c
 import { mineQuestions, summarise as summariseQuestions } from '../shared/commentMining'
 import { seriesReport } from '../shared/series'
 import { gapReport, searchQueries } from '../shared/competitorGap'
+import { checkCopyright } from '../shared/copyrightCheck'
 import { searchYouTubeSignals } from './data/youtube'
 import { fetchComments, fetchMyChannelVideos } from './data/youtube'
 import { buildCutArgs, planSilenceCut } from './video/silence'
@@ -877,6 +878,21 @@ export function registerIpcHandlers(): void {
     const comments = await fetchComments(recent.map((v) => v.id))
     const clusters = mineQuestions(comments)
     return { scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
+  })
+
+  // THE CREDIT CHECK BEFORE PUBLISHING. Not a copyright detector — only YouTube's Content
+  // ID can answer that, and pretending otherwise would be worse than silence because the
+  // user would trust it. This checks the PAPERWORK for what the app fetched itself: a
+  // licence that obliges a credit, and whether that credit actually reached the
+  // description. A missing credit on a CC-BY track is what turns a free track into a claim.
+  ipcMain.handle(IPC.copyrightCheck, (_e, videoId: string, description?: string) => {
+    const job = listVideos().find((j) => j.id === videoId)
+    if (!job) return { found: false as const, error: 'Video not found — build it again first.' }
+    // A video built before this shipped has no recorded provenance at all. "Nothing to
+    // check" is the truthful answer there — it is not a claim that the video is clear, and
+    // the report's own wording never implies one.
+    const report = checkCopyright(job.credits ?? [], typeof description === 'string' ? description : '')
+    return { found: true as const, ...report }
   })
 
   // WHAT OTHER CHANNELS COVERED THAT THIS ONE HAS NOT. Searches this channel's own beats
@@ -2053,7 +2069,21 @@ export function registerIpcHandlers(): void {
           path: outPath,
           hasCustomVoice: src.hasCustomVoice,
           createdAt: new Date().toISOString(),
-          narrationPath: src.narrationPath
+          narrationPath: src.narrationPath,
+          // Remember the track WITH its licence. The app already knew this track needed a
+          // credit; until now it had no way to say which video it went into, so the
+          // pre-publish check had nothing to check.
+          credits: [
+            ...(src.credits ?? []),
+            {
+              title: track.title,
+              kind: 'music' as const,
+              license: track.license,
+              requiresCredit: track.needsAttribution,
+              source: track.source,
+              url: track.pageUrl ?? track.url
+            }
+          ]
         }
         appendVideo(job)
         logActivity('user', 'Added free background music to a video', `${track.title} (${track.license})`)

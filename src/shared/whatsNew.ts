@@ -55,6 +55,38 @@ export const CHANGELOG: ChangeEntry[] = [
     where: 'Settings → What changed'
   },
   {
+    id: 'crash-report',
+    date: '2026-08-01',
+    title: 'A crash can no longer close the app without a word',
+    detail:
+      'A tab that stopped working was already caught and written down. The app itself closing was not — it simply vanished, with no message and nothing in the log, which is impossible to report to anyone. Now it tells you it has to close and writes what happened into Known Issues first. Your work is saved either way.',
+    where: 'Settings → Known Issues'
+  },
+  {
+    id: 'scene-undo',
+    date: '2026-08-01',
+    title: 'Undo in the Scene Studio',
+    detail:
+      'Scene Studio was the one place where deleting a scene, or rewriting a prompt you liked, was final for the session — and it is the place where one scene can be several minutes of generating. Ctrl+Z now works there like it already did in the Timeline and Storyboard.',
+    where: 'Scene Studio → the two arrows at the top, or Ctrl+Z'
+  },
+  {
+    id: 'thumbnail-test',
+    date: '2026-08-01',
+    title: 'Test two thumbnails without fooling yourself',
+    detail:
+      'It gives you genuinely different thumbnails to try — a number, a question, the subject alone — built from your own words, plus a plain one to test them against. It warns when a headline is too long to read at the size people see it, or just repeats the title sitting right beside it. And once you have the numbers from YouTube Studio it tells you whether the difference is real or just chance, which is the part nobody can do by eye. YouTube does not let any app read click-through per thumbnail, so the swapping and the reading are yours to do — the app says so instead of pretending.',
+    where: 'Script Writer → Test two thumbnails properly'
+  },
+  {
+    id: 'credit-check',
+    date: '2026-08-01',
+    title: 'A credit check before you publish',
+    detail:
+      'It is not a copyright detector — nothing on your PC can tell you whether YouTube will claim something, and it says so. What it does check is the paperwork for music and footage the app fetched for you: whether the licence obliges you to credit the artist, and whether that credit is actually in your description. A missing credit is exactly what turns a free track into a claim. It also says plainly when a file came from you, because then only you know.',
+    where: 'Video Studio → Credits → Check before publishing'
+  },
+  {
     id: 'dual-language-upload',
     date: '2026-08-01',
     title: 'Upload in both languages, with the codes right',

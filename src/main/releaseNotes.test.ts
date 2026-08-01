@@ -95,3 +95,43 @@ describe('a rendered example of each format', () => {
     expect(PUBLISHED_TAG.exec(oldBody)).toBeNull()
   })
 })
+
+/**
+ * THE SHIP GUARD — added after a real incident.
+ *
+ * The teleprompter was committed at 04:13 and the studio shipped at 04:30, and the
+ * shipped app did not contain it: 18 tabs where the code had 20. The ship had been run
+ * from a tree that did not include the commit. Nothing failed — the tests passed because
+ * they were testing the tree being built, the exe was valid, and the badge was honest.
+ * The only symptom was the user asking where the teleprompter had gone.
+ */
+describe('ship.ps1 refuses to build from a tree that is behind main', () => {
+  const ship = read('scripts/ship.ps1')
+
+  it('fetches origin/main before deciding', () => {
+    expect(ship).toMatch(/git fetch origin main/)
+  })
+
+  it('counts what main has that this tree does not', () => {
+    // HEAD..origin/main is the correct direction: commits reachable from origin/main but
+    // NOT from HEAD. The reverse would pass happily while missing finished work.
+    expect(ship).toMatch(/rev-list --count HEAD\.\.origin\/main/)
+  })
+
+  it('throws rather than warning, so a build cannot proceed anyway', () => {
+    expect(ship).toMatch(/throw 'Behind origin\/main/)
+  })
+
+  it('names the fix in the message', () => {
+    expect(ship).toMatch(/git pull origin main/)
+  })
+
+  it('runs BEFORE the build step, not after', () => {
+    expect(ship.indexOf('Behind origin/main')).toBeLessThan(ship.indexOf('dist:win'))
+  })
+
+  it('does not block shipping when GitHub simply cannot be reached', () => {
+    // Being offline is not the same as being behind, and must not stop a legitimate ship.
+    expect(ship).toMatch(/could not reach GitHub/)
+  })
+})

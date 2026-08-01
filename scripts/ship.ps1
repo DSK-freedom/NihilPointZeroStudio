@@ -21,6 +21,44 @@ function Step([string]$name, [scriptblock]$block) {
     if ($LASTEXITCODE) { throw "FAILED: $name (exit $LASTEXITCODE)" }
 }
 
+# ── THE GUARD THAT WOULD HAVE CAUGHT A REAL, SHIPPED FAILURE ─────────────────────────
+#
+# On 2026-08-01 the teleprompter was committed at 04:13 and the studio was shipped at
+# 04:30. The user's installed app did not have it — 18 tabs where the code had 20 —
+# because the ship was built from a line of work that did NOT contain that commit. It
+# was written, tested, reported done, and then built without.
+#
+# Nothing failed. Tests passed (they were testing the tree being built), the exe was
+# valid, the badge was honest. The only symptom was a user asking "where is the
+# teleprompter?" days later.
+#
+# So: refuse to build when the remote's main has commits this tree does not. Building
+# from behind is never what anyone means to do, and the cost of being wrong is an exe
+# that silently lacks finished work.
+Step 'Refuse to build from a tree that is behind main' {
+    git fetch origin main --quiet
+    if ($LASTEXITCODE) {
+        Write-Host '   (could not reach GitHub - skipping the behind-main check)' -ForegroundColor Yellow
+        $global:LASTEXITCODE = 0
+        return
+    }
+    # Commits on origin/main that are NOT in HEAD. Zero is the only acceptable answer.
+    $missing = (git rev-list --count HEAD..origin/main)
+    if ($LASTEXITCODE) { return }
+    if ([int]$missing -gt 0) {
+        Write-Host ''
+        Write-Host "  STOPPED: $missing commit(s) are on GitHub but not in this folder." -ForegroundColor Red
+        Write-Host '  Building now would produce an app MISSING finished work - which has' -ForegroundColor Red
+        Write-Host '  happened before (the teleprompter shipped missing this way).' -ForegroundColor Red
+        Write-Host ''
+        Write-Host '  Fix it with:  git pull origin main' -ForegroundColor Yellow
+        Write-Host '  Then run this again. Your own work is untouched either way.' -ForegroundColor Yellow
+        Write-Host ''
+        throw 'Behind origin/main - refusing to ship an incomplete build.'
+    }
+    Write-Host '   up to date with origin/main' -ForegroundColor DarkGray
+}
+
 Step 'Tests' { npm run test }
 
 Step 'Typecheck the phone bridge and the phone app' {

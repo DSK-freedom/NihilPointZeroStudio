@@ -55,12 +55,28 @@ export const CHANGELOG: ChangeEntry[] = [
     where: 'Settings → What changed'
   },
   {
+    id: 'read-aloud',
+    date: '2026-08-01',
+    title: 'Hear your script read out at double speed',
+    detail:
+      'A script is spoken, not read, and reading it silently hides the faults that cost a retake — the sentence you cannot say in one breath, the number that is ambiguous out loud, the word repeated twice that the eye skips over. It reads the script to you at double speed and lists what to listen for, with the time each one happens.',
+    where: 'Script Writer → Read it to me'
+  },
+  {
+    id: 'series-linking',
+    date: '2026-08-01',
+    title: 'Your episodes linked to each other',
+    detail:
+      'It reads your own titles, works out which videos belong to the same series, tells you if a number is missing or used twice, and writes the description block, the pinned comment and the end-screen line for you. Reads Part, Episode, Hissa and Qist.',
+    where: 'Your Channel → Get the links'
+  },
+  {
     id: 'channel-learning',
     date: '2026-08-01',
     title: 'The studio learns from YOUR channel, not from general advice',
     detail:
       'It reads your own past videos and works out which title shapes actually did better for you, and which day and hour your audience really shows up. It reports the number of videos behind every claim, and it refuses to answer at all until there is enough history to be honest.',
-    where: 'Trends → Your channel'
+    where: 'Your Channel → Work it out'
   },
   {
     id: 'comment-mining',
@@ -68,7 +84,7 @@ export const CHANGELOG: ChangeEntry[] = [
     title: 'Video ideas pulled straight out of your comments',
     detail:
       'It reads your comments, finds the questions, groups the ones asking the same thing in English and Roman Urdu together, and ranks them by how many different people asked. Every question is quoted word for word from a real comment, so you can check it.',
-    where: 'Trends → From your comments'
+    where: 'Your Channel → Read my comments'
   },
   {
     id: 'preflight',
@@ -76,7 +92,7 @@ export const CHANGELOG: ChangeEntry[] = [
     title: 'Problems caught in one second instead of twenty minutes',
     detail:
       'Before a render starts it checks the things that actually waste an hour: that ffmpeg really runs (not just that the file is there), that the work folder can be written to, that there is disk space, and which encoder you will get. It refuses only when the render genuinely cannot finish.',
-    where: 'Runs automatically before a render; also Settings → Health'
+    where: 'Runs automatically before every render'
   },
   {
     id: 'sources',
@@ -84,7 +100,7 @@ export const CHANGELOG: ChangeEntry[] = [
     title: 'Every figure traceable to a file and a row',
     detail:
       'Numbers that came out of a spreadsheet or PDF now carry where they came from, down to the row. If a figure in the script cannot be traced back to a source, it is flagged before you record it.',
-    where: 'Analysis → the source line under each figure'
+    where: 'Script Writer → Where your numbers came from'
   },
   {
     id: 'pacing',
@@ -92,7 +108,7 @@ export const CHANGELOG: ChangeEntry[] = [
     title: 'Videos tighten toward the end instead of sagging',
     detail:
       'Scene lengths are planned so the last third moves faster than the first, which is where most finance videos lose people. The total length is preserved exactly, so the narration still lines up.',
-    where: 'Video → the scene list'
+    where: 'Automatic on every render'
   },
   {
     id: 'hook-rebuild',
@@ -100,7 +116,7 @@ export const CHANGELOG: ChangeEntry[] = [
     title: 'The first fifteen seconds rebuilt, from your own words',
     detail:
       'It offers five different openings for the script you already wrote — a contradiction, a number, a question, what is at stake, or dropping the viewer mid-scene — using only sentences from your script. Nothing is invented.',
-    where: 'Writer → Rebuild the hook'
+    where: 'Script Writer → Rebuild the first fifteen seconds'
   },
   {
     id: 'chart-animation',
@@ -108,7 +124,7 @@ export const CHANGELOG: ChangeEntry[] = [
     title: 'Charts that draw themselves on screen',
     detail:
       'A line or bar chart now animates in as you talk over it, instead of appearing all at once as a flat picture.',
-    where: 'Charts → Animate'
+    where: 'Charts → Draw it on'
   },
   {
     id: 'broll-timing',
@@ -116,7 +132,7 @@ export const CHANGELOG: ChangeEntry[] = [
     title: 'B-roll that lands on the word it belongs to',
     detail:
       'When the script says "reserves" or "mehngai", the matching footage now appears on that word rather than somewhere near it. Works on English and Roman Urdu.',
-    where: 'Video → B-roll'
+    where: 'Automatic when stock footage is on'
   },
   {
     id: 'auto-zoom',
@@ -124,15 +140,15 @@ export const CHANGELOG: ChangeEntry[] = [
     title: 'Slow camera movement on every shot',
     detail:
       'Still footage no longer sits frozen. Each shot gets a slow push in or pull out, alternating so it never drifts in one direction, which is what makes a static clip look cheap.',
-    where: 'Video → automatic, nothing to switch on'
+    where: 'Automatic on footage backgrounds'
   },
   {
     id: 'silence-removal',
     date: '2026-08-01',
-    title: 'Dead air cut out automatically',
+    title: 'Cut the dead air out of a take',
     detail:
-      'Long pauses where nothing is said are removed, keeping a quarter-second of breath so it still sounds like a person talking. Picture and sound are cut together, so nothing goes out of sync.',
-    where: 'Recorder → Trim silence'
+      'It tells you first what would be cut, then removes the long pauses where nothing is said, keeping a quarter-second of breath so it still sounds like a person talking. Picture and sound are cut together, so nothing goes out of sync. It makes a new video — your original is never touched.',
+    where: 'Video Studio → Dead air → What would be cut?'
   },
   {
     id: 'youtube-loudness',

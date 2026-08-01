@@ -9,6 +9,103 @@ The running app shows this in the sidebar (under "OS") as a gold badge. The badg
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
+## New in this build (2026-08-01, afternoon — twenty-seven upgrades, and an honest correction)
+
+### The correction first
+Ten of these features were written, tested and correct — and **not reachable from the
+app**. Nothing in the interface called them, so there was no button, no tab, and no way
+for you to use a single one. They were counted as finished because their tests passed.
+A tested piece of code the app never calls is not a feature.
+
+They are all wired now, and there is a check in place that lists any module the app
+cannot reach, so this cannot quietly happen again. Where a claim below says "verified",
+it means it was run against the real bundled ffmpeg and the numbers are printed — not
+that a unit test passed.
+
+### A new tab: Your Channel
+Reads **your own** uploads and answers three questions from your own data rather than
+from general advice:
+
+- **Which title shapes worked here.** Median views, never mean — one video that went
+  viral would otherwise set your strategy for a year. Every claim carries the number of
+  videos behind it, and anything below 8 videos (or 3 in either group) is reported as
+  "not enough videos to tell yet" rather than answered. Differences under 10% are called
+  no real difference, because they are noise.
+- **When your audience shows up.** Grouped by day and by hour separately — a channel
+  would need thousands of videos before any single day-and-hour slot meant anything.
+- **Which of your videos are a series.** Read out of your titles (#4, Part 2, Episode 3,
+  Hissa 2, Qist 3, 2 of 5), so it works on the whole back catalogue immediately. It never
+  reads a number that is part of the topic: "Budget 2026" is not episode 2026, "PSX
+  crosses 78000" is not episode 78000. It flags missing numbers and two videos claiming
+  the same one, and writes the description block, pinned comment and end-screen line.
+
+It also reads your **comments**, finds the questions, groups the ones asking the same
+thing across English and Roman Urdu, and ranks them by how many different people asked.
+Every question is quoted verbatim from a real comment. No model summarises them, because
+a summary that reads well and matches no actual comment is indistinguishable from one
+that does.
+
+**Cost:** about 4 of the free 10,000 daily YouTube requests to read a hundred videos. It
+goes through the uploads playlist, not the search endpoint — search costs 100 units per
+call, so eight calls would burn a tenth of your day.
+
+### In the Script Writer
+- **Read it to me.** Hears the script back at 2x with the pitch held, so it still sounds
+  like a person talking quickly. A twelve-minute script proofs in six minutes. It also
+  lists what to listen for: sentences too long for one breath, a word said twice in a
+  row, a figure that cannot be read aloud ("11.2bn"), a line that switches language.
+  Deliberately restrained — a check that flags forty things in a finance script is a
+  check you switch off, after which it catches nothing forever.
+- **Five openings.** The same material as a contradiction, a number, a question, what is
+  at stake, and dropped mid-scene — using only sentences already in your script, with the
+  source sentence shown under each one.
+- **Where your numbers came from.** Reads the "Verified data" box back against the script
+  and flags any figure it cannot trace, plus a sources block for the description.
+
+### In Video Studio and Charts
+- **Dead air.** Tells you what would be cut, then cuts it to a NEW video. Verified on a
+  file with silence planted at 8-16s and 24-31s of 40: found exactly those, kept
+  0-8.25 / 16-24.25 / 31-40 (the quarter-second of breath is visible in those numbers),
+  predicted 25.499s and produced 25.60s with picture and sound cut together.
+- **Draw it on.** The chart draws itself over four seconds and holds.
+
+### Quietly, on every render
+- **One encode instead of four.** Colour, captions, watermark and trimming used to be
+  four separate passes, and each one throws away a little picture quality. Measured
+  earlier with SSIM: 4 passes scored 0.9508 against the master, 1 pass scored 0.9957.
+- **Audio at -14 LUFS.** YouTube normalises every upload to about that. Delivering louder
+  does not make you louder, it makes YouTube turn you down — and you lose the dynamics
+  rather than gain the loudness. Verified: a source at -16.1 LUFS came out at exactly
+  -14.0, on both the narration-only and the music-mix paths, duration unchanged.
+- **Movement on footage.** Footage was the one background that sat completely still —
+  stills already had camera moves, a video clip got nothing, and a locked-off frame for a
+  whole minute is the single thing that most makes a video look cheap. Verified on frozen
+  footage: frame-to-frame difference went from 0.00014 to 0.604, output size exactly as
+  asked in 16:9, 9:16 and 4K.
+- **Scenes tighten toward the end**, where finance videos lose people, with the total
+  length preserved exactly so the narration stays in sync.
+- **B-roll lands on the word** it belongs to, in both languages, instead of on an equal
+  split that had gold on screen three sentences after you said gold.
+- **A one-second pre-flight.** Checks that ffmpeg really *runs* (antivirus quarantine
+  leaves the file exactly where it was and refuses to execute it, so "the file is there"
+  is not the check), that the work folder can be written to, and that there is disk space.
+  It refuses **only** when the render genuinely cannot finish — warnings never stop a
+  render, because this app is built to work offline with software encoding and a
+  pre-flight that blocks that takes away more than it protects.
+
+### And a "What changed" screen
+Settings → What changed. An old build looks exactly like a new one; the gold badge proves
+*which* build is running but never what was in it. This lists what is new in the build you
+are actually running — and **withholds** anything dated after that build, so it can never
+send you looking for a button that is not there yet. What you have already read is
+remembered per item, not per date, because this project ships more than once a day.
+
+### Not yet done, so you know
+Eight of the twenty-seven are still not built: thumbnail A/B testing, competitor topic
+gaps, dual-language upload metadata, a copyright pre-check, resuming a failed render,
+proxy editing, scene preview, and a crash reporter. Undo and the render queue partly
+exist already and were left alone rather than duplicated.
+
 ## New in this build (2026-08-01, morning — the whole studio on your phone)
 
 ### 📱 Not a phone version. The studio itself.

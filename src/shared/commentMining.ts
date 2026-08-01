@@ -54,7 +54,19 @@ export interface QuestionCluster {
  * "?" alone would silently discard half the input.
  */
 const QUESTION_MARKERS =
-  /(?:^|\b)(?:why|how|what|when|where|which|who|should|could|can|is it|are they|does|do you|will|would|kya|kyun|kyu|kaise|kab|kahan|kaunsa|kitna|kitni|batao|bataye|samjhaye|explain)\b/i
+  /(?:^|\b)(?:why|how|what|when|where|which|who|should|could|can|is it|are they|does|do you|will|would|kya|kyun|kyu|kaise|kab|kahan|kaunsa|kitna|kitni|batao|bataye|samjhaye|explain|chahiye|chahye|chahiya|ya nahi|ya nahin|ya na)\b/i
+
+/**
+ * `chahiye` and `ya nahi` were missing, and they are two of the commonest question forms
+ * in these comments. "sona lena chahiye is waqt" is "should I buy gold right now" — a
+ * question, with no question mark and none of the English or Urdu question WORDS in it.
+ * A stress pass caught two people asking exactly that and the module returning nothing.
+ *
+ * They can misfire on advice ("aap ko dekhna chahiye" = "you should watch"), and that is
+ * the right trade: a stray non-question in an idea list costs a glance, while missing the
+ * most common way this audience asks things costs half the input. The two-people minimum
+ * filters most of the noise anyway.
+ */
 
 /** Not questions, however they are punctuated. */
 const NOT_A_QUESTION =

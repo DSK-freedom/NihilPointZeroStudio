@@ -56,6 +56,24 @@ describe('spotting a question', () => {
     expect(isQuestion('bhai reserves ka kya hoga')).toBe(true)
   })
 
+  it('takes "chahiye" and "ya nahi", the commonest forms here', () => {
+    // A stress pass found two people both asking "should I buy gold right now" in Roman
+    // Urdu and the module returning nothing: no question mark, and none of the English
+    // or Urdu question WORDS. These two forms carry the question on their own.
+    expect(isQuestion('sona lena chahiye is waqt')).toBe(true)
+    expect(isQuestion('gold abhi lena chahiye ya nahi')).toBe(true)
+    expect(isQuestion('reserves barhenge ya nahin')).toBe(true)
+  })
+
+  it('groups two people asking that same question', () => {
+    const clusters = mineQuestions(
+      [{ text: 'sona lena chahiye is waqt ya nahi' }, { text: 'kya sona lena chahiye abhi' }],
+      { minCount: 2 }
+    )
+    expect(clusters).toHaveLength(1)
+    expect(clusters[0].count).toBe(2)
+  })
+
   it('takes English questions written without punctuation', () => {
     expect(isQuestion('how do you work out import cover')).toBe(true)
   })

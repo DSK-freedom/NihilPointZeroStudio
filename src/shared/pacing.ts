@@ -103,15 +103,48 @@ export function enforceLimits(shots: PacedShot[], totalSeconds: number): PacedSh
     }
   }
 
-  // Every shot is pinned at a limit and there is still time unaccounted for. Rather
-  // than hand back a video shorter (or longer) than its narration, spread the
-  // remainder across every shot. `report()` then says so out loud.
+  // Every shot is pinned at a limit and there is still time unaccounted for. The TOTAL
+  // wins, always: a video whose pictures do not add up to its own narration is broken,
+  // while a shot outside the comfortable range is only a weakness. `report()` says so.
+  //
+  // Scaled proportionally rather than shifted by an equal share. An equal share needs a
+  // floor to stay positive, and that floor then wins and breaks the total all over
+  // again: `pace(5, 12)` clamped twelve shots to the 2.5s MINIMUM (30s), tried to remove
+  // 25s, hit a 0.1s floor on every shot and returned 1.2s of pictures for a 5-second
+  // narration. Scaling cannot do that — the sum is exactly the total by construction,
+  // and the tightening survives because every shot shrinks by the same ratio.
   if (Math.abs(drift) > 0.001 && out.length) {
-    const share = drift / out.length
-    for (const s of out) s.seconds = Math.max(0.1, s.seconds + share)
+    const current = out.reduce((n, s) => n + s.seconds, 0)
+    if (current > 0) {
+      const scale = totalSeconds / current
+      for (const s of out) s.seconds = s.seconds * scale
+    } else {
+      const share = totalSeconds / out.length
+      for (const s of out) s.seconds = share
+    }
   }
 
-  return out.map((s) => ({ ...s, seconds: round3(s.seconds) }))
+  // Rounding to milliseconds is the LAST thing that can break the total, and it does:
+  // 0.5s over 200 shots is 0.0025 each, which rounds to 0.003 and sums to 0.6. So the
+  // rounding residual is handed back out in whole milliseconds — largest shots first,
+  // where a millisecond is least visible — and the sum is exact by construction.
+  const rounded = out.map((s) => ({ ...s, seconds: round3(s.seconds) }))
+  let steps = Math.round((totalSeconds - rounded.reduce((n, s) => n + s.seconds, 0)) * 1000)
+  if (steps !== 0 && rounded.length) {
+    const order = rounded.map((s, i) => ({ v: s.seconds, i })).sort((a, b) => b.v - a.v)
+    const dir = steps > 0 ? 1 : -1
+    for (let k = 0; steps !== 0; k = (k + 1) % order.length) {
+      const target = rounded[order[k].i]
+      // Never take a shot to zero or below: a zero-length shot is a dropped scene.
+      if (dir < 0 && target.seconds <= 0.001) {
+        if (rounded.every((r) => r.seconds <= 0.001)) break
+        continue
+      }
+      target.seconds = round3(target.seconds + dir * 0.001)
+      steps -= dir
+    }
+  }
+  return rounded
 }
 
 export interface PacingReport {
@@ -125,6 +158,8 @@ export interface PacingReport {
   atCeiling: number
   /** Shots forced PAST the ceiling because the total could not otherwise be met. */
   overCeiling: number
+  /** Shots forced BELOW the floor for the same reason — too many scenes for the length. */
+  underFloor: number
   headline: string
 }
 
@@ -138,6 +173,7 @@ export function report(shots: PacedShot[]): PacingReport {
       tightensToEnd: false,
       atCeiling: 0,
       overCeiling: 0,
+      underFloor: 0,
       headline: 'Nothing to pace.'
     }
   }
@@ -146,10 +182,19 @@ export function report(shots: PacedShot[]): PacingReport {
   const last = shots[shots.length - 1].seconds
   const atCeiling = shots.filter((s) => s.seconds >= MAX_SHOT_SEC - 0.001).length
   const overCeiling = shots.filter((s) => s.seconds > MAX_SHOT_SEC + 0.001).length
+  const underFloor = shots.filter((s) => s.seconds < MIN_SHOT_SEC - 0.001).length
   const tightensToEnd = last < first - 0.001
   let headline: string
   if (shots.length === 1) headline = 'One shot — nothing to pace.'
-  else if (overCeiling) {
+  else if (underFloor > shots.length / 2) {
+    // The opposite problem, and just as much the user's to fix: too MANY scenes for the
+    // length. Said out loud for the same reason — the total was protected instead, so
+    // the shots are shorter than a picture can be read in.
+    headline =
+      `Too many scenes for a ${totalSeconds.toFixed(1)}s video — each one is on screen for about ` +
+      `${last.toFixed(1)}s, under the ${MIN_SHOT_SEC}s a viewer needs to take a picture in. ` +
+      `Use about ${Math.max(1, Math.floor(totalSeconds / MIN_SHOT_SEC))} scenes instead of ${shots.length}.`
+  } else if (overCeiling) {
     // Said plainly, because the fix is the user's: more scenes. The alternative was a
     // video shorter than its own narration, which is why the ceiling was let go.
     headline =
@@ -165,7 +210,7 @@ export function report(shots: PacedShot[]): PacingReport {
   } else {
     headline = `${shots.length} shots, evenly paced.`
   }
-  return { shots: shots.length, totalSeconds, firstSeconds: first, lastSeconds: last, tightensToEnd, atCeiling, overCeiling, headline }
+  return { shots: shots.length, totalSeconds, firstSeconds: first, lastSeconds: last, tightensToEnd, atCeiling, overCeiling, underFloor, headline }
 }
 
 /**

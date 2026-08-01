@@ -197,8 +197,15 @@ export interface SeriesLinks {
  * An episode with no known URL is listed by title without a link rather than with a
  * made-up one.
  */
-export function seriesLinks(series: Series, episode: number): SeriesLinks {
+export function seriesLinks(series: Series, episodeInput: number): SeriesLinks {
   const eps = series.episodes
+  // A non-number episode would print "episode NaN" into a PUBLISHED description, where
+  // it stays until somebody notices. Fall back to the latest real episode instead — that
+  // is the one being published when these links are asked for.
+  const episode =
+    Number.isFinite(episodeInput) && episodeInput > 0
+      ? Math.floor(episodeInput)
+      : (eps[eps.length - 1]?.episode ?? 1)
   const first = eps[0]
   const prev = [...eps].reverse().find((e) => e.episode < episode)
   const next = eps.find((e) => e.episode > episode)

@@ -136,6 +136,14 @@ Real face: the app uses YOUR photo/clip and builds the scene around you — it d
 Storyboard length: narration decides each shot's length, so speech never gets cut off or overlaps
 Old videos: rebuild once so music-removal/captions work fully
 
+ON YOUR PHONE
+Anywhere (PC off): open https://dskjazz.github.io/nihilpointzero-phone/ once -> browser menu ->
+                   "Install app". Gold circle icon appears. Ideas · Writer · Advisor · Saved.
+                   Free, nothing to type in, same writing style as the PC. No video/voice/Library.
+At home (PC on):   Settings -> "Phone access (same Wi-Fi)" -> open the link on your phone. Full PC
+                   power, now with read-only Library + Activity tabs. Don't share that link.
+Move a script to the PC: tap "Send to PC" -> WhatsApp/email/Drive to yourself -> paste into studio.
+
 Already set up here: free AI brain · photo key · music-removal token · your YouTube channel · Natural
 voice · offline Demucs. What's real / needs internet / needs setup -> MEGA-DIAGNOSTIC-REPORT.md. Enjoy.
 ==================================================================================================

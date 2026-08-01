@@ -13,7 +13,10 @@
     "test:e2e": "electron-vite build && node scripts/e2e-smoke.mjs",
     "lint": "eslint src",
     "dist:win": "electron-vite build && electron-builder --win",
-    "ship": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ship.ps1"
+    "ship": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ship.ps1",
+    "typecheck:phone": "tsc -p tsconfig.phone.json --noEmit",
+    "build:phone": "node scripts/build-phone.mjs",
+    "publish:phone": "node scripts/build-phone.mjs && node scripts/publish-phone.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

@@ -792,3 +792,65 @@ if a tab crashes, the crash is contained to THAT tab: the rest of the studio kee
 working, you get a plain-English message and a "Try this tab again" button, and the
 failure is written to the same Known Issues log — so it's provable, not a mystery.
 
+
+-------------------------------------------------------------------------------
+19. NEW (2026-08-01): NIHILPOINTZERO ON YOUR PHONE
+-------------------------------------------------------------------------------
+
+There are now TWO ways to use the studio from your phone. They are different
+things and it's worth knowing which one you want.
+
+FIRST, THE HONEST PART
+The studio itself is a Windows program. A Windows program cannot be installed on
+a phone — there is no Android version and there cannot be one. What you CAN have
+on your phone is the thinking-and-writing half of the studio. Making videos,
+voice-over, subtitles and charts need your PC's tools, so those stay on the PC.
+
+ROUTE 1 — THE PHONE APP (works with your PC switched OFF)
+This is a real app icon on your home screen. It works anywhere — on mobile data,
+in another city, with your computer unplugged.
+
+  Open this once on your phone's browser:
+      https://dskjazz.github.io/nihilpointzero-phone/
+  Then tap the browser's menu and choose "Install app" (or "Add to Home screen").
+
+  A gold circle icon appears on your home screen. Tap it and you get:
+    Ideas    - generate video ideas with scores and competition levels
+    Writer   - full scripts (short / long / deep dive) + thumbnail briefs
+    Advisor  - the same candid strategy chat you have on the PC
+    Saved    - everything you made, kept on the phone
+    Settings - which AI brain to use
+
+  It is FREE and there is nothing to type in. It uses the same free AI brain the
+  desktop app uses by default. If you want higher quality you can paste your own
+  Claude or OpenAI key in Settings — that key is stored ONLY on your phone.
+
+  It writes using the EXACT same instructions your desktop studio uses, so the
+  style and quality of the scripts match what you already get on the PC.
+
+  To move something to your PC: tap "Send to PC" on any script and share it to
+  yourself by WhatsApp, email or Drive. Then paste it into the studio.
+
+  What it CANNOT do (by design, not by accident):
+    - make or render videos          - voice-over or subtitles
+    - charts or file analysis        - open your PC Library
+    - feature-length 90/180 min scripts (too long for a phone to finish)
+
+ROUTE 2 — PHONE ACCESS OVER WI-FI (your PC does the work)
+This is the one already in Settings -> "Phone access (same Wi-Fi)". Turn it on,
+open the link it shows on your phone, and your PC does all the heavy lifting.
+It now also shows your LIBRARY and the ACTIVITY log, read-only, plus it gets a
+proper icon when you add it to your home screen.
+
+  Use this one when you're at home and want the full power of the PC.
+  Use Route 1 when you're out and the PC is off.
+
+  Your PC must be switched on, the studio must be running, and both devices must
+  be on the same Wi-Fi. The link contains a private key — don't share it. Turning
+  phone access off makes the old link stop working immediately.
+
+NOTHING ON YOUR PHONE CAN DAMAGE YOUR WORK
+The phone app keeps its own notes on the phone and has no route to your
+nihilpointzero-data folder at all. Over Wi-Fi, the phone can only READ your
+Library and Activity — it cannot delete or change anything. Deleting is still
+something only you can do, on the PC, with a confirmation.

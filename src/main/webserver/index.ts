@@ -3,7 +3,7 @@ import type { AddressInfo } from 'net'
 import { randomBytes } from 'crypto'
 import { networkInterfaces } from 'os'
 import { generateIdeasFlow, generateScriptFlow } from '../services'
-import { getModel, getSettings, listLibrary, logActivity } from '../store'
+import { getModel, getSettings, listActivityLog, listLibrary, logActivity } from '../store'
 import { ollamaChatStream, type ChatTurn } from '../llm/ollama'
 import { getActiveProvider } from '../llm'
 import { buildAdvisorSystemPrompt } from '../prompts'
@@ -124,6 +124,12 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   }
   if (path === '/api/library' && req.method === 'GET') {
     sendJson(res, 200, listLibrary())
+    return
+  }
+  // Read-only. The phone can look at the log; only the desktop app's explicit
+  // user-initiated "Clear Log" can ever empty it.
+  if (path === '/api/activity' && req.method === 'GET') {
+    sendJson(res, 200, listActivityLog().slice(0, 100))
     return
   }
   if (path === '/api/ideas' && req.method === 'POST') {

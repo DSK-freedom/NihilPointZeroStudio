@@ -65,6 +65,11 @@ export const IPC = {
   // "What changed" — the new things in the build that is actually running.
   whatsNewGet: 'whats-new:get',
   whatsNewMarkSeen: 'whats-new:mark-seen',
+  // Learn from YOUR channel: which title shapes worked, when the audience shows up,
+  // which videos form a series, and the questions your comments keep asking.
+  channelLearn: 'channel:learn',
+  channelScoreTitle: 'channel:score-title',
+  channelComments: 'channel:comments',
   // Hear the script read out at speed, to proof it by ear before recording.
   readAloudPlan: 'read-aloud:plan',
   readAloudSpeak: 'read-aloud:speak',

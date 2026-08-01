@@ -10,6 +10,7 @@ import { useStudio } from '../store/StudioContext'
 import { useProducerTarget } from '../store/ProducerContext'
 
 import { fileUrl } from '../../../shared/mediaUrl'
+import HookRebuildPanel from '../components/HookRebuildPanel'
 import ReadAloudPanel from '../components/ReadAloudPanel'
 import RepurposePanel from '../components/RepurposePanel'
 
@@ -499,6 +500,15 @@ export default function WriterPage() {
                 >
                   {generatingThumbnail ? 'Designing…' : 'Thumbnail Brief'}
                 </button>
+              </div>
+
+              {/* The first fifteen seconds decide whether the rest gets watched, and they
+                  are the hardest part to judge from inside the draft. */}
+              <div className="mt-3">
+                <HookRebuildPanel
+                  script={writer.body}
+                  onUse={(hook) => setWriter({ body: `${hook}\n\n${writer.body}` })}
+                />
               </div>
 
               {/* Proof it by ear before recording it. A script is spoken, not read, and

@@ -1,5 +1,5 @@
 import type { YouTubeSignal } from '../../shared/types'
-import { getYouTubeApiKey } from '../store'
+import { getYouTubeApiKey, getYouTubeChannelId } from '../store'
 
 const BASE_URL = 'https://www.googleapis.com/youtube/v3'
 
@@ -54,4 +54,130 @@ export async function searchYouTubeSignals(query: string, maxResults = 8): Promi
   } catch {
     return []
   }
+}
+
+interface PlaylistItem {
+  snippet?: { title?: string; publishedAt?: string; resourceId?: { videoId?: string } }
+}
+
+/** One of the user's own uploads, with the numbers the analyses need. */
+export interface MyVideo {
+  id: string
+  title: string
+  publishedAt: string
+  views: number
+  likes?: number
+  comments?: number
+}
+
+/**
+ * The user's OWN uploads — the input for every "learn from your channel" feature.
+ *
+ * Goes through the channel's uploads PLAYLIST rather than the search endpoint on purpose.
+ * `search` costs 100 quota units per call against a 10,000/day allowance, so eight calls
+ * would burn a tenth of the day; `playlistItems` and `videos` cost 1 unit each. Reading a
+ * hundred of your own videos therefore costs about 4 units instead of 400.
+ *
+ * Returns [] silently when there is no key, no channel id, or the request fails. Every
+ * caller treats an empty history as "not enough data to say anything", which is the
+ * honest answer when the data could not be read.
+ */
+export async function fetchMyChannelVideos(maxVideos = 200): Promise<MyVideo[]> {
+  const apiKey = getYouTubeApiKey()
+  const channelId = getYouTubeChannelId()
+  if (!apiKey || !channelId) return []
+  const keyHeader = { 'X-Goog-Api-Key': apiKey }
+
+  try {
+    // The uploads playlist id is the channel id with its second character switched.
+    const chRes = await fetch(`${BASE_URL}/channels?part=contentDetails&id=${channelId}`, {
+      headers: keyHeader,
+      signal: AbortSignal.timeout(20_000)
+    })
+    if (!chRes.ok) return []
+    const chData = await chRes.json()
+    const uploads: string | undefined = chData?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads
+    if (!uploads) return []
+
+    const found: { id: string; title: string; publishedAt: string }[] = []
+    let pageToken = ''
+    // Bounded: a runaway pagination loop against a paid-quota API is its own bug.
+    for (let page = 0; page < 10 && found.length < maxVideos; page++) {
+      const url =
+        `${BASE_URL}/playlistItems?part=snippet&maxResults=50&playlistId=${uploads}` +
+        (pageToken ? `&pageToken=${pageToken}` : '')
+      const res = await fetch(url, { headers: keyHeader, signal: AbortSignal.timeout(20_000) })
+      if (!res.ok) break
+      const data = await res.json()
+      for (const it of (data.items ?? []) as PlaylistItem[]) {
+        const id = it.snippet?.resourceId?.videoId
+        if (id && it.snippet?.title) {
+          found.push({ id, title: it.snippet.title, publishedAt: it.snippet.publishedAt ?? '' })
+        }
+      }
+      pageToken = data.nextPageToken ?? ''
+      if (!pageToken) break
+    }
+    if (!found.length) return []
+
+    // Statistics come 50 ids at a time.
+    const stats = new Map<string, { views: number; likes?: number; comments?: number }>()
+    for (let i = 0; i < found.length; i += 50) {
+      const ids = found.slice(i, i + 50).map((v) => v.id)
+      const res = await fetch(`${BASE_URL}/videos?part=statistics&id=${ids.join(',')}`, {
+        headers: keyHeader,
+        signal: AbortSignal.timeout(20_000)
+      })
+      if (!res.ok) continue
+      const data = await res.json()
+      for (const it of (data.items ?? []) as {
+        id: string
+        statistics?: { viewCount?: string; likeCount?: string; commentCount?: string }
+      }[]) {
+        stats.set(it.id, {
+          views: Number(it.statistics?.viewCount ?? 0),
+          likes: it.statistics?.likeCount === undefined ? undefined : Number(it.statistics.likeCount),
+          comments: it.statistics?.commentCount === undefined ? undefined : Number(it.statistics.commentCount)
+        })
+      }
+    }
+
+    return found.slice(0, maxVideos).map((v) => ({ ...v, views: stats.get(v.id)?.views ?? 0, ...stats.get(v.id) }))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Top-level comments across the given videos.
+ *
+ * Replies are deliberately not fetched: a reply is usually a conversation about an
+ * existing comment rather than a new question, and including them would count one
+ * person's thread as several people asking.
+ */
+export async function fetchComments(videoIds: string[], perVideo = 100): Promise<{ text: string; likes: number; videoId: string }[]> {
+  const apiKey = getYouTubeApiKey()
+  if (!apiKey || !videoIds.length) return []
+  const keyHeader = { 'X-Goog-Api-Key': apiKey }
+  const out: { text: string; likes: number; videoId: string }[] = []
+
+  for (const videoId of videoIds) {
+    try {
+      const url = `${BASE_URL}/commentThreads?part=snippet&maxResults=${Math.min(100, perVideo)}&order=relevance&videoId=${videoId}`
+      const res = await fetch(url, { headers: keyHeader, signal: AbortSignal.timeout(20_000) })
+      // A single video with comments disabled must not abort the whole read.
+      if (!res.ok) continue
+      const data = await res.json()
+      for (const it of (data.items ?? []) as {
+        snippet?: { topLevelComment?: { snippet?: { textOriginal?: string; textDisplay?: string; likeCount?: number } } }
+      }[]) {
+        const s = it.snippet?.topLevelComment?.snippet
+        const text = s?.textOriginal ?? s?.textDisplay
+        if (text) out.push({ text, likes: Number(s?.likeCount ?? 0), videoId })
+      }
+    } catch {
+      /* one unreadable video is not a reason to return nothing */
+    }
+  }
+  return out
 }

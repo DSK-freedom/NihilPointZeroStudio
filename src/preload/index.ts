@@ -544,6 +544,28 @@ const api = {
     markSeen: (ids: string[]): Promise<import('../shared/whatsNew').WhatsNewReport> =>
       ipcRenderer.invoke(IPC.whatsNewMarkSeen, ids)
   },
+  // What YOUR channel's own history says — not general advice about channels in general.
+  channel: {
+    /** Title shapes that worked, when the audience shows up, and your series. */
+    learn: (): Promise<{
+      videoCount: number
+      titleFindings: import('../shared/channelLearning').Finding[]
+      timing: ReturnType<typeof import('../shared/channelLearning').publishTimingReport>
+      series: ReturnType<typeof import('../shared/series').seriesReport>
+    }> => ipcRenderer.invoke(IPC.channelLearn),
+    /** Scores a proposed title against your own history, with the reasons. */
+    scoreTitle: (title: string): Promise<import('../shared/channelLearning').TitleScore> =>
+      ipcRenderer.invoke(IPC.channelScoreTitle, title),
+    /** The questions your comments keep asking, quoted verbatim and ranked. */
+    comments: (
+      videoLimit?: number
+    ): Promise<{
+      scanned: number
+      videosRead: number
+      clusters: import('../shared/commentMining').QuestionCluster[]
+      summary: string
+    }> => ipcRenderer.invoke(IPC.channelComments, videoLimit)
+  },
   // Hear the script read out at speed, to catch by ear what silent reading hides.
   readAloud: {
     // Instant and pure: what to listen for, and how long the listen will take.

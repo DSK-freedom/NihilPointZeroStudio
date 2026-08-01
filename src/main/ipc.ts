@@ -46,6 +46,10 @@ import { APP_GUIDE } from './appGuide'
 import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
 import { whatsNewReport } from '../shared/whatsNew'
 import { DEFAULT_SPEED, planReadAloud, type ReadSpeed } from '../shared/readAloud'
+import { learnTitlePatterns, publishTimingReport, scoreTitle } from '../shared/channelLearning'
+import { mineQuestions, summarise as summariseQuestions } from '../shared/commentMining'
+import { seriesReport } from '../shared/series'
+import { fetchComments, fetchMyChannelVideos } from './data/youtube'
 import { buildSpeedArgs } from './audio/speed'
 import { speakToWav } from './voice/speak'
 
@@ -773,6 +777,55 @@ export function registerIpcHandlers(): void {
     const list = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : []
     markChangesSeen(list)
     return whatsNewReport({ buildTag: __BUILD_TAG__, seenIds: getSeenChangeIds() })
+  })
+
+  // LEARN FROM YOUR OWN CHANNEL rather than from general advice. One fetch of the user's
+  // uploads feeds all three answers: which title shapes have really worked, when the
+  // audience really shows up, and which videos form a series that should be linked.
+  //
+  // Every figure is computed from the fetched table, never asked of a model — these are
+  // arithmetic questions, and a fluent wrong answer here would change how the user titles
+  // videos for a year. When the history is too short, the modules refuse to answer and
+  // say so; an empty fetch reads as exactly that rather than as "nothing works".
+  ipcMain.handle(IPC.channelLearn, async () => {
+    const videos = await fetchMyChannelVideos()
+    const past = videos.map((v) => ({
+      title: v.title,
+      publishedAt: v.publishedAt,
+      views: v.views,
+      likes: v.likes,
+      comments: v.comments
+    }))
+    return {
+      videoCount: past.length,
+      titleFindings: learnTitlePatterns(past),
+      timing: publishTimingReport(past),
+      series: seriesReport(videos.map((v) => ({ id: v.id, title: v.title, publishedAt: v.publishedAt, url: `https://youtu.be/${v.id}` })))
+    }
+  })
+
+  /** Score a proposed title against the channel's OWN history, with reasons. */
+  ipcMain.handle(IPC.channelScoreTitle, async (_e, title: string) => {
+    const videos = await fetchMyChannelVideos()
+    return scoreTitle(
+      typeof title === 'string' ? title : '',
+      videos.map((v) => ({ title: v.title, publishedAt: v.publishedAt, views: v.views }))
+    )
+  })
+
+  // THE VIDEO IDEAS ALREADY SITTING IN THE COMMENTS. Every question returned is quoted
+  // verbatim from a real comment, so it can be checked — a model summary of "what people
+  // are asking" reads well and may match nothing anybody actually wrote.
+  ipcMain.handle(IPC.channelComments, async (_e, videoLimit?: number) => {
+    const videos = await fetchMyChannelVideos()
+    // Newest first, and only the recent ones: a question from three years ago has usually
+    // been answered, and each video costs a quota unit.
+    const recent = [...videos]
+      .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))
+      .slice(0, Math.max(1, Math.min(30, typeof videoLimit === 'number' ? videoLimit : 12)))
+    const comments = await fetchComments(recent.map((v) => v.id))
+    const clusters = mineQuestions(comments)
+    return { scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
   })
 
   // Proof the script BY EAR. The plan is pure and instant — what to listen for, and how

@@ -21,6 +21,9 @@ npm run dev        # run the app in dev mode (electron-vite)
 npm run test       # vitest (tests are colocated: src/**/*.test.ts)
 npm run lint       # eslint src
 npm run dist:win   # full build -> release\ (portable exe + NSIS installer)
+npm run build:bridge      # just the phone bridge -> out/remote/bridge.js
+npm run typecheck:remote  # the bridge + preload + shared, with BROWSER types only
+npm run typecheck:phone   # the standalone phone app
 npm run ship       # test -> build -> copy exes+docs to Desktop studio -> git push -> update GitHub release downloads
 ```
 
@@ -62,6 +65,29 @@ electron-vite + React 19 + TypeScript + Tailwind. Three processes:
   `trends/`, `youtube/`, `webserver/`. Prompts live in `prompts.ts`.
 - `src/renderer/src/` — React UI (`pages/`, `components/`, `hooks/`, `store/`).
 - `src/preload/`, `src/shared/` — bridge and shared types.
+- `src/remote/` — the SAME preload, bundled for a phone browser with `electron`
+  aliased to an HTTP/SSE stand-in. This is what makes the real studio run on the
+  phone with the PC doing the work; see below.
+
+## The studio on the phone (added 2026-08-01)
+
+The desktop UI reaches the app through exactly one door: `src/preload/index.ts`.
+`scripts/build-remote-bridge.mjs` bundles that same file for the browser with
+`electron` → `src/remote/electron.ts`, so `out/renderer` — the *identical* build the
+Electron window loads — runs in a phone browser and the PC does the work. **There is
+no second version of any screen; do not create one.** A change to a page reaches the
+phone automatically.
+
+- `src/main/remote/registry.ts` records handlers by wrapping `ipcMain.handle` for the
+  duration of `registerIpcHandlers()` (see `captureHandlers` in `main/index.ts`).
+  `DENIED_CHANNELS` refuses PC-dialog channels with an explanation.
+- `src/main/remote/events.ts` wraps the main window's `webContents.send` **once**; the
+  desktop is always fed first and unconditionally.
+- `src/shared/wire.ts` carries byte arrays and dates through JSON. Both ends run it.
+- `src/shared/mediaUrl.ts` is the ONLY place a disk path becomes a playable link.
+  Never hand-write `file:///` in a page again — it breaks the phone.
+- `tsconfig.remote.json` typechecks all of it with DOM types and no Node, so a
+  browser-incompatible import fails at build time rather than on a handset.
 
 ## Hard rules
 

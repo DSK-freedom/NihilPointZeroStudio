@@ -200,3 +200,100 @@ export function alreadyDownloaded(path: string, expectedSize: number): boolean {
     return false
   }
 }
+
+export interface SelfUpdateDeps {
+  /** Where to put the download (app.getPath('temp')). */
+  tempRoot: string
+  /** Free MB on that disk, or null when it cannot be read — then the guard stays out
+   * of the way rather than blocking on bad data. */
+  freeMB: (dir: string) => number | null
+  /** Starts the installer, detached, so it outlives this process. */
+  launch: (path: string) => void
+  /** Closes the app so the installer can replace its files. */
+  quit: () => void
+  /** Progress for the UI. */
+  onProgress?: (pct: number, stage: string) => void
+  /** Written to the activity log. */
+  log?: (message: string) => void
+  /**
+   * Re-checked immediately BEFORE the installer is launched, for the silent path.
+   *
+   * The gap this closes is real: a ~210 MB download takes minutes, so an update that was
+   * safe to install when it started can become unsafe by the time it finishes — the user
+   * has sat down and begun a render in between. Deciding once, at the start, would quit
+   * the app out from under work that did not exist yet.
+   *
+   * Returning false leaves the verified installer on disk and reports `deferred`, so the
+   * button in the banner then costs nothing: there is nothing left to download.
+   */
+  stillSafeToQuit?: () => boolean
+}
+
+/**
+ * The whole update: look it up, fetch it, prove it, run it, quit.
+ *
+ * Shared by the button in the banner and by the silent sign-in path, so the two can
+ * never drift apart — a "quiet" update that skipped the checksum because it was written
+ * twice is exactly the sort of difference nobody notices until it breaks something.
+ *
+ * Returns rather than throws: every caller wants a sentence to show the user, and an
+ * update that failed is not an exceptional condition, it is Tuesday.
+ */
+export async function runSelfUpdate(
+  deps: SelfUpdateDeps
+): Promise<{ ok: true } | { ok: false; error: string; deferred?: true }> {
+  const say = (pct: number, stage: string): void => deps.onProgress?.(pct, stage)
+  try {
+    say(0, 'Looking up the newest version…')
+    const rel = await fetchLatestRelease()
+    if (!rel.ok) return { ok: false, error: rel.error }
+
+    const picked = pickInstaller(rel.assets)
+    if ('error' in picked) return { ok: false, error: picked.error }
+    const asset = picked.asset
+    const size = asset.size!
+    const dest = join(updateDir(deps.tempRoot), INSTALLER_ASSET)
+
+    // Re-use a complete previous download: a retry after a failed launch should not
+    // cost another 210 MB on a connection that may be metered.
+    if (!alreadyDownloaded(dest, size)) {
+      const free = deps.freeMB(deps.tempRoot)
+      if (free !== null && free < NEEDED_FREE_MB) {
+        return {
+          ok: false,
+          error: `There is not enough free space to download the update (${free} MB free, about ${NEEDED_FREE_MB} MB needed).`
+        }
+      }
+      freshUpdateDir(deps.tempRoot)
+      say(0, 'Downloading the update…')
+      const got = await downloadInstaller(asset.browser_download_url!, dest, (pct) => say(pct, 'Downloading the update…'))
+      const verdict = verifyDownload(got, { size, sha256: expectedSha256(asset.digest) })
+      if (!verdict.ok) {
+        try {
+          rmSync(dest, { force: true })
+        } catch {
+          // A file we refuse to run is harmless where it is.
+        }
+        return { ok: false, error: verdict.error }
+      }
+    }
+
+    // Last check, AFTER the download, not before it. See stillSafeToQuit.
+    if (deps.stillSafeToQuit && !deps.stillSafeToQuit()) {
+      deps.log?.('The update is downloaded and will be installed once the current work finishes')
+      return {
+        ok: false,
+        deferred: true,
+        error: 'The update is downloaded and ready — it was held back because work is in progress.'
+      }
+    }
+
+    say(100, 'Starting the installer…')
+    deps.log?.('Downloaded the update and started the installer')
+    deps.launch(dest)
+    deps.quit()
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'The update could not be downloaded.' }
+  }
+}

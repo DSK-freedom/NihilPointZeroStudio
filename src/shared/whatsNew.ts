@@ -47,6 +47,14 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    id: 'start-with-windows',
+    date: '2026-08-01',
+    title: 'Turn the laptop on and the studio is open — and already up to date',
+    detail:
+      'The studio now opens by itself when Windows starts. And because nobody is waiting for it at that moment, that is when it quietly installs any update it finds — so by the time you sit down it is already the newest version, with nothing to press. If you open the app yourself instead, it does not hijack you: you get the notice and you choose. It never updates while a render or a queue is running.',
+    where: 'Settings → "Open the studio when Windows starts" (on by default)'
+  },
+  {
     id: 'self-installing-update',
     date: '2026-08-01',
     title: 'The app now updates itself',

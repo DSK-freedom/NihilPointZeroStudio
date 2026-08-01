@@ -11,6 +11,41 @@ don't show up"** at the bottom of this file.
 
 ## New in this build (2026-08-01, evening — updating is no longer your job)
 
+### 🔌 It opens with Windows, and that is when it updates itself
+
+The honest limit first: **nothing can update an app that is not running.** While the
+studio is closed, no code of ours is on the CPU — there is no process to notice a new
+release, download it, or install it. Any claim otherwise would be a lie.
+
+What *can* be arranged is that the app is already current by the time you look at it, and
+the way to arrange it is to have Windows open the app at sign-in. That is now the default.
+And sign-in is the deliberately chosen moment for the update, not an afterthought: nobody
+is waiting for the app, nothing is running, so it is the only point in the day when
+spending three minutes replacing itself costs nothing.
+
+Three guarantees, each one closing a way this could have gone wrong:
+
+- **It never updates while a render or a queue is running.** The app does not destroy the
+  user's work, and restarting under a running render would do exactly that.
+- **The busy check happens again AFTER the download, not only before it.** A ~210 MB
+  download takes minutes; an update that was safe to install when it started can become
+  unsafe by the time it finishes, because you sat down in between. If that happens the
+  verified installer simply stays on disk, and the blue notice becomes instant — there is
+  nothing left to fetch.
+- **A launch you made yourself is never hijacked.** You opened it to work; a forced
+  download before you can type would be worse than a button. Only a launch that Windows
+  made updates silently.
+
+Rejected alternatives, and why: a resident background updater service is a second thing to
+install, sign and debug when it silently stops. An hourly scheduled task is worse than it
+sounds — this installer relaunches the app when it finishes, so an hourly task means the
+studio window appearing on its own at some random point in the afternoon. Tying it to
+sign-in turns that relaunch into the behaviour that was asked for instead of a surprise.
+
+Off switch: **Settings → "Open the studio when Windows starts"**. Turning it off returns
+you to the one-button update, which still works exactly as described below.
+
+
 ### ⬆ The app installs its own updates
 The honest description of the old "Get the update" button, in its most common case, was
 *"we opened a web page for you"*. After that you still had to get past the browser's

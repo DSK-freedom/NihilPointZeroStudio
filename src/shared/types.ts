@@ -33,6 +33,8 @@ export interface ProviderSettings {
   youtubeChannelId: string
   /** Which installable Piper voice narrates when narrationVoice is 'piper'. */
   piperVoiceId: string
+  /** Open the studio when Windows starts (default on). */
+  startWithWindows: boolean
 }
 
 export interface YouTubeSignal {

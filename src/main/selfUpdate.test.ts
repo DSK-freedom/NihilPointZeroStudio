@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -11,6 +11,7 @@ import {
   INSTALLER_ASSET,
   percent,
   pickInstaller,
+  runSelfUpdate,
   updateDir,
   verifyDownload
 } from './selfUpdate'
@@ -217,6 +218,123 @@ describe('downloadInstaller', () => {
       sha256: 'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9'
     })
     expect(verdict.ok).toBe(false)
+  })
+})
+
+describe('runSelfUpdate — the stillSafeToQuit gate', () => {
+  /** A deps bundle whose installer is "already downloaded", so the network is not needed. */
+  function depsFor(root: string, extra: Partial<Parameters<typeof runSelfUpdate>[0]> = {}) {
+    const dir = freshUpdateDir(root)
+    const dest = join(dir, INSTALLER_ASSET)
+    writeFileSync(dest, Buffer.alloc(2_000_000))
+    const launched: string[] = []
+    let quit = 0
+    return {
+      dest,
+      launched,
+      quits: () => quit,
+      deps: {
+        tempRoot: root,
+        freeMB: () => 99_999,
+        launch: (p: string) => launched.push(p),
+        quit: () => {
+          quit++
+        },
+        ...extra
+      }
+    }
+  }
+
+  /** The release the fake fetch below returns: matches the pre-placed 2 MB file. */
+  const asset = { ...good, size: 2_000_000, digest: null }
+
+  it('installs when nothing is in progress', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'npz-gate-'))
+    const t = depsFor(root, { stillSafeToQuit: () => true })
+    vi.stubGlobal('fetch', async () => Response.json({ assets: [asset] }))
+    try {
+      const res = await runSelfUpdate(t.deps)
+      expect(res.ok).toBe(true)
+      expect(t.launched).toEqual([t.dest])
+      expect(t.quits()).toBe(1)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('does NOT quit when work started during the download', async () => {
+    // The bug this exists for: the decision to update is made before a multi-minute
+    // download, and by the time it finishes the user has begun a render. Quitting then
+    // destroys work that did not exist when the choice was made.
+    const root = mkdtempSync(join(tmpdir(), 'npz-gate-'))
+    const t = depsFor(root, { stillSafeToQuit: () => false })
+    vi.stubGlobal('fetch', async () => Response.json({ assets: [asset] }))
+    try {
+      const res = await runSelfUpdate(t.deps)
+      expect(res.ok).toBe(false)
+      expect(res.ok === false && res.deferred).toBe(true)
+      expect(t.launched).toEqual([])
+      expect(t.quits()).toBe(0)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('keeps the downloaded installer when it defers, so the retry is instant', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'npz-gate-'))
+    const t = depsFor(root, { stillSafeToQuit: () => false })
+    vi.stubGlobal('fetch', async () => Response.json({ assets: [asset] }))
+    try {
+      await runSelfUpdate(t.deps)
+      expect(alreadyDownloaded(t.dest, 2_000_000)).toBe(true)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('installs with no gate supplied (the button path)', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'npz-gate-'))
+    const t = depsFor(root)
+    vi.stubGlobal('fetch', async () => Response.json({ assets: [asset] }))
+    try {
+      expect((await runSelfUpdate(t.deps)).ok).toBe(true)
+      expect(t.quits()).toBe(1)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('reports the reason and never launches when the release has no installer', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'npz-gate-'))
+    const t = depsFor(root)
+    vi.stubGlobal('fetch', async () => Response.json({ assets: [] }))
+    try {
+      const res = await runSelfUpdate(t.deps)
+      expect(res.ok).toBe(false)
+      expect(t.launched).toEqual([])
+      expect(t.quits()).toBe(0)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('refuses on low disk rather than half-downloading', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'npz-low-'))
+    // No pre-placed file, so it must decide whether to download.
+    freshUpdateDir(root)
+    vi.stubGlobal('fetch', async () => Response.json({ assets: [asset] }))
+    try {
+      const res = await runSelfUpdate({
+        tempRoot: root,
+        freeMB: () => 50,
+        launch: () => expect.unreachable('must not launch'),
+        quit: () => expect.unreachable('must not quit')
+      })
+      expect(res.ok).toBe(false)
+      expect(res.ok === false && res.error).toMatch(/not enough free space/)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
 

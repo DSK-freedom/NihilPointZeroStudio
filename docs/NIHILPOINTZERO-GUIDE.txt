@@ -163,6 +163,21 @@ Copy the folder to another PC and:
      but cannot press for you — and like everything AI in this app, it can never delete.
      - → TAKE ME THERE: when an answer mentions a tab, chips appear under it ("→ Open
        Scene Studio") — one click jumps you straight to that tab.
+  🔌 IT OPENS WITH WINDOWS, AND UPDATES ITSELF THEN: the studio is registered with
+     Windows to open when you sign in. That moment is deliberately chosen: nobody is
+     waiting for the app and nothing is running, so it is the only safe time to spend
+     a few minutes replacing itself. If it finds a newer version it downloads and
+     installs it there and then, and you sit down to the newest version having pressed
+     nothing.
+     Three rules it will not break:
+       - it never updates while a render or a queue is running — your work is never
+         interrupted, which is the one rule this app does not bend;
+       - if the download finishes and by then you HAVE started something, it holds the
+         installer back rather than closing on you, and the blue notice becomes instant
+         (there is nothing left to fetch);
+       - if YOU opened the app rather than Windows, it never hijacks you — you get the
+         notice and you choose.
+     Off switch: Settings → "Open the studio when Windows starts".
   ⬆ THE APP UPDATES ITSELF: on startup it quietly checks whether a newer version was
      published. If yes, a small blue notice appears at the bottom of the window. Press
      "Get the update" and the app does the whole job — downloads the update (you see a

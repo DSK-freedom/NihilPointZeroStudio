@@ -66,6 +66,9 @@ export const IPC = {
   // manual step the user had; see main/selfUpdate.ts.
   updateInstall: 'update:install',
   updateInstallProgress: 'update:install-progress',
+  // Open the studio when Windows starts. Combined with the silent sign-in update, this
+  // is what makes "turn the laptop on and it is open and current" true.
+  settingsSetStartWithWindows: 'settings:set-start-with-windows',
   // "What changed" — the new things in the build that is actually running.
   whatsNewGet: 'whats-new:get',
   whatsNewMarkSeen: 'whats-new:mark-seen',

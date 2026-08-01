@@ -332,6 +332,13 @@ export default function SettingsPage() {
     setSettings(await window.api.settings.setProvider(provider))
   }
 
+  /** The main process saves AND registers with Windows; re-read so the checkbox reflects
+   * what was actually stored rather than what was clicked. */
+  async function setStartWithWindows(on: boolean): Promise<void> {
+    await window.api.settings.setStartWithWindows(on)
+    await refresh()
+  }
+
   async function handleSetModel(provider: LLMProviderId, model: string): Promise<void> {
     setSettings(await window.api.settings.setModel(provider, model))
   }
@@ -397,6 +404,31 @@ export default function SettingsPage() {
       {/* What changed — an upgrade is otherwise invisible: the app looks identical after
           one. Sits above health so it is the first thing seen after an update. */}
       <WhatsNewCard />
+
+      {/* Start with Windows. Default ON. Paired with the silent sign-in update, this is
+          what makes "turn the laptop on and the studio is open and already current" true —
+          so the explanation says that, rather than just naming the switch. */}
+      <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={settings?.startWithWindows ?? true}
+            onChange={(e) => void setStartWithWindows(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-gold-500"
+          />
+          <span>
+            <span className="block text-sm text-ink-100 font-medium">Open the studio when Windows starts</span>
+            <span className="block text-xs text-ink-400 mt-0.5">
+              The studio opens by itself when you turn the laptop on — and because nobody is waiting for it at that
+              moment, it also installs any update it finds, quietly, before you start working. Turn this off and you
+              open it yourself and choose when to update.
+            </span>
+            <span className="block text-xs text-ink-500 mt-1">
+              It never updates while a render or a queue is running — your work is never interrupted.
+            </span>
+          </span>
+        </label>
+      </div>
 
       {/* Setup health — at-a-glance readiness of every subsystem. */}
       <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4">

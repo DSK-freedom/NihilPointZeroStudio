@@ -42,6 +42,9 @@ interface PersistedSettings {
    * a build date, because this project ships more than once a day and a date-based
    * marker loses every change that shipped later the same day. */
   seenChangeIds?: string[]
+  /** Open the studio when Windows starts. Absent means "never chosen" and defaults to
+   * on; see getStartWithWindows for why the default is not stored eagerly. */
+  startWithWindows?: boolean
 }
 
 const DEFAULT_SETTINGS: PersistedSettings = {
@@ -163,7 +166,8 @@ export function getSettings(): ProviderSettings {
     demucsCmd: s.demucsCmd || '',
     faceAnimCmd: s.faceAnimCmd || '',
     youtubeChannelId: s.youtubeChannelId || '',
-    piperVoiceId: resolvePiperVoiceId(s.piperVoiceId)
+    piperVoiceId: resolvePiperVoiceId(s.piperVoiceId),
+    startWithWindows: s.startWithWindows ?? true
   }
 }
 
@@ -230,6 +234,24 @@ export function saveRenderQueue(items: import('../shared/types').QueueItem[]): i
   const clean = (items ?? []).filter((x) => x && typeof x.id === 'string')
   atomicWrite(renderQueuePath(), JSON.stringify(clean, null, 2))
   return clean
+}
+
+/**
+ * Should the studio open when Windows starts?
+ *
+ * Defaults to TRUE, on the user's explicit instruction ("the moment I turn my laptop on,
+ * studio automatically opens"). A stored `false` is honoured — `?? true` only fills in
+ * the never-set case, so turning it off in Settings sticks.
+ */
+export function getStartWithWindows(): boolean {
+  return readSettings().startWithWindows ?? true
+}
+
+export function setStartWithWindows(on: boolean): boolean {
+  const s = readSettings()
+  s.startWithWindows = !!on
+  writeSettings(s)
+  return s.startWithWindows
 }
 
 /** Which "What changed" entries have been read. Undefined (never set) means first run. */

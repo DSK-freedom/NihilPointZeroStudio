@@ -187,6 +187,31 @@ Settings and should never need to.
 Only an explicit instruction from the user in their own words wakes a paid feature. Not an
 inference, not a convenience, not "it would be better this way".
 
+## DO NOT ASK — PLAN, BUILD, TEST, FIX, THEN REPORT (hard rule, 2026-08-02)
+
+The user's instruction: *"stop asking my permissions, you have all my idea that i shared in
+the first prompt. you yourself think, plan, execute, test, retest, stress test, fix... only
+come back when you think that its 100% ready and done with a detailed report!"*
+
+So: no permission questions, no menus of options, no "shall I proceed". Decide, build it,
+prove it works, and come back once with the outcome. Being asked to choose is, to him, the
+same as being handed a chore.
+
+What still gets raised, and only these:
+
+- **A decision genuinely his and not inferable** — money, his accounts, publishing something
+  public, or deleting his work. Those are his.
+- **Something that cannot be done from here at all** — say it in one sentence, then do
+  everything that can be.
+- **A finding that changes what he should expect** — a service dying, a hard external gate.
+  State it inside the report; do not stop and wait.
+
+"Report" means: what was built, what was verified and how, what was found and fixed, what
+is left. Not a summary of intentions.
+
+This rule does NOT override: ask before removing an existing feature; never delete his work;
+paid features stay asleep. Those are narrower and they win.
+
 ## OTHER PROJECTS IN THIS ACCOUNT ARE NOT YOURS (2026-08-02)
 
 The user runs more than one project with Claude, in parallel. Work will appear in this

@@ -117,6 +117,12 @@ user noticing found it, days later.
 `scripts/ship.ps1` now refuses to build when `git rev-list --count HEAD..origin/main` is
 non-zero. If that guard is ever removed, this class of bug comes straight back.
 
+## THE STANDING MANDATE (2026-08-02)
+
+He has told me to stop asking and just work: plan, build, test, stress test, fix, and come
+back only when it is done, with a detailed report. Work the queue below in order without
+checking in. See DO NOT ASK in `CLAUDE.md` for the three narrow exceptions.
+
 ## Approved by the user, NOT yet built
 
 1. **P4 — image 429 backoff.** Honour `Retry-After`, exponential backoff with jitter,
@@ -125,6 +131,11 @@ non-zero. If that guard is ever removed, this class of bug comes straight back.
    Your Channel tab and every evidence/trend feature is inert.
 3. **P5 — nudge for a second backup home.** His is unset and his own restore log shows
    8 files had gone missing.
+4. **Dead-brain switch notice.** When the active provider refuses permanently (the hosted
+   free service returned HTTP 402 twice), say so plainly and move him to Ollama in one
+   action. He must never be left pointed at a dead service failing 50 times in silence.
+   Partly addressed by defaulting to Ollama, but an EXISTING install keeps its saved
+   'free' setting, so the switch still has to happen for him.
 
 ## Autopilot — spine built, rest outstanding
 

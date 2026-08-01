@@ -269,6 +269,19 @@ const api = {
       ipcRenderer.invoke(IPC.timelineRender, doc, title)
     // Progress reuses video.onProgress (same 'video:progress' channel).
   },
+  /**
+   * The teleprompter's own window. Separate from the main window so a screen capture
+   * can exclude it; hiddenFromCapture additionally asks the OS to leave it out of any
+   * recording (best-effort — the UI says "asked for", never "guaranteed").
+   */
+  teleprompter: {
+    open: (opts?: { hiddenFromCapture?: boolean }): Promise<{ open: boolean; hiddenFromCapture: boolean }> =>
+      ipcRenderer.invoke(IPC.teleprompterOpen, opts),
+    close: (): Promise<{ open: boolean; hiddenFromCapture: boolean }> => ipcRenderer.invoke(IPC.teleprompterClose),
+    state: (): Promise<{ open: boolean; hiddenFromCapture: boolean }> => ipcRenderer.invoke(IPC.teleprompterState),
+    setHiddenFromCapture: (on: boolean): Promise<{ open: boolean; hiddenFromCapture: boolean }> =>
+      ipcRenderer.invoke(IPC.teleprompterProtect, on)
+  },
   /** Plans made on the phone: open one from a file, or take one pushed over Wi-Fi. */
   project: {
     importPick: (): Promise<{ ok: boolean; canceled?: boolean; error?: string; result?: ImportedProject }> =>

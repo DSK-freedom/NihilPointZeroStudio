@@ -41,6 +41,7 @@ import { freeLibraryLinks, MOOD_PROMPT_HINT, moodsFromText, parseMoodReply, synt
 import { getOllamaStatus, ollamaChatStream, type ChatTurn } from './llm/ollama'
 import { buildAdvisorSystemPrompt } from './prompts'
 import { importPhoneProject, importPhoneProjectJson } from './project/import'
+import { closeTeleprompter, openTeleprompter, setTeleprompterProtection, teleprompterState } from './teleprompter/window'
 import { APP_GUIDE } from './appGuide'
 import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
 
@@ -2237,6 +2238,14 @@ export function registerIpcHandlers(): void {
     const res = win ? await dialog.showOpenDialog(win, dialogOptions) : await dialog.showOpenDialog(dialogOptions)
     return res.canceled || !res.filePaths.length ? null : res.filePaths[0]
   })
+
+  // ── Teleprompter ──
+  // Its own always-on-top window so a screen recording of a different window/screen
+  // cannot contain it, and so it can ask the OS to hide it from capture entirely.
+  ipcMain.handle(IPC.teleprompterOpen, (_e, opts?: { hiddenFromCapture?: boolean }) => openTeleprompter(opts))
+  ipcMain.handle(IPC.teleprompterClose, () => closeTeleprompter())
+  ipcMain.handle(IPC.teleprompterState, () => teleprompterState())
+  ipcMain.handle(IPC.teleprompterProtect, (_e, on: boolean) => setTeleprompterProtection(!!on))
 
   // ── Plans made on the phone ──
   // Opens a .npzproject.json the user transferred over, and loads it into the

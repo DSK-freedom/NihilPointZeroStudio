@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { COUNTDOWN_CHOICES } from '../../../shared/teleprompter'
 import { useAutosave } from '../hooks/useAutosave'
 import { toast } from '../components/Toast'
 
@@ -18,6 +19,48 @@ const RES: { label: string; h: number }[] = [
  * recording transcodes to MP4 and is SAVED into Video Studio (usable as your Presenter clip).
  * All capture uses Electron's real browser + desktop APIs — free, offline.
  */
+/**
+ * Kept as four separate setups rather than one merged mode: the only thing that
+ * actually differs is WHERE the teleprompter must live so it never lands in the
+ * recording, and that answer is different for every one of them.
+ */
+const SETUPS: {
+  id: 'phone-camera' | 'phone-screen' | 'laptop-screen' | 'laptop-webcam'
+  label: string
+  detail: string
+  prompter: string
+  source?: Source
+}[] = [
+  {
+    id: 'laptop-webcam',
+    label: '💻 This laptop\'s webcam films me',
+    detail: 'The built-in camera records you talking.',
+    prompter: 'Open it on this screen, just below the webcam, so your eyeline stays right. The webcam films YOU, not the screen, so it can never be recorded.',
+    source: 'camera'
+  },
+  {
+    id: 'laptop-screen',
+    label: '🖥 This laptop records its screen',
+    detail: 'Tutorials, charts, walkthroughs.',
+    prompter: 'Open the prompter window and pick a DIFFERENT screen or window to capture below. Tick the box to also ask Windows to hide the prompter from capture entirely.',
+    source: 'screen'
+  },
+  {
+    id: 'phone-camera',
+    label: '📱 My phone\'s camera films me',
+    detail: 'Phone on a stand, filming you.',
+    prompter: 'Open it on this laptop and stand the laptop behind or below the phone. The phone films the room, so the prompter cannot end up in the video. Nothing to record here.'
+  },
+  {
+    id: 'phone-screen',
+    label: '📱 My phone records its own screen',
+    detail: 'Demonstrating something on the phone.',
+    prompter: 'Use Android\'s own screen recorder (swipe down the quick settings) — a web app is not allowed to record the phone screen, and it stops the moment you switch apps. Open the prompter on this laptop; it is a different device, so it is never in the capture.'
+  }
+]
+
+const SETUP_BY_ID = Object.fromEntries(SETUPS.map((s) => [s.id, s])) as Record<string, (typeof SETUPS)[number]>
+
 export default function RecorderPage(): React.JSX.Element {
   const [source, setSource] = useState<Source>('camera')
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
@@ -32,6 +75,18 @@ export default function RecorderPage(): React.JSX.Element {
   const [micOnScreen, setMicOnScreen] = useState(true)
   const [enhance, setEnhance] = useState(true)
   const [resH, setResH] = useState(1080)
+
+  /**
+   * The four ways the user actually records, kept as DISTINCT choices rather than
+   * merged into one clever mode. Each has a different answer to "where does the
+   * teleprompter go so it isn't in the shot", and getting that wrong ruins the take.
+   */
+  const [setup, setSetup] = useState<'phone-camera' | 'phone-screen' | 'laptop-screen' | 'laptop-webcam'>('laptop-webcam')
+  /** Seconds of countdown before recording starts, so you can get into position. */
+  const [countdown, setCountdown] = useState<number>(5)
+  const [counting, setCounting] = useState<number | null>(null)
+  const [promptHidden, setPromptHidden] = useState(true)
+  const countRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [previewing, setPreviewing] = useState(false)
   const [recording, setRecording] = useState(false)
@@ -82,6 +137,12 @@ export default function RecorderPage(): React.JSX.Element {
 
   function stopEverything(): void {
     if (timerRef.current) clearInterval(timerRef.current)
+    // A countdown left running after the tab closes would fire startRecording()
+    // against a torn-down stream.
+    if (countRef.current) {
+      clearInterval(countRef.current)
+      countRef.current = null
+    }
     try {
       if (recRef.current && recRef.current.state === 'recording') recRef.current.stop()
     } catch {
@@ -160,6 +221,48 @@ export default function RecorderPage(): React.JSX.Element {
     }
   }
 
+  /** Opens the prompter in its own always-on-top window. */
+  async function openPrompter(): Promise<void> {
+    try {
+      await window.api.teleprompter.open({ hiddenFromCapture: promptHidden })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not open the teleprompter.')
+    }
+  }
+
+  /** Counts down out loud on screen, then starts recording. Cancellable. */
+  function startWithCountdown(): void {
+    if (!streamRef.current) {
+      setError('Start the preview first.')
+      return
+    }
+    if (countdown <= 0) {
+      startRecording()
+      return
+    }
+    setError(null)
+    setCounting(countdown)
+    countRef.current = setInterval(() => {
+      setCounting((n) => {
+        if (n === null) return null
+        if (n <= 1) {
+          if (countRef.current) clearInterval(countRef.current)
+          countRef.current = null
+          // Leaving state updates to the next tick keeps this out of the setState body.
+          setTimeout(() => startRecording(), 0)
+          return null
+        }
+        return n - 1
+      })
+    }, 1000)
+  }
+
+  function cancelCountdown(): void {
+    if (countRef.current) clearInterval(countRef.current)
+    countRef.current = null
+    setCounting(null)
+  }
+
   function startRecording(): void {
     const stream = streamRef.current
     if (!stream) {
@@ -211,6 +314,61 @@ export default function RecorderPage(): React.JSX.Element {
         saved to Video Studio and can be used as your Presenter narration video. (OBS: start OBS's Virtual Camera and it
         appears in the camera list below.)
       </p>
+
+      {/* ── How are you recording? Four distinct setups, because each one needs the
+             teleprompter in a different place to stay out of the shot. ── */}
+      <div className="mt-5 rounded-lg border border-ink-700 bg-ink-900 p-4">
+        <div className="text-sm font-medium text-ink-100">How are you recording?</div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {SETUPS.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => {
+                setSetup(s.id)
+                if (s.source) {
+                  setSource(s.source)
+                  setPreviewing(false)
+                }
+              }}
+              disabled={recording}
+              className={`rounded-md border p-3 text-left disabled:opacity-40 ${
+                setup === s.id ? 'border-gold-500 bg-ink-800' : 'border-ink-700 hover:bg-ink-800'
+              }`}
+            >
+              <div className="text-sm text-ink-100">{s.label}</div>
+              <div className="mt-1 text-xs text-ink-400">{s.detail}</div>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-3 rounded-md border border-gold-700/40 bg-gold-950/20 p-3 text-xs text-gold-200">
+          <b>Teleprompter:</b> {SETUP_BY_ID[setup].prompter}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => void openPrompter()}
+            className="rounded-md border border-ink-700 px-3 py-1.5 text-sm text-ink-200 hover:bg-ink-800"
+          >
+            🧾 Open teleprompter window
+          </button>
+          <label className="flex items-center gap-1.5 text-xs text-ink-400">
+            <input
+              type="checkbox"
+              checked={promptHidden}
+              onChange={(e) => {
+                setPromptHidden(e.target.checked)
+                void window.api.teleprompter.setHiddenFromCapture(e.target.checked)
+              }}
+            />
+            Ask Windows to keep it out of screen recordings
+          </label>
+        </div>
+        <div className="mt-1 text-[11px] text-ink-600">
+          That asks the operating system to exclude the prompter window from any capture. It works on Windows and
+          macOS, but it is a request, not a guarantee — check your preview before a long take.
+        </div>
+      </div>
 
       <div className="mt-4 inline-flex rounded-md border border-ink-700 overflow-hidden text-sm">
         {(['camera', 'screen'] as Source[]).map((s) => (
@@ -275,8 +433,39 @@ export default function RecorderPage(): React.JSX.Element {
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {!previewing ? (
           <button onClick={startPreview} disabled={busy} className="rounded-md border border-ink-700 px-4 py-2 text-sm text-ink-200 hover:bg-ink-800">▶ Start preview</button>
+        ) : counting !== null ? (
+          <div className="flex items-center gap-3">
+            <span className="rounded-md bg-red-600 px-5 py-2 text-lg font-semibold tabular-nums text-white">
+              {counting}
+            </span>
+            <span className="text-sm text-ink-300">Recording starts in {counting}s — get into position.</span>
+            <button
+              onClick={cancelCountdown}
+              className="rounded-md border border-ink-700 px-3 py-1.5 text-sm text-ink-200 hover:bg-ink-800"
+            >
+              Cancel
+            </button>
+          </div>
         ) : !recording ? (
-          <button onClick={startRecording} disabled={busy} className="rounded-md bg-red-600 hover:bg-red-500 px-4 py-2 text-sm font-medium text-white">⏺ Record</button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={startWithCountdown} disabled={busy} className="rounded-md bg-red-600 hover:bg-red-500 px-4 py-2 text-sm font-medium text-white">
+              ⏺ Record{countdown > 0 ? ` after ${countdown}s` : ''}
+            </button>
+            <label className="flex items-center gap-2 text-xs text-ink-400">
+              Countdown
+              <select
+                value={countdown}
+                onChange={(e) => setCountdown(Number(e.target.value))}
+                className="rounded-md border border-ink-700 bg-ink-950 px-2 py-1 text-xs text-ink-200"
+              >
+                {COUNTDOWN_CHOICES.map((c) => (
+                  <option key={c} value={c}>
+                    {c === 0 ? 'None — start now' : `${c} seconds`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         ) : (
           <button onClick={stopRecording} className="rounded-md bg-gold-500 hover:bg-gold-400 px-4 py-2 text-sm font-medium text-ink-950">⏹ Stop & save ({mmss})</button>
         )}

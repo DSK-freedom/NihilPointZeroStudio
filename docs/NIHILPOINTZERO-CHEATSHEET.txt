@@ -144,6 +144,19 @@ At home (PC on):   Settings -> "Phone access (same Wi-Fi)" -> open the link on y
                    power, now with read-only Library + Activity tabs. Don't share that link.
 Move a script to the PC: tap "Send to PC" -> WhatsApp/email/Drive to yourself -> paste into studio.
 
+TELEPROMPTER (new)
+Sidebar -> 🧾 Teleprompter (also a Prompter tab in the phone app). Paste script -> Start.
+Speed is in words-per-minute; "Finish in: 10 min" sets it exactly. Your [BRACKETED] notes show
+dimmed and are never counted in the timing. Space = pause · arrows = speed · phone: tap the text.
+Recorder tab now asks HOW you record (laptop webcam / laptop screen / phone camera / phone screen)
+and tells you where to put the prompter so it stays out of the shot. Countdown: None/3/5/10/20/30s.
+Prompter opens in its own window and can ask Windows to hide it from screen recordings.
+
+EXPERT WITHOUT AI (new)
+🧭 Expert (bottom-left) -> "Instant" button = answers from the manual, no AI, no internet, instant.
+Typos and everyday words are fine ("musick", "subtitles", "merge"). "Ask AI" for freer answers.
+AI gone quiet? Settings -> Setup Health runs a real test and names the cause.
+
 Already set up here: free AI brain · photo key · music-removal token · your YouTube channel · Natural
 voice · offline Demucs. What's real / needs internet / needs setup -> MEGA-DIAGNOSTIC-REPORT.md. Enjoy.
 ==================================================================================================

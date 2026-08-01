@@ -17,6 +17,7 @@ const links = [
   { to: '/storyboard', label: '🎞 Storyboard Director', end: false },
   { to: '/presenter', label: '🎥 Presenter Studio', end: false },
   { to: '/recorder', label: '⏺ Recorder', end: false },
+  { to: '/teleprompter', label: '🧾 Teleprompter', end: false },
   { to: '/timeline', label: '✂ Timeline Editor', end: false },
   { to: '/charts', label: 'Charts', end: false },
   { to: '/psx', label: '📈 Live PSX Data', end: false },

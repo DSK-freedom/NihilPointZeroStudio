@@ -854,3 +854,58 @@ The phone app keeps its own notes on the phone and has no route to your
 nihilpointzero-data folder at all. Over Wi-Fi, the phone can only READ your
 Library and Activity — it cannot delete or change anything. Deleting is still
 something only you can do, on the PC, with a confirmation.
+
+-------------------------------------------------------------------------------
+20. NEW (2026-08-01): TELEPROMPTER, AND THE EXPERT THAT WORKS WITHOUT AI
+-------------------------------------------------------------------------------
+
+THE TELEPROMPTER
+There is a new "Teleprompter" tab in the sidebar, and one in the phone app too.
+
+  Paste your script (or pick a saved one, or your phone plan) and press Start.
+  The words scroll past a gold "READ HERE" line - keep your eyes on that line and
+  you will look like you are talking to the camera, not reading a screen.
+
+  Speed is in WORDS PER MINUTE, not a meaningless 1-10 slider. Press "Finish in:
+  10 min" and it sets the speed so your whole script lands in exactly 10 minutes.
+
+  Your [PATTERN INTERRUPT] style notes are shown dimmed and are NEVER counted in
+  the timing - they are notes to you, not words you say out loud.
+
+  On the laptop: Space = start/pause, up/down arrows = speed, Home = back to top.
+  On the phone: just tap the text to pause or resume.
+  "Mirror" flips the text for a glass teleprompter rig.
+
+FOUR WAYS TO RECORD - PICK YOURS IN THE RECORDER TAB
+The Recorder now asks how you are recording, because the answer decides where the
+teleprompter must sit so it does not end up in your video:
+
+  1. THIS LAPTOP'S WEBCAM FILMS ME - prompter on this screen under the webcam.
+     The webcam films YOU, not the screen, so it can never be recorded.
+  2. THIS LAPTOP RECORDS ITS SCREEN - open the prompter window, then pick a
+     DIFFERENT screen/window to capture. Tick the box and Windows is also asked to
+     hide the prompter from any recording completely.
+  3. MY PHONE'S CAMERA FILMS ME - prompter on the laptop, stood behind the phone.
+  4. MY PHONE RECORDS ITS OWN SCREEN - use Android's own screen recorder (swipe
+     down the quick settings). A web app is not allowed to record your phone's
+     screen and would stop the moment you switch apps. Prompter on the laptop.
+
+  COUNTDOWN: next to the Record button, choose None / 3 / 5 / 10 / 20 / 30
+  seconds. Press Record, get into position, and it starts itself when the number
+  reaches zero.
+
+THE EXPERT NOW WORKS WITH NO AI AT ALL
+The 🧭 Expert (bottom-left) has three buttons at the top: Instant, Ask AI,
+Execute.
+
+  INSTANT is now the default and needs NO internet and NO AI. It answers straight
+  out of the app manual, in a split second, and it never invents a button that
+  does not exist. Spelling does not matter - "how i add musick to my vedio" finds
+  the music section. You can use everyday words too: say "subtitles" and it finds
+  captions; say "merge" and it finds Stitch.
+
+  ASK AI is the old behaviour, for when you want a freer answer.
+
+  If the AI ever goes quiet, go to Settings -> Setup Health. It sends a real test
+  request and tells you exactly what is wrong ("no longer free", "busy", "cannot
+  reach it").

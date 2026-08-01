@@ -27,11 +27,12 @@ import * as Scenes from './scenesUi'
 import { openProjectFile, pushToPc, saveToPhone, shareProject, type SendResult } from './send'
 import { forgetPromptPack, hasPromptPack, loadPromptPack, syncPromptPack } from './promptCache'
 import { ping } from './pc'
+import { openPrompter, wirePrompter } from './prompterUi'
 import { onMediaPicked } from './scenesUi'
 
-type TabName = 'ideas' | 'writer' | 'scenes' | 'video' | 'advisor' | 'saved' | 'settings'
+type TabName = 'ideas' | 'writer' | 'scenes' | 'video' | 'prompter' | 'advisor' | 'saved' | 'settings'
 
-const TABS: TabName[] = ['ideas', 'writer', 'scenes', 'video', 'advisor', 'saved', 'settings']
+const TABS: TabName[] = ['ideas', 'writer', 'scenes', 'video', 'prompter', 'advisor', 'saved', 'settings']
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
 
@@ -78,6 +79,7 @@ function showTab(name: TabName): void {
   if (name === 'saved') renderSaved()
   if (name === 'scenes') Scenes.renderScenes()
   if (name === 'video') Scenes.renderVideoSettings()
+  if (name === 'prompter') openPrompter()
   window.scrollTo(0, 0)
 }
 
@@ -385,6 +387,7 @@ function wire(): void {
     document.getElementById(`t-${t}`)?.addEventListener('click', () => showTab(t))
   }
   wireScenes()
+  wirePrompter()
   $('i-go').addEventListener('click', runIdeas)
   $('w-go').addEventListener('click', runScript)
   $('w-thumb').addEventListener('click', runThumbnail)

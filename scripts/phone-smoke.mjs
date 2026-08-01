@@ -33,8 +33,33 @@ const TYPES = {
   '.webmanifest': 'application/manifest+json'
 }
 
+/**
+ * Doubles as the static host AND as a stand-in for the studio on the PC. The phone no
+ * longer calls an AI service directly (that would mean shipping the prompt wording in
+ * a public page), so the realistic path to test is the phone asking its PC.
+ */
+let pcCalls = 0
 const server = createServer((req, res) => {
   const path = (req.url || '/').split('?')[0]
+
+  if (path.startsWith('/api/')) {
+    pcCalls++
+    const send = (obj) => {
+      const body = JSON.stringify(obj)
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) })
+      res.end(body)
+    }
+    if (path === '/api/ideas') return send(JSON.parse(IDEAS))
+    if (path === '/api/script') return send({ title: 'The Rupee Trap', body: SCRIPT_BODY })
+    if (path === '/api/thumbnail') return send({ brief: 'MAIN SUBJECT: a falling rupee note' })
+    if (path === '/api/styles') return send([{ id: 'noir', label: 'Cinematic — film noir', family: 'cinematic' }])
+    if (path === '/api/scene-image') return send({ url: 'https://image.pollinations.ai/prompt/stub?width=512' })
+    if (path === '/api/library') return send([])
+    if (path === '/api/project') return send({ ok: true, scenes: 3, needMedia: 0, warnings: [] })
+    res.writeHead(404).end('{}')
+    return
+  }
+
   const file = join(DIST, path === '/' ? 'index.html' : path.replace(/^\/+/, ''))
   if (!file.startsWith(DIST) || !existsSync(file)) {
     res.writeHead(404).end('not found')
@@ -61,9 +86,7 @@ const IDEAS = JSON.stringify([
 ])
 // Long enough that the offline storyboard builder splits it into several beats,
 // which is what the scene-list assertions below actually exercise.
-const SCRIPT = `TITLE: The Rupee Trap
-===SCRIPT===
-[PATTERN INTERRUPT]
+const SCRIPT_BODY = `[PATTERN INTERRUPT]
 Yeh number dekhein aur sochein. The rupee has lost more value in five years than in the previous twenty.
 Most people blame one government. That is the comfortable answer and it is wrong.
 The real mechanism is the current account deficit, and it works quietly in the background.
@@ -96,6 +119,11 @@ try {
     permissions: ['microphone'],
     acceptDownloads: true
   })
+  // The phone reaches its PC via a link the studio shows. Seed it before any script
+  // runs so the very first request already knows where to go.
+  await ctx.addInitScript((pcLink) => {
+    localStorage.setItem('npz.pclink', pcLink)
+  }, `${base}/?t=test-token`)
   const page = await ctx.newPage()
 
   const pageErrors = []
@@ -105,17 +133,12 @@ try {
   // otherwise, so accept them here — before any test step can trigger one.
   page.on('dialog', (d) => d.accept())
 
-  // Stub the AI so the smoke test is deterministic and costs nothing.
-  let aiCalls = 0
+  // TRIPWIRE: with no prompt pack cached, the phone must never call an AI service
+  // directly — doing so would mean it was carrying the studio's prompt wording.
+  let directAiCalls = 0
   await page.route('https://text.pollinations.ai/**', async (route) => {
-    aiCalls++
-    const body = JSON.parse(route.request().postData() || '{}')
-    const wantsScript = String(body.messages?.[0]?.content || '').includes('===SCRIPT===')
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ choices: [{ message: { content: wantsScript ? SCRIPT : IDEAS } }] })
-    })
+    directAiCalls++
+    await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
   })
 
   console.log(`\nPhone app smoke test (${base})\n`)
@@ -253,6 +276,34 @@ try {
   const afterReload = await page.locator('#sc-list .scene').count()
   step('the plan survives closing and reopening the app', afterReload === before + 1, `${afterReload} vs ${before + 1}`)
 
+  // --- Teleprompter -------------------------------------------------------
+  await page.click('#t-prompter')
+  step('prompter opens', await page.locator('#tp-stage').isVisible())
+  const sources = await page.locator('#tp-source option').count()
+  step('it offers the current plan and saved scripts', sources >= 2, `${sources} sources`)
+  step('it shows a word count and a running time', /\d+ words/.test((await page.locator('#tp-words').textContent()) || ''))
+
+  const before10 = await page.locator('#tp-clock').textContent()
+  await page.click('#tp-fit-10')
+  step('"finish in 10m" changes the timing', (await page.locator('#tp-clock').textContent()) !== before10)
+  step('speed is shown in words per minute', /wpm/.test((await page.locator('#tp-wpm-label').textContent()) || ''))
+
+  await page.click('#tp-play')
+  await page.waitForTimeout(600)
+  const scrolled = await page.locator('#tp-scroll').evaluate((el) => el.scrollTop)
+  step('the script actually scrolls when started', scrolled > 0, `${Math.round(scrolled)}px`)
+  await page.click('#tp-play')
+  await page.waitForTimeout(200)
+  const paused = await page.locator('#tp-scroll').evaluate((el) => el.scrollTop)
+  await page.waitForTimeout(400)
+  step('pause really stops it', Math.abs((await page.locator('#tp-scroll').evaluate((el) => el.scrollTop)) - paused) < 2)
+  await page.click('#tp-restart')
+  step('restart returns to the top', (await page.locator('#tp-scroll').evaluate((el) => el.scrollTop)) === 0)
+  step(
+    'stage directions are shown but dimmed, not counted as speech',
+    (await page.locator('#tp-scroll').innerHTML()).includes('SCENE 1')
+  )
+
   // --- Saved --------------------------------------------------------------
   await page.click('#t-saved')
   const savedCount = await page.locator('#sv-out .card').count()
@@ -283,7 +334,8 @@ try {
     step(`icon ${icon.sizes} loads`, res.ok())
   }
 
-  step('AI endpoint was actually exercised', aiCalls >= 2, `${aiCalls} calls`)
+  step('the phone asked its PC to do the writing', pcCalls >= 2, `${pcCalls} PC calls`)
+  step('it never called an AI service directly (no prompts on board)', directAiCalls === 0, `${directAiCalls} direct calls`)
   step('no page errors', pageErrors.length === 0, pageErrors.join(' | '))
 } finally {
   await browser.close()

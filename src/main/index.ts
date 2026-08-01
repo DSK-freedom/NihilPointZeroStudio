@@ -4,11 +4,15 @@ import { runAutoBackupIfDue } from './autoBackup'
 import { runHealthCheck } from './health'
 import { scanStranded } from './strandedData'
 import { decideDataHome, holdsUserWork, isUsableDir, readPin, writePin } from './dataHome'
-import { getLastHealth, getStartWithWindows, logActivity, setLastHealth } from './store'
+import { getLastHealth, getSettings, getStartWithWindows, logActivity, setActiveProvider, setLastHealth } from './store'
 import { join } from 'path'
 import { registerIpcHandlers, selfUpdateEnv } from './ipc'
 import { applyOpenAtLogin, shouldAutoInstall, shouldFocusOnSecondInstance, wasAutoStarted } from './autoStart'
 import { runSelfUpdate } from './selfUpdate'
+import { rescueMessage, rescueTarget } from './llm/rescueBrain'
+import { isProviderDead } from './llm/deadProviders'
+import { getOllamaStatus } from './llm/ollama'
+import { broadcastAiFallback } from './notify'
 import { getAvailableUpdate } from './updateCheck'
 import { isRunning as isQueueRunning } from './renderQueueRunner'
 import { isRenderSessionOpen } from './video/ffmpeg'
@@ -185,6 +189,41 @@ if (!gotLock) {
         // A startup entry that cannot be written is a nuisance, not a reason to fail
         // the launch.
       }
+    }
+
+    /**
+     * RESCUE A DEAD BRAIN. The hosted free service began demanding payment (HTTP 402) and
+     * every install pointed at it — the shipped default — was left refusing every request,
+     * 50 failures deep, with no sign that the thing it was configured to use had stopped
+     * existing. Changing the default only helps NEW installs; an existing one keeps its
+     * saved setting forever. So the switch happens here, on the machine, without the user
+     * visiting a screen he has said he will never open.
+     *
+     * Only ever towards a free, local brain — never a paid one, and never silently.
+     */
+    if (!e2eUserData) {
+      setTimeout(() => {
+        void (async () => {
+          try {
+            const active = getSettings().activeProvider
+            if (!isProviderDead(active)) return
+            const target = rescueTarget({
+              activeProvider: active,
+              activeIsPermanentlyDead: true,
+              ollamaAvailable: (await getOllamaStatus()).connected,
+              // Only relevant as a target when it is not the thing that just died.
+              freeAvailable: active !== 'free'
+            })
+            if (!target) return
+            setActiveProvider(target)
+            const message = rescueMessage(active, target)
+            logActivity('ai', 'Switched your AI brain automatically', message)
+            broadcastAiFallback({ provider: active, detail: message })
+          } catch {
+            // A rescue that cannot run must never take the app down with it.
+          }
+        })()
+      }, 12_000)
     }
 
     // Quiet, delayed check for a newer shipped build (silent when offline/failing),

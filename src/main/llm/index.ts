@@ -7,17 +7,19 @@ import { LLMConfigError, LLMRequestError, type LLMProvider } from './types'
 import { logAiError } from './errorLog'
 import { isProviderDead, recordProviderFailure, recordProviderSuccess } from './deadProviders'
 
+import { CHOSEN_TIMEOUT_MS, FALLBACK_TIMEOUT_MS } from './limits'
+
 /**
  * How long a FALLBACK Ollama gets before the chain moves on. The user's chosen provider
  * keeps the full 20-minute allowance; a backup does not, because a silent multi-minute
  * wait is exactly the "the app froze" complaint this module exists to fix.
  */
-const FALLBACK_OLLAMA_TIMEOUT_MS = 90_000
+const FALLBACK_OLLAMA_TIMEOUT_MS = FALLBACK_TIMEOUT_MS
 import { getDecryptedKey, getModel, getSettings, logActivity } from '../store'
 import { broadcastAiFallback } from '../notify'
 
 /** Builds the raw provider for the chosen id (throws for a paid provider with no key). */
-function buildProvider(id: string, model: string): LLMProvider {
+function buildProvider(id: string, model: string, timeoutMs = CHOSEN_TIMEOUT_MS): LLMProvider {
   // Trim the saved model id — a stray leading/trailing space (e.g. " claude-fable-5")
   // otherwise causes a hard 404 on every paid call.
   const m = (model || '').trim()
@@ -25,8 +27,8 @@ function buildProvider(id: string, model: string): LLMProvider {
   if (id === 'ollama') return new OllamaProvider(m)
   const key = getDecryptedKey(id as 'anthropic' | 'openai')
   if (!key) throw new LLMConfigError(`No API key configured for ${id}. Add one in Settings before generating.`)
-  if (id === 'anthropic') return new AnthropicProvider(key, m)
-  return new OpenAIProvider(key, m)
+  if (id === 'anthropic') return new AnthropicProvider(key, m, timeoutMs)
+  return new OpenAIProvider(key, m, timeoutMs)
 }
 
 /**
@@ -50,7 +52,14 @@ export function getActiveProvider(): LLMProvider {
   const demoted = isProviderDead(settings.activeProvider)
   let demotedPrimary: LLMProvider | null = null
   try {
-    const primary = buildProvider(settings.activeProvider, getModel(settings.activeProvider))
+    // A demoted provider is tried LAST, after everything else has already failed. It is
+    // a fallback in all but name, so it gets the short leash — the user has been waiting
+    // through the whole chain by the time it is reached.
+    const primary = buildProvider(
+      settings.activeProvider,
+      getModel(settings.activeProvider),
+      demoted ? FALLBACK_TIMEOUT_MS : CHOSEN_TIMEOUT_MS
+    )
     if (demoted) {
       // Held back, NOT dropped. Dropping it meant a paid key that hit two transient 429s
       // became unreachable for a full 30 minutes — and, being absent from the chain, it

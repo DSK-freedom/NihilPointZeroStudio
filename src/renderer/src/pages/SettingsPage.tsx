@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { confirmDialog } from '../components/Confirm'
 import { toast } from '../components/Toast'
 import WhatsNewCard from '../components/WhatsNewCard'
+import VersionCard from '../components/VersionCard'
 import type {
   AiErrorEntry,
   HardwareReport,
@@ -403,6 +404,10 @@ export default function SettingsPage() {
 
       {/* What changed — an upgrade is otherwise invisible: the app looks identical after
           one. Sits above health so it is the first thing seen after an update. */}
+      {/* Version, stated out loud. FIRST, above everything: after an update the only
+          question is "did that work?", and the app used to answer it with silence. */}
+      <VersionCard />
+
       <WhatsNewCard />
 
       {/* Start with Windows. Default ON. Paired with the silent sign-in update, this is

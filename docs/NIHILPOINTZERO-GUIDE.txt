@@ -163,6 +163,13 @@ Copy the folder to another PC and:
      but cannot press for you — and like everything AI in this app, it can never delete.
      - → TAKE ME THERE: when an answer mentions a tab, chips appear under it ("→ Open
        Scene Studio") — one click jumps you straight to that tab.
+  ✓ AM I UP TO DATE? Settings → the Version box at the top of the page. It states it
+     outright: up to date, or a newer one exists, or "could not check just now" — and it
+     shows the build you are running next to the newest published one, so you can see the
+     answer rather than trust it. A "Check now" button re-reads the download page live.
+     It will NEVER say "up to date" when the check did not actually run. That distinction
+     matters: the app used to speak only when it was behind, so silence meant either
+     "you're current" or "the check is broken", and there was no way to tell which.
   🔌 IT OPENS WITH WINDOWS, AND UPDATES ITSELF THEN: the studio is registered with
      Windows to open when you sign in. That moment is deliberately chosen: nobody is
      waiting for the app and nothing is running, so it is the only safe time to spend

@@ -60,7 +60,21 @@ export async function checkForUpdate(): Promise<void> {
     if (!res.ok) return
     const rel = (await res.json()) as { body?: string }
     const remote = /Build (v[^\n*]+)/.exec(rel.body ?? '')?.[1]?.trim()
-    if (!remote || !isNewer(__BUILD_TAG__, remote)) return
+    if (!remote) {
+      // NOT the same as "you are up to date", and it must not look like it.
+      //
+      // This exact case shipped: the CI publisher wrote notes with no "Build v..." line,
+      // so this returned here every time and the app said nothing — indistinguishable
+      // from being current. Hours of "the update notice never appears" with no evidence
+      // anywhere. A read that failed is now on the record.
+      try {
+        logActivity('ai', 'Could not read the version on the download page — the update check found nothing to compare')
+      } catch {
+        // The check must stay silent-failing overall; logging cannot be allowed to throw.
+      }
+      return
+    }
+    if (!isNewer(__BUILD_TAG__, remote)) return
     available = { remoteTag: remote, localTag: __BUILD_TAG__ }
     logActivity(
       'ai',

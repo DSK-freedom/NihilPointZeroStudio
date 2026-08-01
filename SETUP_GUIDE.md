@@ -54,6 +54,15 @@ build the app yourself.
 
 **Normally: you do nothing at all.**
 
+### First, how to check where you stand
+
+**Settings → the Version box at the top.** It says one of three things: you are up to
+date, a newer one exists, or it could not check just now. It also shows the version you
+are running beside the newest published one, and there is a **Check now** button.
+
+If it says it could not check, that means exactly that — it will never tell you that you
+are up to date when it did not manage to look.
+
 ### It opens with Windows, and updates itself then
 
 The studio opens by itself when you turn the laptop on. That moment is chosen on purpose —

@@ -66,6 +66,9 @@ export const IPC = {
   // manual step the user had; see main/selfUpdate.ts.
   updateInstall: 'update:install',
   updateInstallProgress: 'update:install-progress',
+  // "Am I up to date?" answered out loud. The banner only speaks when the app is BEHIND,
+  // and silence is indistinguishable from a broken check — see main/updateStatus.ts.
+  updateStatus: 'update:status',
   // Open the studio when Windows starts. Combined with the silent sign-in update, this
   // is what makes "turn the laptop on and it is open and current" true.
   settingsSetStartWithWindows: 'settings:set-start-with-windows',

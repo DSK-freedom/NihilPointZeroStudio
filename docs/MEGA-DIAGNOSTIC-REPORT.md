@@ -9,6 +9,42 @@ The running app shows this in the sidebar (under "OS") as a gold badge. The badg
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
 don't show up"** at the bottom of this file.
 
+## Fixed (2026-08-01, late — the update notice that never appeared)
+
+**What went wrong.** The app finds the newest published version by looking for a line
+reading `Build v0.1.1 · <date> · <code>` in the GitHub release notes. `ship.ps1` writes
+that line. The CI workflow — added earlier the same day, so that releases could be built
+without a Windows PC — wrote something different: *"Built automatically from main on
+&lt;date&gt; UTC"*, with no `Build v...` anywhere.
+
+So the check found nothing to compare, decided there was no update, and returned. Silently.
+**Every release published from a cloud session was invisible to every installed app.**
+
+**Why it took so long to notice.** Nothing failed. No test broke, no build went red, no
+error was logged. Two files simply stopped agreeing — and the app's response to *"I could
+not read it"* was identical to its response to *"you are up to date"*: say nothing at all.
+From the outside there was no way to tell a working app from a broken one.
+
+**The three fixes, in order of what each one is for:**
+
+1. **The workflow now writes the line the app reads**, and decides the build tag once and
+   exports it, so the stamp baked into the exe and the stamp quoted in the notes are
+   provably the same string. If they differed by a minute, the app could update
+   successfully and still believe it was behind — an update loop.
+2. **A failed read is now on the record.** An unreadable version line writes a line into
+   the activity log instead of returning in silence, so this class of fault leaves
+   evidence next time.
+3. **Settings → Version says it out loud.** Up to date, newer available, or "could not
+   check just now" — never reported as up to date when the check did not run — with the
+   running build shown beside the published one and a **Check now** button. This is the
+   real fix: the app was missing a sentence, and its absence was indistinguishable from a
+   failure.
+
+There is a test (`src/main/releaseNotes.test.ts`) that reads the actual workflow and the
+actual ship script and asserts each still produces something the actual parser can read.
+That is the only kind of test that could have caught this, because the defect lived in the
+gap between two files rather than inside either one.
+
 ## New in this build (2026-08-01, evening — updating is no longer your job)
 
 ### 🔌 It opens with Windows, and that is when it updates itself

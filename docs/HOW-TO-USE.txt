@@ -232,6 +232,13 @@ ONE VERSION, EVERYWHERE — AND HOW TO CHECK
    installs whichever file is sitting there. A new file only appears after a build.
    See "If updates don't show up" in MEGA-DIAGNOSTIC-REPORT.md.
 
+AM I UP TO DATE? (one look, any time)
+   Settings -> the Version box at the top. It says plainly whether you are up to date,
+   and shows which version you are running next to the newest published one. There is a
+   "Check now" button if you want it re-checked this second.
+   If it says "could not check just now", that means exactly that - it does NOT mean you
+   are up to date. It will never claim a result it did not get.
+
 YOU DO NOT HAVE TO UPDATE IT AT ALL (this is the normal case now)
    The studio opens by itself when you turn the laptop on. At that moment nobody is
    waiting for it, so that is when it quietly installs anything new. By the time you

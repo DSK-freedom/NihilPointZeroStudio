@@ -539,6 +539,15 @@ const api = {
     /** One-click update for the installed app: the ship already swapped the code on
      * disk, so this relaunches onto it. ok:false = not applicable (portable/stale). */
     restart: (): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.updateRestart),
+    /** Reads the download page now and says where this app stands: up to date, behind,
+     * ahead, or "could not check" — which is never reported as up to date. */
+    status: (): Promise<{
+      state: 'current' | 'behind' | 'ahead' | 'unknown'
+      runningTag: string
+      publishedTag: string | null
+      message: string
+      checkedAt: string
+    }> => ipcRenderer.invoke(IPC.updateStatus),
     /** Downloads the installer and runs it — no browser, no Downloads folder. On success
      * the app quits so the installer can replace it, so nothing follows this call. */
     install: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke(IPC.updateInstall),

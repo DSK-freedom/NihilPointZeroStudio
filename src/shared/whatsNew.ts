@@ -47,6 +47,14 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    id: 'version-panel',
+    date: '2026-08-01',
+    title: 'The app now tells you whether it is up to date',
+    detail:
+      'Before this, the app only ever spoke when it was BEHIND — so if you had just updated, it said nothing, and "nothing" looks exactly like a broken app. There is now a Version panel that says plainly: up to date, or a newer one exists, or "could not check just now" — and it shows which build you are running next to which one is published, so you can see it rather than take my word for it. It fixed a real bug too: updates published from the cloud were invisible to the app, and nothing anywhere said so.',
+    where: 'Settings → Version (top of the page) → "Check now"'
+  },
+  {
     id: 'start-with-windows',
     date: '2026-08-01',
     title: 'Turn the laptop on and the studio is open — and already up to date',

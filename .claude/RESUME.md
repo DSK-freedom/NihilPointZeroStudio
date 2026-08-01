@@ -38,6 +38,7 @@ Tonight's four merges, newest first:
 
 | PR | What |
 |---|---|
+| #14 | The NOTHING IS LOST rule and this file |
 | #13 | Fixed the update notice that never appeared; added `Settings → Version` |
 | #12 | Open with Windows, and update at sign-in |
 | #11 | The app installs its own updates; the phone repo publishes itself |
@@ -52,24 +53,32 @@ blocks. They pass on the Windows CI runner. Do not "fix" them.
 
 ## In progress right now
 
-**Verifying the build for `0c4da26` (PR #13).** Started 2026-08-01 ~19:59 UTC; a Windows
-build takes about nine minutes.
+**Nothing.** Everything asked for is built, merged, verified and published.
 
-Two things must be true before this can be called done, and the second is the one that
-matters:
+PR #13's build (`0c4da26`) was verified end to end: every step green, and the release notes
+read back to confirm they now carry
 
-1. The run concluded `success` and the step **"Refresh the GitHub download"** ran.
-2. The release notes now contain a line reading **`Build v0.1.1 · <date> <time> · <hash>`**.
-   That line is the entire point of PR #13 — without it, no installed app can ever see an
-   update. Read the release body back and look for it. Do not infer it from a green build.
+```
+Build v0.1.1 · 2026-08-01 20:03 · 0c4da26
+```
 
-How to check, from a container with no `gh` and no unauthenticated API access:
-`mcp__github__actions_list` (parse the JSON from the saved tool-result file with python —
-the response is too large to read inline) then `mcp__github__get_release_by_tag`.
+which parses to `2026-08-01 20:03`, so an app stamped earlier will finally see it. The exe
+from that run carries the same `20:03` stamp, so updating settles rather than looping.
 
-If the `Build` line is missing, the fix is in `.github/workflows/windows-build.yml`: the
-"Decide the build tag" step exports `NPZ_BUILD_TAG`, and the `gh release edit --notes`
-heredoc must end with `Build $NPZ_BUILD_TAG` and nothing containing `*` after it.
+### A transient worth knowing about before you panic
+
+Mid-run, the release genuinely has **the docs but no exes**, for roughly ten seconds. It is
+`gh release upload --clobber` deleting each asset before replacing it, and a 217 MB exe
+takes far longer to re-upload than a text file. A read taken in that window shows a download
+page with no application on it and the previous build's notes.
+
+This happened during the PR #13 verification and read exactly like a catastrophe. It was
+not. **Before reporting missing exes, read the release a second time** — and check whether
+the job's final step has actually completed, rather than trusting a step that reports
+success while later steps are still running.
+
+Not worth engineering around (the window is short, and the alternative is uploading under
+temporary names and renaming), but absolutely worth knowing.
 
 ## What the user still has to do, once each, and cannot be done from a container
 

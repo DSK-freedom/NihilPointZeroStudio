@@ -232,7 +232,19 @@ ONE VERSION, EVERYWHERE — AND HOW TO CHECK
    installs whichever file is sitting there. A new file only appears after a build.
    See "If updates don't show up" in MEGA-DIAGNOSTIC-REPORT.md.
 
-HOW TO UPDATE — EASIEST WAY: LET THE APP DO IT
+YOU DO NOT HAVE TO UPDATE IT AT ALL (this is the normal case now)
+   The studio opens by itself when you turn the laptop on. At that moment nobody is
+   waiting for it, so that is when it quietly installs anything new. By the time you
+   sit down it is already the newest version and there is nothing to press.
+
+   Two things it will never do: it will not update while a render or a queue is
+   running, and it will not interrupt you if YOU opened the app yourself — then you
+   get the blue notice and you choose when.
+
+   You can turn this off in Settings ("Open the studio when Windows starts"). If you
+   do, updating goes back to the one button described next.
+
+HOW TO UPDATE BY HAND — LET THE APP DO IT
    Open the app. If a newer version exists, a blue notice appears at the bottom of
    the window saying "A newer version of the app exists". Press "Get the update".
    That is everything. The app downloads the update itself, checks it is the right

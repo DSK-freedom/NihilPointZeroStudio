@@ -23,6 +23,10 @@ const api = {
     setDemucsCmd: (cmd: string) => ipcRenderer.invoke(IPC.settingsSetDemucsCmd, cmd),
     setFaceAnimCmd: (cmd: string) => ipcRenderer.invoke(IPC.settingsSetFaceAnimCmd, cmd),
     setPiperVoice: (voiceId: string) => ipcRenderer.invoke(IPC.settingsSetPiperVoice, voiceId),
+    /** Open the studio when Windows starts. Applied to Windows straight away, not just
+     * saved, so the toggle can be seen to work. */
+    setStartWithWindows: (on: boolean): Promise<{ on: boolean; applied: boolean }> =>
+      ipcRenderer.invoke(IPC.settingsSetStartWithWindows, on),
     ollamaStatus: () => ipcRenderer.invoke(IPC.ollamaStatus)
   },
   ideas: {

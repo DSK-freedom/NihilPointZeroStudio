@@ -52,9 +52,25 @@ build the app yourself.
 
 ## Updating later
 
-**Easiest: let the app do it. You do not have to leave the app at all.**
+**Normally: you do nothing at all.**
 
-### The app updates itself
+### It opens with Windows, and updates itself then
+
+The studio opens by itself when you turn the laptop on. That moment is chosen on purpose —
+nobody is waiting for the app and nothing is running — so that is when it quietly installs
+anything new. You sit down to the newest version having pressed nothing.
+
+It will not do this while a render or a queue is running, and it will not do it to a
+launch you made yourself (then you get the notice below and you choose). If the download
+finishes and by then you have started working, it holds the installer back instead of
+closing on you.
+
+Off switch: **Settings → "Open the studio when Windows starts"**.
+
+One honest limit: while the app is *closed*, nothing can update it — no part of it is
+running to do the work. Opening it at sign-in is exactly how that gap is closed.
+
+### The one-button update, if you'd rather do it yourself
 
 Open the app. If a newer version has been published, a blue notice appears at the
 bottom of the window: *"A newer version of the app exists"*. Press **Get the update**.

@@ -1,7 +1,11 @@
 ==============================  NIHILPOINTZERO — 1-PAGE CHEAT SHEET  ==============================
 (Full manual: NIHILPOINTZERO-GUIDE.txt · Start here: HOW-TO-USE.txt · What's real/free/online: MEGA-DIAGNOSTIC-REPORT.md)
 
-UPDATE IT ......... open the app. If a blue "A newer version exists" notice appears at the
+UPDATES ........... nothing to do. The studio opens when Windows starts and installs
+                    anything new right then, before you sit down. Never during a render,
+                    and never when YOU opened the app yourself. Off switch: Settings ->
+                    "Open the studio when Windows starts".
+UPDATE BY HAND .... open the app. If a blue "A newer version exists" notice appears at the
                     bottom, press "Get the update". Done - the app downloads it, starts it
                     and reopens updated. Say yes to Windows once. No web page, no Downloads
                     folder, no File Explorer.

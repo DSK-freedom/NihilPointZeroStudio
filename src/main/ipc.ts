@@ -45,18 +45,32 @@ import { importPhoneProject, importPhoneProjectJson } from './project/import'
 import { closeTeleprompter, openTeleprompter, setTeleprompterProtection, teleprompterState } from './teleprompter/window'
 import { APP_GUIDE } from './appGuide'
 import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
-import {
-  alreadyDownloaded,
-  downloadInstaller,
-  expectedSha256,
-  fetchLatestRelease,
-  freshUpdateDir,
-  INSTALLER_ASSET,
-  NEEDED_FREE_MB,
-  pickInstaller,
-  updateDir,
-  verifyDownload
-} from './selfUpdate'
+import { runSelfUpdate, type SelfUpdateDeps } from './selfUpdate'
+import { applyOpenAtLogin } from './autoStart'
+
+/**
+ * The real-world wiring for a self-update: where to download, how to read free space,
+ * how to start the installer and how to close the app.
+ *
+ * Exported so the silent sign-in update in `index.ts` runs through exactly the same
+ * environment as the button does. Two copies of "launch the installer" is precisely how
+ * a quiet path ends up subtly different from the visible one.
+ */
+export function selfUpdateEnv(): SelfUpdateDeps {
+  return {
+    tempRoot: app.getPath('temp'),
+    freeMB: freeDiskMB,
+    launch: (path) => {
+      // Detached + unref so the installer outlives this process; it needs the app closed
+      // to replace its files, so the quit is part of the update, not a side effect.
+      const child = spawn(path, [], { detached: true, stdio: 'ignore' })
+      child.unref()
+    },
+    // A beat so the spawn is definitely away before the event loop stops.
+    quit: () => setTimeout(() => app.quit(), 1200),
+    log: (message) => logActivity('ai', message)
+  }
+}
 import { whatsNewReport } from '../shared/whatsNew'
 import { DEFAULT_SPEED, planReadAloud, type ReadSpeed } from '../shared/readAloud'
 import { learnTitlePatterns, publishTimingReport, scoreTitle } from '../shared/channelLearning'
@@ -181,6 +195,7 @@ import {
   setLastHealth,
   setPurgeBackupsOnDelete,
   setSecondBackupDir,
+  setStartWithWindows,
   setDemucsCmd,
   setFaceAnimCmd,
   setDraft,
@@ -809,65 +824,26 @@ export function registerIpcHandlers(): void {
    * app's job to delegate. The two older routes are still tried first / kept as the
    * fallback, so nothing was taken away.
    */
-  ipcMain.handle(IPC.updateInstall, async (e) => {
-    const say = (pct: number, stage: string): void => {
-      if (!e.sender.isDestroyed()) e.sender.send(IPC.updateInstallProgress, { pct, stage })
-    }
-    try {
-      say(0, 'Looking up the newest version…')
-      const rel = await fetchLatestRelease()
-      if (!rel.ok) return { ok: false as const, error: rel.error }
-
-      const picked = pickInstaller(rel.assets)
-      if ('error' in picked) return { ok: false as const, error: picked.error }
-      const asset = picked.asset
-      const size = asset.size!
-
-      const dir = updateDir(app.getPath('temp'))
-      const dest = join(dir, INSTALLER_ASSET)
-
-      // Re-use a complete previous download: a retry after a failed launch should not
-      // cost another 210 MB on a connection that may be metered.
-      if (!alreadyDownloaded(dest, size)) {
-        const free = freeDiskMB(app.getPath('temp'))
-        if (free !== null && free < NEEDED_FREE_MB) {
-          return {
-            ok: false as const,
-            error: `There is not enough free space to download the update (${free} MB free, about ${NEEDED_FREE_MB} MB needed).`
-          }
-        }
-        freshUpdateDir(app.getPath('temp'))
-        say(0, 'Downloading the update…')
-        const got = await downloadInstaller(asset.browser_download_url!, dest, (pct) =>
-          say(pct, 'Downloading the update…')
-        )
-        const verdict = verifyDownload(got, { size, sha256: expectedSha256(asset.digest) })
-        if (!verdict.ok) {
-          try {
-            rmSync(dest, { force: true })
-          } catch {
-            // best effort — a file we refuse to run is harmless where it is
-          }
-          return { ok: false as const, error: verdict.error }
-        }
-      }
-
-      say(100, 'Starting the installer…')
-      logActivity('ai', 'Downloaded the update and started the installer')
-      // Detached + unref so the installer outlives this process; it needs the app closed
-      // to replace its files, so the quit below is part of the update, not a side effect.
-      const child = spawn(dest, [], { detached: true, stdio: 'ignore' })
-      child.unref()
-      // A beat so the spawn is definitely away before the event loop stops.
-      setTimeout(() => app.quit(), 1200)
-      return { ok: true as const }
-    } catch (err) {
-      return {
-        ok: false as const,
-        error: err instanceof Error ? err.message : 'The update could not be downloaded.'
-      }
-    }
+  /**
+   * "Open the studio when Windows starts." Applied to Windows immediately as well as
+   * saved, so the toggle takes effect now rather than after the next launch — a switch
+   * whose effect you cannot observe is a switch nobody trusts.
+   */
+  ipcMain.handle(IPC.settingsSetStartWithWindows, (_e, on: boolean) => {
+    const saved = setStartWithWindows(!!on)
+    const applied = applyOpenAtLogin(saved, app)
+    logActivity('user', saved ? 'Studio will open when Windows starts' : 'Studio will not open when Windows starts')
+    return { on: saved, applied }
   })
+
+  ipcMain.handle(IPC.updateInstall, async (e) =>
+    runSelfUpdate({
+      ...selfUpdateEnv(),
+      onProgress: (pct, stage) => {
+        if (!e.sender.isDestroyed()) e.sender.send(IPC.updateInstallProgress, { pct, stage })
+      }
+    })
+  )
 
   // "What changed": the new things in the build that is ACTUALLY RUNNING. The build tag
   // comes from __BUILD_TAG__ here rather than from the renderer, so a stale page cannot

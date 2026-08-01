@@ -41,6 +41,26 @@ synchronization autonomously. `npm run ship` already does all of this — includ
 updating the INSTALLED app in place (Smart App Control-safe) and refusing to ship
 unless the automated UI click-through gate passes.
 
+## ONE VERSION EVERYWHERE (standing rule, 2026-08-01)
+
+There is never more than one live version of anything. When something is upgraded,
+the old copy is REPLACED, not left running alongside. Five places count, and the
+phone is one of them:
+
+1. workshop source (this folder)   2. Desktop studio folder
+3. the INSTALLED Windows app        4. GitHub (`main` + the rolling `latest` release)
+5. **the phone** — both the hosted app and the studio served from the PC
+
+The phone is the one that silently breaks this rule, because a phone app is cached
+ON the handset: publishing a new one does not remove the old one. `scripts/build-phone.mjs`
+stamps a build tag into the service worker's cache name and into the bundle, the
+service worker deletes the previous cache on activate and messages every open tab,
+and the app reloads itself once. Settings shows the stamp so the running version can
+always be read off the screen. **Never revert to a fixed cache name.**
+
+The desktop equivalent is the gold sidebar badge. Both exist for the same reason: an
+old build looks exactly like a new one, and the user has no other way to tell.
+
 ## Shipping rule (MANDATORY)
 
 Whenever a completed change touches app code, docs, or resources, finish the

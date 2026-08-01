@@ -151,6 +151,28 @@ RECORDING SO IT DOESN'T LOOK LIKE A PHONE
    • Long takes recorded on the phone are saved to the phone's Downloads rather than
      squeezed over the link. Short ones go straight to the PC.
 
+ONE VERSION, EVERYWHERE — AND HOW TO CHECK
+   There is only ever ONE live version. When something is upgraded, the old copy is
+   replaced everywhere, not left running next to it. That means all five of these
+   always match: this laptop's studio folder, the installed app, GitHub, and BOTH
+   the phone routes.
+
+   HOW TO CHECK, in five seconds each:
+   • On the laptop — the small gold badge in the sidebar under "OS". It reads
+     version, date-time and a short code id (like `a1b2c3d`). That code id is the
+     only honest proof of which build you are running.
+   • On the phone app — Settings, right at the bottom: "This app's version". Same
+     idea. There is also a "Check for a newer version" button.
+
+   IF THE PHONE SEEMS OLD: it caches itself on the handset so it can work with no
+   signal, which is normally what you want. It now notices a new version and reloads
+   itself. If it ever does not, open Settings and press "Check for a newer version",
+   or close the tab and reopen it.
+
+   IF THE LAPTOP SEEMS OLD: the installer alone never upgrades anything — it just
+   installs whichever file is sitting there. A new file only appears after a build.
+   See "If updates don't show up" in MEGA-DIAGNOSTIC-REPORT.md.
+
 WHERE TO LOOK NEXT
    • Need a quick reminder of a button or choice?  ->  NIHILPOINTZERO-CHEATSHEET.txt
    • Want to learn a feature properly?             ->  NIHILPOINTZERO-GUIDE.txt

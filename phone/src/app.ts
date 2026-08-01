@@ -30,6 +30,13 @@ import { ping } from './pc'
 import { openPrompter, wirePrompter } from './prompterUi'
 import { onMediaPicked } from './scenesUi'
 
+/**
+ * Stamped in at build time by scripts/build-phone.mjs. The fallback is what a
+ * hand-run bundle without the define would show — never a lie about being current.
+ */
+declare const __PHONE_BUILD__: string
+const BUILD_TAG = typeof __PHONE_BUILD__ === 'string' ? __PHONE_BUILD__ : 'unstamped build'
+
 type TabName = 'ideas' | 'writer' | 'scenes' | 'video' | 'prompter' | 'advisor' | 'saved' | 'settings'
 
 const TABS: TabName[] = ['ideas', 'writer', 'scenes', 'video', 'prompter', 'advisor', 'saved', 'settings']
@@ -368,6 +375,29 @@ function wireScenes(): void {
     }
   })
 
+  // Which version this handset is actually running — the phone's equivalent of the
+  // desktop's gold sidebar badge, and the only way to tell a fresh app from a cached
+  // old one, since they look identical.
+  $('st-build').textContent = BUILD_TAG
+
+  $('st-refresh').addEventListener('click', async () => {
+    const out = $('st-refresh-out')
+    out.innerHTML = '<div class="muted">Looking…</div>'
+    if (!('serviceWorker' in navigator)) {
+      out.innerHTML = '<div class="muted">This browser cannot store the app, so it is always the newest one.</div>'
+      return
+    }
+    try {
+      const reg = await navigator.serviceWorker.getRegistration()
+      await reg?.update()
+      // A newer version reloads the page by itself (see the registration below), so
+      // reaching this line means there was nothing new.
+      out.innerHTML = '<div class="muted">You already have the newest version.</div>'
+    } catch {
+      out.innerHTML = '<div class="err">Could not check — you may be offline.</div>'
+    }
+  })
+
   $('st-open').addEventListener('click', () => $<HTMLInputElement>('pick-plan').click())
   $('pick-plan').addEventListener('change', async (e) => {
     const input = e.target as HTMLInputElement
@@ -501,10 +531,41 @@ async function start(): Promise<void> {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => void start())
 else void start()
 
-// Offline shell caching. Registration failing is not fatal — the app still runs
-// online, it just won't open without a connection.
+/**
+ * Offline shell caching, and — the part that matters more — making sure a NEW version
+ * actually replaces the old one.
+ *
+ * The problem this solves: a phone app lives in the handset's cache. Publish a new
+ * one and the browser can carry on running the old one indefinitely. The user sees
+ * last week's app with no way to tell, which is exactly what happened once.
+ *
+ * Registration failing is not fatal — the app still runs online, it just won't open
+ * without a connection.
+ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => undefined)
+    void navigator.serviceWorker
+      .register('./sw.js')
+      .then((reg) => {
+        // Ask straight away rather than waiting for the browser's own schedule, and
+        // again each time the app is brought back to the front.
+        void reg.update()
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') void reg.update()
+        })
+      })
+      .catch(() => undefined)
+
+    // One reload, and only one: a loop here would be far worse than a stale app.
+    let reloaded = false
+    const refresh = (): void => {
+      if (reloaded) return
+      reloaded = true
+      location.reload()
+    }
+    navigator.serviceWorker.addEventListener('message', (e: MessageEvent) => {
+      if ((e.data as { type?: string })?.type === 'npz-updated') refresh()
+    })
+    navigator.serviceWorker.addEventListener('controllerchange', refresh)
   })
 }

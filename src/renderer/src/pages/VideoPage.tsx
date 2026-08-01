@@ -209,6 +209,10 @@ export default function VideoPage() {
   const [watermarkLogo, setWatermarkLogo] = useState<string | null>(null)
   const [watermarkPos, setWatermarkPos] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('bottom-right')
   const [watermarkBusyId, setWatermarkBusyId] = useState<string | null>(null)
+  // Dead-air removal: the PLAN is shown before anything is cut, because a silence
+  // remover that just does it to a finished take is one nobody trusts.
+  const [silenceBusyId, setSilenceBusyId] = useState<string | null>(null)
+  const [silencePlan, setSilencePlan] = useState<{ id: string; headline: string; cuts: number } | null>(null)
   const [publishBusyId, setPublishBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [savedNote, setSavedNote] = useState<string | null>(null)
@@ -466,6 +470,47 @@ export default function VideoPage() {
   async function pickLogo(): Promise<void> {
     const paths = await window.api.video.pickImages()
     if (paths[0]) setWatermarkLogo(paths[0])
+  }
+
+  /** Reads the take and reports what WOULD be cut. Two cheap reads, no encode. */
+  async function handleSilencePlan(job: VideoJob): Promise<void> {
+    setSilenceBusyId(job.id)
+    setError(null)
+    setSilencePlan(null)
+    try {
+      const res = await window.api.silence.plan(job.id)
+      if (res.ok) setSilencePlan({ id: job.id, headline: res.summary.headline, cuts: res.summary.cuts })
+      else setError(res.error)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not read the recording.')
+    } finally {
+      setSilenceBusyId(null)
+    }
+  }
+
+  /** Cuts it — to a NEW video. The original is never touched. */
+  async function handleSilenceApply(job: VideoJob): Promise<void> {
+    setSilenceBusyId(job.id)
+    setError(null)
+    setSavedNote(null)
+    const unsubscribe = window.api.video.onProgress((st) => setStage(st))
+    try {
+      const res = await window.api.silence.apply(job.id)
+      if (res.ok) {
+        await refreshJobs()
+        setSilencePlan(null)
+        setSavedNote(`${res.summary.headline} Saved as a new video — your original is untouched.`)
+        toast('Dead air removed ✓', 'success')
+      } else {
+        setError(res.error)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not cut the recording.')
+    } finally {
+      unsubscribe()
+      setSilenceBusyId(null)
+      setStage(null)
+    }
   }
 
   async function handleWatermark(job: VideoJob): Promise<void> {
@@ -1647,6 +1692,34 @@ export default function VideoPage() {
                         </span>
                       </div>
                     )}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900/60 p-2">
+                      <span className="text-[11px] text-ink-400">✂ Dead air</span>
+                      <button
+                        onClick={() => handleSilencePlan(job)}
+                        disabled={silenceBusyId === job.id}
+                        className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-xs px-3 py-1 transition-colors disabled:opacity-50"
+                      >
+                        What would be cut?
+                      </button>
+                      {silencePlan?.id === job.id && silencePlan.cuts > 0 && (
+                        <button
+                          onClick={() => handleSilenceApply(job)}
+                          disabled={silenceBusyId === job.id}
+                          className="rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 text-xs font-medium px-3 py-1 transition-colors disabled:opacity-50"
+                        >
+                          Cut it
+                        </button>
+                      )}
+                      {silenceBusyId === job.id && <span className="text-[10px] text-gold-300">working…</span>}
+                      {silencePlan?.id === job.id && (
+                        <span className="w-full text-[11px] text-gold-300">{silencePlan.headline}</span>
+                      )}
+                      <span className="w-full text-[10px] text-ink-600">
+                        Removes the long pauses where nothing is said, keeping a quarter-second of breath so it still
+                        sounds like a person talking. Picture and sound are cut together, so nothing goes out of sync.
+                        Makes a NEW video — your original stays in this list.
+                      </span>
+                    </div>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900/60 p-2">
                       <span className="text-[11px] text-ink-400">📝 Captions</span>
                       <button

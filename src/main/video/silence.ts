@@ -22,15 +22,16 @@
  * and you only find out by watching the whole thing.
  */
 
+// KeepSpan and SilenceSummary live in shared/types.ts: they cross the IPC wire to the
+// renderer and the phone, and the preload cannot import from src/main.
+import type { KeepSpan, SilenceSummary } from '../../shared/types'
+export type { KeepSpan, SilenceSummary }
+
 export interface SilenceSpan {
   startSec: number
   endSec: number
 }
 
-export interface KeepSpan {
-  startSec: number
-  endSec: number
-}
 
 /**
  * How quiet counts as silence, in dBFS. −32 dB is chosen for a real room rather than a
@@ -143,13 +144,6 @@ export function planKeeps(silences: SilenceSpan[], options: PlanOptions): KeepSp
   return keeps.filter((k) => k.endSec - k.startSec >= 0.12)
 }
 
-export interface SilenceSummary {
-  removedSec: number
-  keptSec: number
-  cuts: number
-  /** One line for the user. */
-  headline: string
-}
 
 export function summarise(keeps: KeepSpan[], durationSec: number): SilenceSummary {
   const keptSec = keeps.reduce((n, k) => n + (k.endSec - k.startSec), 0)
@@ -197,4 +191,26 @@ export function buildCutArgs(
     '+faststart',
     output
   ]
+}
+
+/**
+ * Finds the dead air in a file and plans the cut, without touching anything.
+ *
+ * Two ffmpeg passes and no encode: one silencedetect read, one duration read. Cheap
+ * enough to run and SHOW the user before they decide, which is the point — a silence
+ * remover that just does it is a silence remover nobody trusts with a finished take.
+ */
+export async function planSilenceCut(
+  input: string,
+  run: (args: string[]) => Promise<string>,
+  duration: (file: string) => Promise<number>,
+  options: { thresholdDb?: number; minSilenceSec?: number; keepPauseSec?: number } = {}
+): Promise<{ keeps: KeepSpan[]; summary: SilenceSummary; durationSec: number }> {
+  const durationSec = await duration(input)
+  const output = await run(detectArgs(input, options.thresholdDb, options.minSilenceSec))
+  const keeps = planKeeps(parseSilences(output), {
+    durationSec,
+    keepPauseSec: options.keepPauseSec
+  })
+  return { keeps, summary: summarise(keeps, durationSec), durationSec }
 }

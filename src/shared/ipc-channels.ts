@@ -65,6 +65,9 @@ export const IPC = {
   // "What changed" — the new things in the build that is actually running.
   whatsNewGet: 'whats-new:get',
   whatsNewMarkSeen: 'whats-new:mark-seen',
+  // Cut the dead air out of a take (plan first, then apply to a NEW file).
+  silencePlan: 'silence:plan',
+  silenceApply: 'silence:apply',
   // Learn from YOUR channel: which title shapes worked, when the audience shows up,
   // which videos form a series, and the questions your comments keep asking.
   channelLearn: 'channel:learn',

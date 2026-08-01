@@ -544,6 +544,27 @@ const api = {
     markSeen: (ids: string[]): Promise<import('../shared/whatsNew').WhatsNewReport> =>
       ipcRenderer.invoke(IPC.whatsNewMarkSeen, ids)
   },
+  // Cut the dead air out of a take. Plan first (cheap, no encode, nothing changed), then
+  // apply — which writes a NEW video and never touches the original.
+  silence: {
+    plan: (
+      videoId: string
+    ): Promise<
+      | {
+          ok: true
+          keeps: import('../shared/types').KeepSpan[]
+          summary: import('../shared/types').SilenceSummary
+          durationSec: number
+        }
+      | { ok: false; error: string }
+    > => ipcRenderer.invoke(IPC.silencePlan, videoId),
+    apply: (
+      videoId: string
+    ): Promise<
+      | { ok: true; video: import('../shared/types').VideoJob; summary: import('../shared/types').SilenceSummary }
+      | { ok: false; error: string }
+    > => ipcRenderer.invoke(IPC.silenceApply, videoId)
+  },
   // What YOUR channel's own history says — not general advice about channels in general.
   channel: {
     /** Title shapes that worked, when the audience shows up, and your series. */

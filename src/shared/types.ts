@@ -932,3 +932,20 @@ export interface AiErrorEntry {
   message: string
   body?: string
 }
+
+/** A stretch of the recording to KEEP. See main/video/silence.ts — spans to keep are
+ * planned rather than spans to remove, which makes an overlap or a backwards span
+ * structurally impossible. */
+export interface KeepSpan {
+  startSec: number
+  endSec: number
+}
+
+/** What the dead-air cut did, for the user. */
+export interface SilenceSummary {
+  removedSec: number
+  keptSec: number
+  cuts: number
+  /** One line for the user. */
+  headline: string
+}

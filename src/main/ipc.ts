@@ -50,6 +50,8 @@ import { learnTitlePatterns, publishTimingReport, scoreTitle } from '../shared/c
 import { mineQuestions, summarise as summariseQuestions } from '../shared/commentMining'
 import { seriesReport } from '../shared/series'
 import { fetchComments, fetchMyChannelVideos } from './data/youtube'
+import { buildCutArgs, planSilenceCut } from './video/silence'
+import { buildVideoEncoderArgs, chooseEncoderForJob } from './video/encoder'
 import { buildSpeedArgs } from './audio/speed'
 import { speakToWav } from './voice/speak'
 
@@ -65,7 +67,7 @@ import { buildPriceSeriesFromBars } from './analysis/priceSeries'
 import { buildPriceSeries } from './analysis/priceSeries'
 import { extractPdfText, summarizeStatement } from './analysis/pdf'
 import { attachRecordedVoice, beautifyImage, buildVideoFromScript, exportVideo, ffprobeDuration, formatExtension, renderThumbnail, renderTimeline, setVideoMusic, stitchVideos, trimVideo } from './video'
-import { cancelActiveFfmpeg, ffprobeHasAudio, ffprobeVideoSize, runFfmpeg } from './video/ffmpeg'
+import { cancelActiveFfmpeg, ffprobeHasAudio, ffprobeVideoSize, runFfmpeg, runFfmpegCapture } from './video/ffmpeg'
 import { buildWatermarkArgs, type WatermarkPosition } from './video/watermark'
 import { makeSeparationScratch, separateLocal, separateOnline } from './audio/separate'
 import { deriveTitleFromFilename, normalizeScriptText } from './video/scriptText'
@@ -777,6 +779,53 @@ export function registerIpcHandlers(): void {
     const list = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : []
     markChangesSeen(list)
     return whatsNewReport({ buildTag: __BUILD_TAG__, seenIds: getSeenChangeIds() })
+  })
+
+  // CUT THE DEAD AIR out of a take. Two steps on purpose: the plan is cheap (two reads,
+  // no encode) and is SHOWN before anything happens, because a silence remover that just
+  // does it to a finished take is one nobody trusts. The cut then writes a NEW file and
+  // the original is never touched — the hard rule of this app is that it does not destroy
+  // the user's work.
+  ipcMain.handle(IPC.silencePlan, async (_e, videoId: string) => {
+    const src = listVideos().find((v) => v.id === videoId)
+    if (!src || !existsSync(src.path)) return { ok: false as const, error: 'That video could not be found.' }
+    try {
+      const plan = await planSilenceCut(src.path, runFfmpegCapture, ffprobeDuration)
+      return { ok: true as const, ...plan }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Could not read the recording.' }
+    }
+  })
+
+  ipcMain.handle(IPC.silenceApply, async (e, videoId: string) => {
+    const src = listVideos().find((v) => v.id === videoId)
+    if (!src || !existsSync(src.path)) return { ok: false as const, error: 'That video could not be found.' }
+    const notify = (stage: string): void => {
+      if (!e.sender.isDestroyed()) e.sender.send(IPC.videoProgress, stage)
+    }
+    try {
+      notify('Listening for dead air…')
+      const { keeps, summary } = await planSilenceCut(src.path, runFfmpegCapture, ffprobeDuration)
+      if (keeps.length < 2) return { ok: false as const, error: summary.headline }
+      const id = randomUUID()
+      const outPath = join(videosDir(), `tight-${id.slice(0, 8)}.mp4`)
+      const [w, h] = await ffprobeVideoSize(src.path).catch(() => [1920, 1080] as [number, number])
+      const encoder = await chooseEncoderForJob(w, h, summary.keptSec)
+      notify(summary.headline)
+      await runFfmpeg(buildCutArgs(src.path, outPath, keeps, buildVideoEncoderArgs(encoder)))
+      const job: VideoJob = {
+        ...src,
+        id,
+        title: `${src.title} (tightened)`,
+        path: outPath,
+        createdAt: new Date().toISOString()
+      }
+      appendVideo(job)
+      logActivity('user', 'Cut the dead air out of a recording', summary.headline)
+      return { ok: true as const, video: job, summary }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Could not cut the recording.' }
+    }
   })
 
   // LEARN FROM YOUR OWN CHANNEL rather than from general advice. One fetch of the user's

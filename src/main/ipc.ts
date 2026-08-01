@@ -60,6 +60,7 @@ import {
 } from '../shared/renderQueue'
 import { runQueue } from './renderQueueRunner'
 import { buildScenePreviewArgs, previewSeconds } from './video/scenePreview'
+import { buildProxyArgs, proxyIsTrustworthy, proxySize, worthProxying } from './video/proxy'
 import { KEN_BURNS_MOTIONS } from './video/render'
 import { searchYouTubeSignals } from './data/youtube'
 import { fetchComments, fetchMyChannelVideos } from './data/youtube'
@@ -890,6 +891,50 @@ export function registerIpcHandlers(): void {
     const comments = await fetchComments(recent.map((v) => v.id))
     const clusters = mineQuestions(comments)
     return { scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
+  })
+
+  // A SMALL STAND-IN for scrubbing. The Timeline plays the real file, and a 4K clip is
+  // decoded on every seek — so the picture lags behind the scrubber and trimming to an exact
+  // word becomes guesswork. This makes a low-resolution copy that is TIME-IDENTICAL to its
+  // source, so a cut made against it lands in exactly the same place in the original.
+  //
+  // It is verified rather than assumed: the two durations are compared afterwards, and a
+  // proxy that drifted is refused with a reason rather than silently edited against.
+  ipcMain.handle(IPC.timelineProxy, async (_e, sourcePath: string) => {
+    if (typeof sourcePath !== 'string' || !existsSync(sourcePath)) {
+      return { ok: false as const, error: 'That file could not be found.' }
+    }
+    try {
+      const [width, height] = await ffprobeVideoSize(sourcePath)
+      if (!worthProxying(width, height)) {
+        return {
+          ok: false as const,
+          error: `This is ${width}x${height}, which already scrubs smoothly — a stand-in would cost minutes and buy nothing.`
+        }
+      }
+      const out = join(generatedAudioDir(), `proxy-${randomUUID().slice(0, 8)}.mp4`)
+      await runFfmpeg(buildProxyArgs({ sourcePath, outPath: out, width, height }))
+      const [sourceSeconds, proxySeconds] = await Promise.all([ffprobeDuration(sourcePath), ffprobeDuration(out)])
+      const trust = proxyIsTrustworthy(sourceSeconds, proxySeconds)
+      if (!trust.ok) {
+        // Unusable: remove it rather than leave something tempting on disk.
+        try {
+          rmSync(out, { force: true })
+        } catch {
+          /* a leftover file is not worth failing over */
+        }
+        return { ok: false as const, error: trust.reason }
+      }
+      const size = proxySize(width, height)
+      return {
+        ok: true as const,
+        path: out,
+        note: `${trust.reason} Scrubbing ${size.width}x${size.height} instead of ${width}x${height}.`,
+        seconds: proxySeconds
+      }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Could not make the stand-in.' }
+    }
   })
 
   // WATCH ONE SCENE before committing to the whole render. A still cannot tell you whether

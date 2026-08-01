@@ -114,6 +114,32 @@ export default function TimelinePage(): React.JSX.Element {
   )
 
   const total = totalDuration(video)
+  /**
+   * Stand-ins for scrubbing, keyed by the clip's REAL path.
+   *
+   * Deliberately a display-only overlay: `video` (the clip list the render reads) always
+   * holds the master path, so a proxy can never end up in a finished video. Only what the
+   * player and the waveform LOAD is swapped.
+   */
+  const [proxies, setProxies] = useState<Record<string, string>>({})
+  const [proxyBusy, setProxyBusy] = useState<string | null>(null)
+
+  async function makeProxy(src: string): Promise<void> {
+    setProxyBusy(src)
+    try {
+      const res = await window.api.timelineProxy(src)
+      if (res.ok) {
+        setProxies((p) => ({ ...p, [src]: res.path }))
+        toast(res.note, 'success')
+      } else {
+        toast(res.error, 'error')
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Could not make the stand-in', 'error')
+    } finally {
+      setProxyBusy(null)
+    }
+  }
 
   async function addClips(): Promise<void> {
     const paths = await window.api.timeline.pickClips()
@@ -257,8 +283,28 @@ export default function TimelinePage(): React.JSX.Element {
                 <span className="flex-1 truncate text-sm text-ink-200" title={c.src}>{c.name ?? baseName(c.src)} {isImage(c.src) && <span className="text-ink-500">(image)</span>}</span>
                 <button onClick={() => move(c.id, -1)} disabled={i === 0} className="rounded px-2 py-1 text-xs text-ink-300 hover:bg-ink-800 disabled:opacity-30">↑</button>
                 <button onClick={() => move(c.id, 1)} disabled={i === video.length - 1} className="rounded px-2 py-1 text-xs text-ink-300 hover:bg-ink-800 disabled:opacity-30">↓</button>
+                {/* A stand-in for scrubbing a big clip. The render always uses the master —
+                    only what the PLAYER loads is swapped. */}
+                {!isImage(c.src) &&
+                  (proxies[c.src] ? (
+                    <span className="rounded border border-emerald-500/40 px-2 py-1 text-[11px] text-emerald-300" title="Scrubbing a small stand-in. Your cuts land in exactly the same place, and the finished video is still made from the original.">
+                      ✓ smooth scrubbing
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => void makeProxy(c.src)}
+                      disabled={proxyBusy !== null}
+                      title="Makes a small stand-in copy so scrubbing is smooth. It is the same length as the original, so your cuts land in exactly the same place — and the finished video is still made from the full-quality file."
+                      className="rounded border border-ink-700 px-2 py-1 text-[11px] text-ink-300 hover:border-gold-500 disabled:opacity-40"
+                    >
+                      {proxyBusy === c.src ? 'Making…' : '⚡ Scrub smoothly'}
+                    </button>
+                  ))}
                 <button onClick={() => void removeVideo(c.id)} className="rounded px-2 py-1 text-xs text-red-400 hover:bg-red-950/40">Remove</button>
               </div>
+              {proxies[c.src] && (
+                <video src={`${fileUrl(proxies[c.src])}#t=${c.inSec}`} controls preload="metadata" className="mt-2 w-full rounded bg-black" />
+              )}
               <div className="mt-2 grid grid-cols-3 gap-3">
                 <NumField label="In (s)" value={c.inSec} min={0} onChange={(v) => patchVideo(c.id, { inSec: Math.min(v, c.outSec) })} />
                 <NumField label="Out (s)" value={c.outSec} min={0} onChange={(v) => patchVideo(c.id, { outSec: Math.max(v, c.inSec) })} />

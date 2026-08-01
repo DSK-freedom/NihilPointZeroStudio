@@ -71,6 +71,14 @@ THUMBNAILS ........ Script Writer -> "Test two thumbnails properly". Different v
 UNDO IN SCENES ..... Scene Studio -> Ctrl+Z, like the Timeline and Storyboard already had
 CRASHES ........... if the app ever closes on its own it now says so and writes it into
                     Settings -> Known Issues first, instead of vanishing silently
+RENDER FAILED? .... just press Build again. It reuses the narration it already recorded
+                    (the slow part) instead of speaking the whole script over. Only ever
+                    for the SAME words in the SAME voice - change a word and it starts fresh
+WATCH ONE SCENE ... Scene Studio -> any finished scene -> "Watch this scene". A few seconds,
+                    with the real camera move and look, instead of rendering the whole video
+BIG VIDEO LAGGY ... Timeline Editor -> "Scrub smoothly" on any clip over 1080p. Edits a small
+                    stand-in; your cuts land in exactly the same place; the finished video is
+                    still made from the full-quality original
 QUIETLY BETTER .... every render now: one encode instead of four (less quality lost), audio at
                     YouTube's own -14 LUFS target (so it stops turning you down), slow camera
                     movement on footage instead of a frozen frame, scene lengths that tighten

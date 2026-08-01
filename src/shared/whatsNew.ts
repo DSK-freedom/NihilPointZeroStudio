@@ -55,6 +55,14 @@ export const CHANGELOG: ChangeEntry[] = [
     where: 'Settings → What changed'
   },
   {
+    id: 'proxy-editing',
+    date: '2026-08-01',
+    title: 'Smooth scrubbing on big videos',
+    detail:
+      'A 4K clip has to be decoded every time you drag the scrubber, so the picture lags behind your finger and trimming to an exact word becomes guesswork. This makes a small stand-in copy to scrub against. It is built to be exactly the same length as the original, and that is checked afterwards rather than assumed — so a cut you make against the stand-in lands in precisely the same place. The finished video is still made from your full-quality file.',
+    where: 'Timeline Editor → "⚡ Scrub smoothly" on any clip bigger than 1080p'
+  },
+  {
     id: 'resume-render',
     date: '2026-08-01',
     title: 'A failed render no longer starts again from nothing',

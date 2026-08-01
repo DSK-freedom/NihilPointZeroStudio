@@ -155,6 +155,26 @@ export function makeFfmpegProgressLogger(
   }
 }
 
+/**
+ * Actually RUNS ffmpeg and returns its version banner.
+ *
+ * Deliberately an execution rather than an existsSync: antivirus quarantine leaves the
+ * file exactly where it was and refuses to run it, so "the file is there" is not the
+ * check. This is what the preflight uses to tell a missing ffmpeg from a blocked one.
+ * Bypasses the cancel machinery on purpose — it is not part of any render session.
+ */
+export function ffmpegVersionText(): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const proc = spawn(ffmpegPath, ['-version'])
+    let out = ''
+    proc.stdout.on('data', (d) => {
+      out += d.toString()
+    })
+    proc.on('error', reject)
+    proc.on('exit', (code) => (code === 0 ? resolve(out) : reject(new Error(`ffmpeg -version exited ${code}`))))
+  })
+}
+
 /** Runs ffmpeg with the given args; streams stderr to onLog. Rejects on non-zero exit. */
 export function runFfmpeg(args: string[], onLog?: (line: string) => void): Promise<void> {
   return new Promise<void>((resolve, reject) => {

@@ -22,9 +22,10 @@ import { buildSetMusicArgs, type MusicMode } from './music'
 import { buildTimelineArgs, videoTrackDuration } from './timeline'
 import { buildBeautifyArgs, type BeautifyOptions } from './beautify'
 import { buildCompositeArgs, type CompositeOptions } from './composite'
-import { chooseEncoderForJob, runEncodeWithFallback } from './encoder'
+import { chooseEncoderForJob, probeBestH264Encoder, runEncodeWithFallback } from './encoder'
+import { runPreflight } from '../preflight'
 import type { TimelineDoc } from '../../shared/types'
-import { ffprobeVideoSize } from './ffmpeg'
+import { ffmpegVersionText, ffprobeVideoSize } from './ffmpeg'
 import { generateCloudFootage } from './aiCloud'
 import { estimateReadingSeconds, writeSilentTrack } from './silentTrack'
 import { detectLocal, generateLocalClip } from './aiLocal'
@@ -91,6 +92,21 @@ export async function buildVideoFromScript(
 ): Promise<void> {
   // Clear any leftover Stop from a previous build so this fresh one isn't aborted.
   beginRenderSession()
+
+  // PREFLIGHT. Fail in one second rather than twenty minutes: the things checked here
+  // (ffmpeg refusing to execute, a work folder that cannot be written to, no disk space)
+  // all let the render start happily and then kill it at the end, with nothing to show
+  // and no clear reason. Warnings do NOT stop the render — this app is built to run
+  // offline on free tiers with software encoding, and a preflight that blocks that takes
+  // away more than it protects.
+  const pre = await runPreflight({
+    workDir: dirname(outPath),
+    runFfmpegVersion: async () => ffmpegVersionText(),
+    detectEncoder: () => probeBestH264Encoder()
+  })
+  for (const w of pre.warnings) onProgress?.(`⚠ ${w.name}: ${w.detail}`)
+  if (!pre.ok) throw new Error(pre.headline)
+
   const scratch = mkdtempSync(join(tmpdir(), 'finscript-vid-'))
   const wav = join(scratch, 'narration.wav')
   try {

@@ -12,6 +12,7 @@ import { useProducerTarget } from '../store/ProducerContext'
 import { fileUrl } from '../../../shared/mediaUrl'
 import HookRebuildPanel from '../components/HookRebuildPanel'
 import SourcesPanel from '../components/SourcesPanel'
+import DualLanguagePanel from '../components/DualLanguagePanel'
 import ReadAloudPanel from '../components/ReadAloudPanel'
 import RepurposePanel from '../components/RepurposePanel'
 
@@ -523,6 +524,12 @@ export default function WriterPage() {
                   silent reading hides exactly the faults that cost a retake. */}
               <div className="mt-3">
                 <ReadAloudPanel script={writer.body} />
+              </div>
+
+              {/* Both languages, with the codes right. Roman Urdu is ur-Latn, not en and
+                  not ur, and getting that wrong quietly costs reach. */}
+              <div className="mt-3">
+                <DualLanguagePanel title={writer.script?.title ?? ''} description={writer.body} />
               </div>
 
               {/* One script, everywhere it needs to go. Runs in the page — no AI, no

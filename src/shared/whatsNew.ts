@@ -55,6 +55,22 @@ export const CHANGELOG: ChangeEntry[] = [
     where: 'Settings → What changed'
   },
   {
+    id: 'dual-language-upload',
+    date: '2026-08-01',
+    title: 'Upload in both languages, with the codes right',
+    detail:
+      'YouTube shows every viewer the title and description in their own language, if you give it both. Roman Urdu is not English and not Urdu — it is its own code, ur-Latn, and labelling it wrong quietly costs you reach. It also warns before YouTube silently cuts a title over 100 characters or tags over 500.',
+    where: 'Script Writer → Upload in both languages'
+  },
+  {
+    id: 'competitor-gaps',
+    date: '2026-08-01',
+    title: 'What other channels get views on that you have never made',
+    detail:
+      'Trending tells you what is popular. This tells you what is popular that YOU have never covered — demand somebody has already proved, with nothing of your own competing for it. Every gap comes with the real videos behind it so you can check it, and it needs more than one channel covering something before it says anything.',
+    where: 'Your Channel → Find the gaps'
+  },
+  {
     id: 'read-aloud',
     date: '2026-08-01',
     title: 'Hear your script read out at double speed',

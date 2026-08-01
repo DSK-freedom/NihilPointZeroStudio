@@ -24,21 +24,24 @@ import type { QuestionCluster } from '../../../shared/commentMining'
 
 type Learned = Awaited<ReturnType<typeof window.api.channel.learn>>
 type Mined = Awaited<ReturnType<typeof window.api.channel.comments>>
+type Gaps = Awaited<ReturnType<typeof window.api.channel.gaps>>
 
 export default function ChannelPage(): React.JSX.Element {
   const [learned, setLearned] = useState<Learned | null>(null)
   const [mined, setMined] = useState<Mined | null>(null)
-  const [busy, setBusy] = useState<'learn' | 'comments' | null>(null)
+  const [gaps, setGaps] = useState<Gaps | null>(null)
+  const [busy, setBusy] = useState<'learn' | 'comments' | 'gaps' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [titleDraft, setTitleDraft] = useState('')
   const [score, setScore] = useState<Awaited<ReturnType<typeof window.api.channel.scoreTitle>> | null>(null)
   const [openSeries, setOpenSeries] = useState<Series | null>(null)
 
-  async function run(which: 'learn' | 'comments'): Promise<void> {
+  async function run(which: 'learn' | 'comments' | 'gaps'): Promise<void> {
     setBusy(which)
     setError(null)
     try {
       if (which === 'learn') setLearned(await window.api.channel.learn())
+      else if (which === 'gaps') setGaps(await window.api.channel.gaps())
       else setMined(await window.api.channel.comments())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read your channel.')
@@ -191,6 +194,69 @@ export default function ChannelPage(): React.JSX.Element {
               )}
             </div>
           </div>
+        )}
+      </div>
+
+      {/* ─── what others covered and this channel did not ──────────────────── */}
+      <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm text-ink-100 font-medium">What you have never covered</div>
+          <button
+            onClick={() => void run('gaps')}
+            disabled={busy !== null}
+            className="rounded-md bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-ink-950 text-xs font-medium px-3 py-1.5 transition-colors"
+            title="Compares the subjects other channels are getting views on against everything you have published"
+          >
+            {busy === 'gaps' ? 'Comparing…' : '🔍 Find the gaps'}
+          </button>
+        </div>
+        <p className="text-xs text-ink-400">
+          {gaps
+            ? gaps.headline
+            : 'Trending tells you what is popular. This tells you what is popular that YOU have never made — demonstrated demand, with nothing of your own competing for it.'}
+        </p>
+        {gaps && (
+          <div className="text-[11px] text-ink-600 mt-1">
+            Compared {gaps.myVideos} of your videos against {gaps.competitorVideos} from other channels
+            {gaps.unmatched > 0 && `, ${gaps.unmatched} of which were about something outside finance`}.
+          </div>
+        )}
+
+        {gaps && gaps.gaps.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {gaps.gaps.map((g) => (
+              <div key={g.topicId} className="rounded-md border border-ink-800 bg-ink-950 p-3">
+                <div className="text-xs text-ink-100 font-medium">{g.topic}</div>
+                <div className="text-xs text-ink-400 mt-1">{g.headline}</div>
+                {/* The real videos, so a gap can be checked rather than believed. */}
+                <div className="mt-1.5 space-y-0.5">
+                  {g.examples.map((ex) => (
+                    <div key={ex.title} className="text-[11px] text-ink-500">
+                      {ex.viewCount.toLocaleString()} · {ex.channelTitle} · “{ex.title}”
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {gaps && gaps.onlyMine.length > 0 && (
+          <details className="mt-3">
+            <summary className="text-xs text-ink-300 cursor-pointer">
+              {gaps.onlyMine.length} subject{gaps.onlyMine.length === 1 ? '' : 's'} only you cover
+            </summary>
+            <p className="text-[11px] text-ink-500 mt-1">
+              Either a moat or a waste of effort. Worth knowing which — nobody else will tell you.
+            </p>
+            <div className="mt-1 space-y-0.5">
+              {gaps.onlyMine.map((o) => (
+                <div key={o.topic} className="text-[11px] text-ink-400">
+                  {o.topic} — {o.myVideos} video{o.myVideos === 1 ? '' : 's'}
+                </div>
+              ))}
+            </div>
+          </details>
         )}
       </div>
 

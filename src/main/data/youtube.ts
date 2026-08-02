@@ -83,19 +83,18 @@ export interface MyVideo {
  * caller treats an empty history as "not enough data to say anything", which is the
  * honest answer when the data could not be read.
  */
-export async function fetchMyChannelVideos(maxVideos = 200): Promise<MyVideo[]> {
-  return (await readMyChannel(maxVideos)).videos
-}
-
 /**
- * The same read, but it says WHY it came back empty.
+ * Reads the user's own uploads AND says why, when it cannot.
  *
- * `fetchMyChannelVideos` above returns `[]` for a missing key, a missing channel id, a
- * key Google refuses, a dead connection and a channel with no videos alike, and its
- * callers then printed one sentence covering all five. Four of them are fixable by the
- * user in a minute; the fifth is not a fault. This is the same code path, keeping the
- * reason instead of throwing it away — see `ChannelReadProblem`. Existing callers that
- * only want the list keep working unchanged.
+ * This replaced `fetchMyChannelVideos`, which returned a bare `[]` for a missing key, a
+ * missing channel id, a key Google refuses, a dead connection and a channel with no
+ * videos alike — so its callers printed one sentence covering all five, and four of them
+ * were described wrongly by it. Four are fixable by the user in about a minute; the fifth
+ * is not a fault at all. The reason now travels with the result — see `ChannelReadProblem`.
+ *
+ * The old wrapper is gone rather than kept for compatibility: once the last caller moved
+ * across, the only thing still importing it was its own test, and a function alive only
+ * through its tests is the thing CLAUDE.md warns about.
  */
 export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[]; problem: ChannelReadProblem | null }> {
   const apiKey = getYouTubeApiKey()

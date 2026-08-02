@@ -956,8 +956,15 @@ export function registerIpcHandlers(): void {
    * to point at. Now the log says which of the reasons it was.
    */
   const logRead = (where: string, problem: { kind: string; detail?: string } | null): void => {
-    if (!problem) return
-    logActivity('ai', `${where}: could not read the channel`, `${problem.kind}${problem.detail ? ` — ${problem.detail}` : ''}`)
+    // Not every problem is a failure, and the log must not say otherwise. An empty
+    // channel means the read worked perfectly and there was nothing in it; a partial read
+    // returned real data. Filing either under "could not read the channel" would put a
+    // fault in his log for something that was not one — the same class of mistake as the
+    // red mark next to a paid key he had chosen not to use.
+    if (!problem || problem.kind === 'empty-channel') return
+    const headline =
+      problem.kind === 'partial' ? `${where}: read only part of the channel` : `${where}: could not read the channel`
+    logActivity('ai', headline, `${problem.kind}${problem.detail ? ` — ${problem.detail}` : ''}`)
   }
 
   ipcMain.handle(IPC.channelLearn, async () => {

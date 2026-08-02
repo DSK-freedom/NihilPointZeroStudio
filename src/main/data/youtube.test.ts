@@ -20,7 +20,7 @@ vi.mock('../store', () => ({
   getYouTubeChannelId: () => saved.channel
 }))
 
-const { readMyChannel, fetchMyChannelVideos } = await import('./youtube')
+const { readMyChannel } = await import('./youtube')
 
 let calls: string[] = []
 
@@ -72,12 +72,6 @@ describe('a working read', () => {
     await readMyChannel()
     expect(calls.some((c) => c.includes('/search'))).toBe(false)
     expect(calls.some((c) => c.includes('/playlistItems'))).toBe(true)
-  })
-
-  it('keeps the old list-only function working exactly as before', async () => {
-    mockFetch(healthyChannel)
-    // Every existing caller still gets a plain array; nothing had to change.
-    expect(await fetchMyChannelVideos()).toHaveLength(1)
   })
 })
 

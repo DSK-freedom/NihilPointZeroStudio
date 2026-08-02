@@ -36,7 +36,11 @@ export default function ChannelProblem({ problem }: { problem: ChannelReadProble
       <div className="text-[11px] text-ink-400 leading-relaxed">{notice.message}</div>
       {notice.offerSetup && (
         <Link
-          to="/settings"
+          // The hash is not decoration: Settings is a very long page and the walkthrough is
+          // far down it. Landing at the top and saying "scroll until you see it" is the
+          // sort of half-step this whole change exists to delete. SettingsPage scrolls to
+          // this id on arrival.
+          to="/settings#youtube-setup"
           className="inline-block rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 text-xs font-medium px-3 py-1.5 transition-colors"
         >
           Set it up — free, 3 minutes

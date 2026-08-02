@@ -326,12 +326,34 @@ export default function SettingsPage() {
   }
 
   async function refresh(): Promise<void> {
+    setSettings(await window.api.settings.get())
+  }
+
+  /**
+   * Used ONLY by the walkthrough, which can save the channel id itself.
+   *
+   * The channel box has to follow when the walkthrough writes it, or it keeps showing the
+   * old value and the save looks like it failed. But doing that inside `refresh()` was
+   * wrong: every Save button on this page calls refresh(), so typing a channel id and then
+   * saving anything else silently wiped what had been typed.
+   */
+  async function refreshIncludingChannel(): Promise<void> {
     const s = await window.api.settings.get()
     setSettings(s)
-    // The walkthrough can save the channel id itself, so the box has to follow along —
-    // otherwise it keeps showing the old value and looks like the save did not happen.
     setYtChannel(s.youtubeChannelId || '')
   }
+
+  /**
+   * Arrive at #youtube-setup and land ON the walkthrough, not at the top of a very long
+   * page. "Scroll down until you see it" is exactly the kind of half-step this page is
+   * supposed to be removing.
+   */
+  useEffect(() => {
+    if (window.location.hash !== '#youtube-setup') return
+    // After paint, or the element is not on the page yet to scroll to.
+    const t = setTimeout(() => document.getElementById('youtube-setup')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+    return () => clearTimeout(t)
+  }, [])
 
   async function handleSetProvider(provider: LLMProviderId): Promise<void> {
     setSettings(await window.api.settings.setProvider(provider))
@@ -855,7 +877,11 @@ export default function SettingsPage() {
       {/* The walkthrough. The old bare password box lived here and told the user to "get a
           free key from Google Cloud Console", which is not an instruction anybody can
           follow without already knowing the answer. */}
-      <YouTubeSetup hasKey={settings.hasYouTubeKey} savedChannelId={settings.youtubeChannelId || ''} onSaved={refresh} />
+      <YouTubeSetup
+        hasKey={settings.hasYouTubeKey}
+        savedChannelId={settings.youtubeChannelId || ''}
+        onSaved={refreshIncludingChannel}
+      />
 
       <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-3">
         <div className="flex items-center justify-between">

@@ -89,7 +89,7 @@ export async function verifySavedYouTubeKey(): Promise<KeyVerdict> {
       state: 'broken',
       title: 'No YouTube key is saved yet',
       message: 'Your Channel, the comment questions and the competitor gaps all read nothing until there is one.',
-      fix: 'Follow the four steps above — it is free and takes about three minutes.'
+      fix: 'Follow the numbered steps above — it is free and takes about three minutes.'
     }
   }
   return verifyYouTubeKey(saved)
@@ -149,6 +149,17 @@ export async function resolveYouTubeChannel(input: string, rawKey?: string): Pro
       fix: 'Paste your channel address — for example youtube.com/@yourname — or just your @name.'
     }
   }
+  if (inspectKeyShape(cleanPastedKey(input)).ok) {
+    // A key pasted into the channel box would be URL-encoded into the /search query
+    // string and logged by every proxy between here and Google — the one place the rest
+    // of this file works hard to keep keys out of. Refused before any request.
+    return {
+      ok: false,
+      certain: true,
+      problem: 'That looks like your API key, not your channel.',
+      fix: 'The key goes in the box in step 5. This box wants your channel — your @name, or the address of your channel page.'
+    }
+  }
   if (parsed.kind === 'video') {
     // Whatever is in the address bar is usually a video, so this is the likeliest wrong
     // paste there is. Saying so costs nothing; searching for it would cost 100 quota
@@ -174,6 +185,9 @@ export async function resolveYouTubeChannel(input: string, rawKey?: string): Pro
     attempts.push(`/channels?${parts}&forHandle=${encodeURIComponent('@' + parsed.value)}`)
   }
 
+  /** An exact id either exists or it does not — search cannot second-guess that. */
+  const exact = parsed.kind === 'id'
+
   for (const path of attempts) {
     const res = await callApi(path, key)
     if (!res) {
@@ -189,8 +203,18 @@ export async function resolveYouTubeChannel(input: string, rawKey?: string): Pro
       if (verdict.state === 'broken') return { ok: false, certain: true, problem: verdict.title, fix: verdict.fix }
       return { ok: false, certain: false, problem: verdict.state === 'unknown' ? verdict.title : 'Unexpected reply', fix: 'Try again in a moment.' }
     }
-    const found = toResolution((res.body as { items?: ChannelApiItem[] })?.items, parsed.kind === 'id' ? parsed.value : undefined)
+    const found = toResolution((res.body as { items?: ChannelApiItem[] })?.items, exact ? parsed.value : undefined)
     if (found) return found
+    if (exact) {
+      // Google answered, and the answer was "no such channel". Spending 100 units
+      // searching for a 24-character random string cannot turn that into a yes.
+      return {
+        ok: false,
+        certain: true,
+        problem: 'Google has no channel with that ID.',
+        fix: 'Check for a missing character, or paste your channel address instead — youtube.com/@yourname works here too.'
+      }
+    }
   }
 
   // Last resort: a real search. 100 units of the daily 10,000 — a hundredth of a day's

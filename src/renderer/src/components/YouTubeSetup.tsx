@@ -105,6 +105,18 @@ export default function YouTubeSetup({
     // used to clean its own copy while the raw text was what got stored, so a key pasted
     // with quotes round it passed the check and was saved broken.
     const candidate = cleanPastedKey(key)
+    if (key.trim() && !candidate) {
+      // Something IS in the box, and cleaning it left nothing. Falling through here would
+      // check the SAVED key and report a verdict about a key the user is not looking at.
+      setVerdict({
+        state: 'broken',
+        title: 'There is nothing usable in that box',
+        message: 'What was pasted is punctuation and spaces with no key in it.',
+        fix: 'Copy the key again from step 4 — it is one unbroken run of letters and digits starting with AIza.'
+      })
+      setChecking(false)
+      return
+    }
     try {
       const v = await window.api.youtube.verifyKey(candidate || undefined)
       setVerdict(v)

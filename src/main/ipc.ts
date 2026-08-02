@@ -1199,6 +1199,18 @@ export function registerIpcHandlers(): void {
     const read = await readMyChannel()
     logRead('Competitor gaps', read.problem)
     const mine = read.videos.map((v) => ({ title: v.title, views: v.views, publishedAt: v.publishedAt }))
+
+    // STOP BEFORE SPENDING 800 QUOTA UNITS ON A QUESTION THAT CANNOT BE ANSWERED.
+    // Each of the eight searches below costs 100 units of the daily 10,000 — one press of
+    // this button is 8% of the day. A "gap" is a subject other channels cover and THIS one
+    // does not, so with no videos of our own there is nothing to compare against and every
+    // result would be discarded. Worse, the commonest way to reach here with no videos is
+    // a key that was just refused, which means the whole 800 would be spent to produce an
+    // empty page. The problem notice already explains what to fix.
+    if (read.problem && !mine.length) {
+      return { ...gapReport([], []), problem: read.problem, myVideos: 0, competitorVideos: 0, queries: [] }
+    }
+
     const queries = searchQueries(mine)
     const theirs: { title: string; channelTitle: string; viewCount: number; publishedAt?: string }[] = []
     const mineTitles = new Set(mine.map((m) => m.title.toLowerCase()))

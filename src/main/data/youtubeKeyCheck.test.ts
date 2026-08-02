@@ -185,6 +185,25 @@ describe('finding the channel', () => {
     expect(calls).toHaveLength(0)
   })
 
+  it('refuses an API KEY pasted into the channel box, before it can reach a URL', async () => {
+    // The search query goes in the URL. A key mis-pasted here would be logged by every
+    // proxy between the PC and Google — the one thing the rest of this file prevents.
+    mockFetch(() => ({ status: 200, body: channelBody }))
+    const r = await resolveYouTubeChannel('AIzaSyGoodKeyxxxxxxxxxxxxxxxxxxxxxxxxx')
+    expect(r.ok).toBe(false)
+    expect(r.ok === false && /looks like your API key/i.test(r.problem)).toBe(true)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('does not spend 100 units searching after an exact ID came back "no such channel"', async () => {
+    mockFetch(() => ({ status: 200, body: { items: [] } }))
+    const r = await resolveYouTubeChannel('UCabcdefghijklmnopqrstuv')
+    expect(r.ok).toBe(false)
+    expect(r.ok === false && /no channel with that ID/i.test(r.problem)).toBe(true)
+    expect(calls.some((c) => c.includes('/search'))).toBe(false)
+    expect(calls).toHaveLength(1)
+  })
+
   it('says nothing was typed rather than searching for an empty string', async () => {
     mockFetch(() => ({ status: 200, body: {} }))
     const r = await resolveYouTubeChannel('   ')

@@ -35,6 +35,7 @@ export default function ChannelPage(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [titleDraft, setTitleDraft] = useState('')
   const [score, setScore] = useState<Awaited<ReturnType<typeof window.api.channel.scoreTitle>> | null>(null)
+  const [scoring, setScoring] = useState(false)
   const [openSeries, setOpenSeries] = useState<Series | null>(null)
 
   async function run(which: 'learn' | 'comments' | 'gaps'): Promise<void> {
@@ -185,11 +186,21 @@ export default function ChannelPage(): React.JSX.Element {
                   className="flex-1 rounded-md bg-ink-950 border border-ink-700 text-ink-200 text-xs px-2 py-1.5"
                 />
                 <button
-                  onClick={() => void window.api.channel.scoreTitle(titleDraft).then(setScore)}
-                  disabled={!titleDraft.trim()}
+                  // Guarded: each press is a FULL channel read, so an impatient double-click
+                  // spent the quota twice and let two replies race — the slower one winning
+                  // and scoring a title the user had already changed.
+                  onClick={() => {
+                    if (scoring) return
+                    setScoring(true)
+                    void window.api.channel
+                      .scoreTitle(titleDraft)
+                      .then(setScore)
+                      .finally(() => setScoring(false))
+                  }}
+                  disabled={!titleDraft.trim() || scoring}
                   className="rounded-md border border-gold-500/40 text-gold-400 hover:bg-gold-500/10 disabled:opacity-40 text-xs px-3 py-1.5 transition-colors"
                 >
-                  Score it
+                  {scoring ? 'Reading your videos…' : 'Score it'}
                 </button>
               </div>
               {score?.problem && (

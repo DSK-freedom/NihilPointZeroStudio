@@ -175,7 +175,14 @@ export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[
         headers: keyHeader,
         signal: AbortSignal.timeout(20_000)
       })
-      if (!res.ok) continue
+      if (!res.ok) {
+        // Not a shrug. Every video in this batch would otherwise be recorded as having
+        // ZERO views — a number, not a blank — and the title analysis would then conclude
+        // that whatever those titles have in common does not work. A false figure is worse
+        // than a missing one, so the read reports itself as incomplete.
+        truncated = truncated || `The view counts for ${Math.min(50, found.length - i)} of your videos could not be read.`
+        continue
+      }
       const data = await res.json()
       for (const it of (data.items ?? []) as {
         id: string

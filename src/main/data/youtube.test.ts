@@ -140,6 +140,20 @@ describe('the five ways it can come back empty', () => {
   })
 })
 
+describe('missing view counts are not zero view counts', () => {
+  it('reports a failed statistics page instead of recording every video as 0 views', async () => {
+    // Swallowed, this fed "which of your titles worked" a batch of false zeros and the
+    // analysis would conclude those titles do not work.
+    mockFetch((url) =>
+      url.includes('/videos?part=statistics') ? { status: 403, body: {} } : healthyChannel(url)
+    )
+    const r = await readMyChannel()
+    expect(r.videos).toHaveLength(1)
+    expect(r.problem?.kind).toBe('partial')
+    expect(r.problem?.kind === 'partial' && /view counts/i.test(r.problem.detail)).toBe(true)
+  })
+})
+
 describe('Google breaking is not Google refusing', () => {
   it('reports a 500 as google-error, never as refused', async () => {
     mockFetch(() => ({ status: 500, body: {} }))

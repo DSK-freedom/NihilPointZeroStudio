@@ -154,7 +154,16 @@ that does.
 
 **Cost:** about 4 of the free 10,000 daily YouTube requests to read a hundred videos. It
 goes through the uploads playlist, not the search endpoint — search costs 100 units per
-call, so eight calls would burn a tenth of your day.
+call, so eight calls would burn a tenth of your day. Checking a key costs 1 unit; finding
+your channel from an @name costs 1 more.
+
+**When it reads nothing, it now says which of five reasons it was.** This used to be a
+single sentence — "no videos could be read, check the YouTube key and channel ID in
+Settings" — printed for all five, and it described four of them wrongly. The five: no key
+yet; a key but no channel set; Google refused the request (with Google's own reason
+translated); could not reach YouTube at all; or everything is working and the channel
+genuinely has no videos yet. The last one is not a fault, and the fourth is the app saying
+it does not know rather than making a claim about your channel.
 
 ### In the Script Writer
 - **Read it to me.** Hears the script back at 2x with the pitch held, so it still sounds
@@ -872,7 +881,14 @@ numbers** — if a figure can't be derived, it says so.
 - **Natural voice (Piper)** — a one-time ~80 MB download (already done on this PC).
 - **Offline music separation (Demucs)** — needs Python (already set up on this PC); not needed
   if you have internet (the Online button removes music).
-- **YouTube signals / Pixabay stock footage** — optional free API keys in Settings.
+- **YouTube (Your channel, comment questions, competitor gaps)** — needs the free YouTube
+  Data API key, and **Settings → Connect YouTube** now walks you through getting one: five
+  numbered steps, a button on each that opens the exact Google page, then a real test of the
+  key with a plain-English answer if it fails. It also finds your channel ID from your @name,
+  so the buried "UC..." string is no longer something you have to know. Free, ~3 minutes, no
+  card. **Until it is done, those three features read nothing** — and they now say so with
+  the reason, instead of showing an empty panel.
+- **Pixabay / Pexels stock footage** — optional free API keys in Settings.
 
 ## What it deliberately does NOT do (so you're never misled)
 - **NCCPL live auto-fetch** — NCCPL's portal blocks automated access, so the app does NOT scrape

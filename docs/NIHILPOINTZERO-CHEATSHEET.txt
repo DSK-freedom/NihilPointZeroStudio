@@ -54,6 +54,14 @@ YOUR CHANNEL ...... a new tab. Reads YOUR OWN videos and tells you which title s
                     written for you). Also reads your COMMENTS and ranks the questions people
                     keep asking, quoted word for word. Needs the YouTube key + channel ID in
                     Settings; costs about 4 of the 10,000 free daily requests.
+CONNECT YOUTUBE ... Settings -> "Connect YouTube" -> "Show me how". Free, ~3 min, no card. Five
+                    steps, each with a button that opens the exact page. Paste the key, press
+                    Check: the app really tries it and says in plain English what is wrong and
+                    which step fixes it. Then type your @name and it finds your channel ID for
+                    you (YouTube hides it three menus deep) and shows the channel name back so
+                    you can see it got the right one. Empty result? It now says WHICH of the
+                    five reasons — including "could not reach YouTube", which is not the same
+                    as "you have no videos".
 READ IT TO ME ..... Script Writer -> hear your script spoken at 2x, with a list of what to listen
                     for: sentences too long for one breath, a word said twice, a number you cannot
                     read aloud, a line that switches language. A 12-min script proofs in 6 min.

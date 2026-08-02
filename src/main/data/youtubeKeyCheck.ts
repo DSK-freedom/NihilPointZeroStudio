@@ -150,6 +150,17 @@ export async function resolveYouTubeChannel(input: string, rawKey?: string): Pro
       fix: 'Paste your channel address — for example youtube.com/@yourname — or just your @name.'
     }
   }
+  if (parsed.kind === 'video') {
+    // Whatever is in the address bar is usually a video, so this is the likeliest wrong
+    // paste there is. Saying so costs nothing; searching for it would cost 100 quota
+    // units and come back with somebody else's channel.
+    return {
+      ok: false,
+      certain: true,
+      problem: 'That is a link to a video, not to your channel.',
+      fix: 'Open the video, click your own channel name underneath it, and copy the address from the bar then — it will look like youtube.com/@yourname.'
+    }
+  }
 
   const parts = 'part=snippet,statistics'
   const attempts: string[] = []

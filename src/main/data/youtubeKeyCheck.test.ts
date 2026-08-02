@@ -161,6 +161,14 @@ describe('finding the channel', () => {
     expect(calls).toHaveLength(0)
   })
 
+  it('refuses a pasted VIDEO link without spending 100 units searching for "watch"', async () => {
+    mockFetch(() => ({ status: 200, body: channelBody }))
+    const r = await resolveYouTubeChannel('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    expect(r.ok).toBe(false)
+    expect(r.ok === false && /link to a video/i.test(r.problem)).toBe(true)
+    expect(calls).toHaveLength(0)
+  })
+
   it('says nothing was typed rather than searching for an empty string', async () => {
     mockFetch(() => ({ status: 200, body: {} }))
     const r = await resolveYouTubeChannel('   ')

@@ -127,6 +127,60 @@ describe('reading Google’s answer', () => {
     expect(v.state === 'broken' && /locked to something else/i.test(v.title)).toBe(true)
   })
 
+  it('finds the real reason when Google buries it under a useless one — this was a live bug', () => {
+    // Google's ACTUAL body for a referrer-restricted key. `errors[0].reason` is
+    // "forbidden", which says nothing, and it comes first; `status` is PERMISSION_DENIED,
+    // which a switched-off service also sends. The only useful reason is in `details`.
+    // Reading just the first reason meant this branch could never fire, and the user was
+    // sent to re-enable a service that was already on.
+    const restricted = classifyKeyResponse(403, {
+      error: {
+        code: 403,
+        message: 'Requests from referer <empty> are blocked.',
+        errors: [{ message: 'Requests from referer <empty> are blocked.', domain: 'global', reason: 'forbidden' }],
+        status: 'PERMISSION_DENIED',
+        details: [{ '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason: 'API_KEY_HTTP_REFERRER_BLOCKED' }]
+      }
+    })
+    expect(restricted.state).toBe('broken')
+    if (restricted.state !== 'broken') return
+    expect(restricted.title).toMatch(/locked to something else/i)
+    expect(restricted.fix).toMatch(/Application restrictions/i)
+  })
+
+  it('does not let PERMISSION_DENIED alone masquerade as a switched-off service', () => {
+    // Both a restricted key and a disabled service send PERMISSION_DENIED, so on its own
+    // it is evidence of nothing. A wrong guess here sends the user to redo a correct step.
+    const bare = classifyKeyResponse(403, { error: { status: 'PERMISSION_DENIED', message: 'The caller does not have permission' } })
+    expect(bare.state).toBe('broken')
+    if (bare.state !== 'broken') return
+    expect(bare.title).toMatch(/refused/i)
+    expect(bare.title).not.toMatch(/switched off/i)
+  })
+
+  it('still recognises a switched-off service from its own real body', () => {
+    const disabled = classifyKeyResponse(403, {
+      error: {
+        code: 403,
+        message: 'YouTube Data API v3 has not been used in project 12345 before or it is disabled.',
+        errors: [{ message: 'YouTube Data API v3 has not been used in project 12345 before or it is disabled.', domain: 'usageLimits', reason: 'accessNotConfigured' }],
+        status: 'PERMISSION_DENIED',
+        details: [{ '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason: 'SERVICE_DISABLED' }]
+      }
+    })
+    expect(disabled.state === 'broken' && /switched off/i.test(disabled.title)).toBe(true)
+  })
+
+  it('picks quota over everything else, since a spent allowance also arrives as 403', () => {
+    const quota = classifyKeyResponse(403, {
+      error: {
+        errors: [{ domain: 'youtube.quota', reason: 'quotaExceeded', message: 'The request cannot be completed because you have exceeded your quota.' }],
+        status: 'RESOURCE_EXHAUSTED'
+      }
+    })
+    expect(quota.state === 'broken' && /allowance/i.test(quota.title)).toBe(true)
+  })
+
   it('treats a spent daily allowance as "nothing to fix", not as a broken key', () => {
     const v = classifyKeyResponse(403, { error: { errors: [{ reason: 'quotaExceeded' }] } })
     expect(v.state).toBe('broken')
@@ -224,6 +278,19 @@ describe('what the user pastes for their channel', () => {
 
   it('says empty rather than guessing', () => {
     expect(normalizeChannelInput('  ').kind).toBe('empty')
+  })
+
+  it('spots a VIDEO link, which is what is in the address bar most of the time', () => {
+    // Left unhandled, "youtube.com/watch?v=..." parses as a channel called "watch" and
+    // costs 100 quota units to search for, then finds somebody else's channel.
+    for (const url of [
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      'https://youtu.be/dQw4w9WgXcQ',
+      'https://www.youtube.com/shorts/abc123',
+      'https://www.youtube.com/live/abc123'
+    ]) {
+      expect(normalizeChannelInput(url).kind).toBe('video')
+    }
   })
 
   it('falls back to a search for anything with spaces in it', () => {

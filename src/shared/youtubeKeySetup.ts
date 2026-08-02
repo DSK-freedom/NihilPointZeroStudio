@@ -157,11 +157,29 @@ export function inspectKeyShape(key: string): { ok: boolean; problem?: string; f
   return { ok: true }
 }
 
-/** Pull Google's machine-readable reason out of whatever error shape came back. */
+/**
+ * Every machine-readable reason in the reply, joined — not just the first one.
+ *
+ * WHY ALL OF THEM. Google sends a restricted key back as
+ *
+ *   errors: [{ reason: 'forbidden' }]            <- useless, and it comes FIRST
+ *   status: 'PERMISSION_DENIED'                  <- also what a disabled service says
+ *   details: [{ reason: 'API_KEY_HTTP_REFERRER_BLOCKED' }]   <- the only useful one
+ *
+ * Reading only `errors[0].reason` therefore saw "forbidden" and gave up, and the
+ * restricted-key branch below could never fire at all. Reading only `status` cannot
+ * tell a restricted key from a switched-off service, because both say PERMISSION_DENIED.
+ * The specific reason is the one in `details`, so all three are gathered and the
+ * branches below are ordered specific-first.
+ */
 function reasonOf(body: unknown): string {
-  const err = (body as { error?: { errors?: { reason?: string }[]; status?: string; details?: { reason?: string }[] } })?.error
+  const err = (body as {
+    error?: { errors?: { reason?: string }[]; status?: string; details?: { reason?: string }[] }
+  })?.error
   if (!err) return ''
-  return (err.errors?.[0]?.reason || err.details?.find((d) => d?.reason)?.reason || err.status || '').toString()
+  return [...(err.errors ?? []).map((e) => e?.reason), ...(err.details ?? []).map((d) => d?.reason), err.status]
+    .filter((r): r is string => typeof r === 'string' && r.length > 0)
+    .join(' ')
 }
 
 function messageOf(body: unknown): string {
@@ -186,12 +204,40 @@ export function classifyKeyResponse(status: number, body: unknown): KeyVerdict {
   const reason = reasonOf(body)
   const detail = messageOf(body)
 
-  if (/SERVICE_DISABLED|accessNotConfigured|PERMISSION_DENIED/i.test(reason) || /has not been used in project|is disabled/i.test(detail)) {
+  // ORDER MATTERS BELOW, and it is not cosmetic. A restricted key and a switched-off
+  // service BOTH come back as 403 PERMISSION_DENIED; only the specific reason in
+  // `details` tells them apart, and they have opposite fixes. So every branch that keys
+  // on a specific reason runs before the generic ones, and PERMISSION_DENIED on its own
+  // is treated as "refused, cause unstated" rather than as evidence of anything.
+
+  if (status === 429 || /quotaExceeded|dailyLimitExceeded|rateLimitExceeded|RESOURCE_EXHAUSTED/i.test(reason)) {
+    return {
+      state: 'broken',
+      title: "Today's free allowance is used up",
+      message:
+        'The key itself is fine. The 10,000 free daily requests for this project have all been spent, and Google resets them at midnight Pacific time (about 12 noon in Pakistan).',
+      fix: 'Nothing to fix — try again after the reset. Reading your own channel normally costs about four of the ten thousand, so if this happened straight away the project is probably shared with something else.',
+      fixUrl: QUOTA_URL
+    }
+  }
+
+  if (/ipRefererBlocked|API_KEY_HTTP_REFERRER_BLOCKED|API_KEY_IP_ADDRESS_BLOCKED|API_KEY_ANDROID_APP_BLOCKED|API_KEY_IOS_APP_BLOCKED|API_KEY_API_CALL_NOT_VALID|API_KEY_SERVICE_BLOCKED/i.test(reason)) {
+    return {
+      state: 'broken',
+      title: 'This key is locked to something else',
+      message:
+        'The key exists and the service is on, but it has a restriction on it — either to certain websites or apps, or to a list of services that does not include YouTube.',
+      fix: 'Open the credentials page, click your key, and set Application restrictions to "None". If you set API restrictions, add "YouTube Data API v3" to the list. Save, wait a minute, then Check again.',
+      fixUrl: CREDENTIALS_URL
+    }
+  }
+
+  if (/SERVICE_DISABLED|accessNotConfigured/i.test(reason) || /has not been used in project|is disabled/i.test(detail)) {
     return {
       state: 'broken',
       title: 'The key is fine — the YouTube service is switched off',
       message:
-        'Google made the key, but the YouTube Data API has not been enabled on that project yet. This is the most common one, and it is a single click to fix.',
+        'Google made the key, but the YouTube service has not been enabled on that project yet. This is the most common one, and it is a single click to fix.',
       fix: 'Open the enable page, check your project name is at the top, and click ENABLE. Then come back and press Check again. It can take a minute to take effect.',
       fixUrl: ENABLE_API_URL
     }
@@ -204,28 +250,6 @@ export function classifyKeyResponse(status: number, body: unknown): KeyVerdict {
       message: 'The key was rejected outright, which almost always means a character went missing while copying it.',
       fix: 'Go back to the credentials page and copy the key again with the copy button beside it, rather than selecting the text by hand.',
       fixUrl: CREDENTIALS_URL
-    }
-  }
-
-  if (/ipRefererBlocked|API_KEY_HTTP_REFERRER_BLOCKED|API_KEY_IP_ADDRESS_BLOCKED|API_KEY_ANDROID_APP_BLOCKED|API_KEY_IOS_APP_BLOCKED|API_KEY_API_CALL_NOT_VALID|API_KEY_SERVICE_BLOCKED/i.test(reason)) {
-    return {
-      state: 'broken',
-      title: 'This key is locked to something else',
-      message:
-        'The key exists and the service is on, but it has a restriction on it — either to certain websites or apps, or to a list of APIs that does not include YouTube.',
-      fix: 'Open the credentials page, click your key, and set Application restrictions to "None". If you set API restrictions, add "YouTube Data API v3" to the list. Save, wait a minute, then Check again.',
-      fixUrl: CREDENTIALS_URL
-    }
-  }
-
-  if (status === 429 || /quotaExceeded|dailyLimitExceeded|rateLimitExceeded|RESOURCE_EXHAUSTED/i.test(reason)) {
-    return {
-      state: 'broken',
-      title: "Today's free allowance is used up",
-      message:
-        'The key itself is fine. The 10,000 free daily requests for this project have all been spent, and Google resets them at midnight Pacific time (about 12 noon in Pakistan).',
-      fix: 'Nothing to fix — try again after the reset. Reading your own channel normally costs about four of the ten thousand, so if this happened straight away the project is probably shared with something else.',
-      fixUrl: QUOTA_URL
     }
   }
 
@@ -356,6 +380,8 @@ export type ChannelInput =
   | { kind: 'handle'; value: string }
   | { kind: 'username'; value: string }
   | { kind: 'search'; value: string }
+  /** A link to a VIDEO, not a channel — worth naming, because searching for it costs 100 units and finds nothing. */
+  | { kind: 'video'; value: string }
   | { kind: 'empty'; value: '' }
 
 /**
@@ -369,6 +395,12 @@ export type ChannelInput =
 export function normalizeChannelInput(raw: string): ChannelInput {
   const text = (raw ?? '').trim().replace(/^["'<]|[">']$/g, '')
   if (!text) return { kind: 'empty', value: '' }
+
+  // A link to a video is the single likeliest wrong paste — it is what is in the address
+  // bar most of the time. Caught before the URL parse below, which would otherwise read
+  // "watch" as a channel name and spend 100 quota units searching for it.
+  const videoUrl = text.match(/(?:youtube\.com\/(?:watch\?|shorts\/|live\/)|youtu\.be\/)/i)
+  if (videoUrl) return { kind: 'video', value: text }
 
   const urlMatch = text.match(/(?:youtube\.com|youtu\.be)\/(channel|c|user)?\/?(@?[\w.-]+)/i)
   if (urlMatch) {

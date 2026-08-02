@@ -215,7 +215,11 @@ export default function ChannelPage(): React.JSX.Element {
           </button>
         </div>
         <p className="text-xs text-ink-400">
-          {gaps
+          {/* The headline is only true if something was actually read. With no key it says
+              "No competitor videos read yet — search a topic first", which is a statement
+              about the channel rather than about the read having failed, sitting directly
+              above a card saying nothing could be read. Suppressed when there is a problem. */}
+          {gaps && !gaps.problem
             ? gaps.headline
             : 'Trending tells you what is popular. This tells you what is popular that YOU have never made — demonstrated demand, with nothing of your own competing for it.'}
         </p>
@@ -225,7 +229,7 @@ export default function ChannelPage(): React.JSX.Element {
           </div>
         )}
 
-        {gaps && (
+        {gaps && !gaps.problem && (
           <div className="text-[11px] text-ink-600 mt-1">
             Compared {gaps.myVideos} of your videos against {gaps.competitorVideos} from other channels
             {gaps.unmatched > 0 && `, ${gaps.unmatched} of which were about something outside finance`}.
@@ -284,7 +288,9 @@ export default function ChannelPage(): React.JSX.Element {
           </button>
         </div>
         <p className="text-xs text-ink-400">
-          {mined
+          {/* Same trap: summarise(0 comments) says "No comments to read yet", which reads as
+              a fact about the audience when in truth nothing was read at all. */}
+          {mined && !mined.problem
             ? mined.summary
             : 'Nobody reads two thousand comments. The same question asked forty times is a video with an audience before you record a frame.'}
         </p>

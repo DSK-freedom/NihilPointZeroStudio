@@ -265,7 +265,9 @@ export default function YouTubeSetup({
             </div>
             {found?.ok && (
               <div className="rounded-md border border-emerald-500/40 bg-emerald-500/5 p-3 flex items-center gap-3">
-                {found.thumbnail && <img src={found.thumbnail} alt="" className="h-10 w-10 rounded-full" />}
+                {/* No avatar: the app's CSP is img-src 'self' data: file:, so a Google-hosted
+                    picture would render as a broken-image icon exactly where the user is being
+                    asked to confirm. The name and the video count are the real check. */}
                 <div>
                   <div className="text-xs text-emerald-300 font-medium">✓ Saved: {found.title}</div>
                   <div className="text-[11px] text-ink-500 font-mono">{found.channelId}</div>

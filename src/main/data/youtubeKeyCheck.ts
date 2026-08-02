@@ -99,7 +99,7 @@ export type { ChannelResolution }
 
 interface ChannelApiItem {
   id?: string
-  snippet?: { title?: string; thumbnails?: { default?: { url?: string } } }
+  snippet?: { title?: string }
   statistics?: { videoCount?: string; subscriberCount?: string }
 }
 
@@ -111,7 +111,6 @@ function toResolution(items: ChannelApiItem[] | undefined, fallbackId?: string):
     ok: true,
     channelId,
     title: item.snippet?.title ?? channelId,
-    thumbnail: item.snippet?.thumbnails?.default?.url,
     videoCount: item.statistics?.videoCount === undefined ? undefined : Number(item.statistics.videoCount),
     subscribers: item.statistics?.subscriberCount === undefined ? undefined : Number(item.statistics.subscriberCount)
   }
@@ -209,15 +208,9 @@ export async function resolveYouTubeChannel(input: string, rawKey?: string): Pro
       fix: 'Check the internet connection and press Find my channel again. Nothing has been saved.'
     }
   }
-  const hit = (searchRes.body as { items?: { id?: { channelId?: string }; snippet?: { title?: string; thumbnails?: { default?: { url?: string } } } }[] })
-    ?.items?.[0]
+  const hit = (searchRes.body as { items?: { id?: { channelId?: string }; snippet?: { title?: string } }[] })?.items?.[0]
   if (searchRes.status < 400 && hit?.id?.channelId) {
-    return {
-      ok: true,
-      channelId: hit.id.channelId,
-      title: hit.snippet?.title ?? hit.id.channelId,
-      thumbnail: hit.snippet?.thumbnails?.default?.url
-    }
+    return { ok: true, channelId: hit.id.channelId, title: hit.snippet?.title ?? hit.id.channelId }
   }
 
   return {

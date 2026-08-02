@@ -300,8 +300,17 @@ export function offlineVerdict(): KeyVerdict {
  * Google is not evidence the channel does not exist.
  */
 export type ChannelResolution =
-  | { ok: true; channelId: string; title: string; thumbnail?: string; videoCount?: number; subscribers?: number }
+  | { ok: true; channelId: string; title: string; videoCount?: number; subscribers?: number }
   | { ok: false; problem: string; fix: string; certain: boolean }
+
+/**
+ * NO CHANNEL AVATAR HERE, DELIBERATELY. The obvious way to show "is this the right
+ * channel?" is the channel's picture, and it does not work: the app's own
+ * Content-Security-Policy is `img-src 'self' data: file:`, so a Google-hosted avatar is
+ * blocked and renders as a broken-image icon at the exact moment the user is being asked
+ * to confirm. Widening the CSP for a decoration is the wrong trade — the channel NAME
+ * and its video count are what a person can actually check anyway.
+ */
 
 /**
  * Why a read of the user's own channel came back with nothing.

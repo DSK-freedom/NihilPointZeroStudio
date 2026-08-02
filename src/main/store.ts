@@ -15,6 +15,7 @@ import type {
   VideoJob
 } from '../shared/types'
 import { DEFAULT_PIPER_VOICE_ID, resolvePiperVoiceId } from './voice/piperVoices'
+import { cleanPastedKey } from '../shared/youtubeKeySetup'
 
 interface PersistedSettings {
   activeProvider: LLMProviderId
@@ -353,9 +354,19 @@ export function getModel(provider: LLMProviderId): string {
   return s.ollamaModel
 }
 
+/**
+ * Saves the key the way it was VERIFIED, not the way it was typed.
+ *
+ * The check applies `cleanPastedKey` before contacting Google, so a key pasted as
+ * `"AIza…"` — with the quotes a copy out of a document leaves behind — passed the check
+ * and was then stored with the quotes still attached. Every later request failed, and the
+ * screen said the key was working, because it had been. Cleaning here as well as in the
+ * checker means the two can never disagree again whatever the caller does.
+ */
 export function setYouTubeApiKey(rawKey: string): ProviderSettings {
   const s = readSettings()
-  s.youtubeKeyEnc = rawKey ? encrypt(rawKey) : null
+  const key = cleanPastedKey(rawKey ?? '')
+  s.youtubeKeyEnc = key ? encrypt(key) : null
   writeSettings(s)
   return getSettings()
 }

@@ -146,6 +146,14 @@ describe('the five ways it can come back empty', () => {
   })
 })
 
+describe('Google breaking is not Google refusing', () => {
+  it('reports a 500 as google-error, never as refused', async () => {
+    mockFetch(() => ({ status: 500, body: {} }))
+    const r = await readMyChannel()
+    expect(r.problem?.kind).toBe('google-error')
+  })
+})
+
 describe('a refusal partway through', () => {
   it('keeps the pages that did come back rather than throwing the read away', async () => {
     let page = 0
@@ -167,8 +175,10 @@ describe('a refusal partway through', () => {
       return { status: 200, body: { items: [{ id: 'v1', statistics: { viewCount: '5' } }] } }
     })
     const r = await readMyChannel()
-    // Half an answer beats none, and it is not reported as a failure.
+    // Half an answer beats none — but it is reported AS half an answer. Returning it with
+    // problem: null let an incomplete history quietly become "what works on your channel".
     expect(r.videos).toHaveLength(1)
-    expect(r.problem).toBeNull()
+    expect(r.problem?.kind).toBe('partial')
+    expect(r.problem?.kind === 'partial' && /partway through/i.test(r.problem.detail)).toBe(true)
   })
 })

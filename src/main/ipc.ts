@@ -91,7 +91,7 @@ import { buildScenePreviewArgs, previewSeconds } from './video/scenePreview'
 import { buildProxyArgs, proxyIsTrustworthy, proxySize, worthProxying } from './video/proxy'
 import { KEN_BURNS_MOTIONS } from './video/render'
 import { searchYouTubeSignals } from './data/youtube'
-import { fetchComments, fetchMyChannelVideos, readMyChannel } from './data/youtube'
+import { fetchComments, readMyChannel } from './data/youtube'
 import { resolveYouTubeChannel, verifySavedYouTubeKey, verifyYouTubeKey } from './data/youtubeKeyCheck'
 import { buildCutArgs, planSilenceCut } from './video/silence'
 import { buildVideoEncoderArgs, chooseEncoderForJob } from './video/encoder'
@@ -947,10 +947,24 @@ export function registerIpcHandlers(): void {
   // arithmetic questions, and a fluent wrong answer here would change how the user titles
   // videos for a year. When the history is too short, the modules refuse to answer and
   // say so; an empty fetch reads as exactly that rather than as "nothing works".
+  /**
+   * One line in the Activity Log whenever a channel read did not fully succeed.
+   *
+   * The rule is that "I could not tell" has to be distinct, visible AND logged. It was
+   * distinct and visible on screen after the first pass of this work, but it left no
+   * trace, so a user reporting "the channel tab is empty" a day later still had nothing
+   * to point at. Now the log says which of the reasons it was.
+   */
+  const logRead = (where: string, problem: { kind: string; detail?: string } | null): void => {
+    if (!problem) return
+    logActivity('ai', `${where}: could not read the channel`, `${problem.kind}${problem.detail ? ` — ${problem.detail}` : ''}`)
+  }
+
   ipcMain.handle(IPC.channelLearn, async () => {
     // `problem` travels with the result so the page can say WHY it read nothing. An
     // empty answer used to mean five different things and named none of them.
     const { videos, problem } = await readMyChannel()
+    logRead('Your channel', problem)
     const past = videos.map((v) => ({
       title: v.title,
       publishedAt: v.publishedAt,
@@ -969,11 +983,18 @@ export function registerIpcHandlers(): void {
 
   /** Score a proposed title against the channel's OWN history, with reasons. */
   ipcMain.handle(IPC.channelScoreTitle, async (_e, title: string) => {
-    const videos = await fetchMyChannelVideos()
-    return scoreTitle(
-      typeof title === 'string' ? title : '',
-      videos.map((v) => ({ title: v.title, publishedAt: v.publishedAt, views: v.views }))
-    )
+    // Was on the blind read, so a refused key scored the title against zero videos and
+    // reported "not enough history to tell" — a statement about the channel, when in
+    // truth nothing had been read. Same treatment as the other three.
+    const { videos, problem } = await readMyChannel()
+    logRead('Title score', problem)
+    return {
+      ...scoreTitle(
+        typeof title === 'string' ? title : '',
+        videos.map((v) => ({ title: v.title, publishedAt: v.publishedAt, views: v.views }))
+      ),
+      problem
+    }
   })
 
   // THE VIDEO IDEAS ALREADY SITTING IN THE COMMENTS. Every question returned is quoted
@@ -981,6 +1002,7 @@ export function registerIpcHandlers(): void {
   // are asking" reads well and may match nothing anybody actually wrote.
   ipcMain.handle(IPC.channelComments, async (_e, videoLimit?: number) => {
     const { videos, problem } = await readMyChannel()
+    logRead('Comment questions', problem)
     // Newest first, and only the recent ones: a question from three years ago has usually
     // been answered, and each video costs a quota unit.
     const recent = [...videos]
@@ -1168,6 +1190,7 @@ export function registerIpcHandlers(): void {
   // find a gap, it can only confirm coverage.
   ipcMain.handle(IPC.channelGaps, async () => {
     const read = await readMyChannel()
+    logRead('Competitor gaps', read.problem)
     const mine = read.videos.map((v) => ({ title: v.title, views: v.views, publishedAt: v.publishedAt }))
     const queries = searchQueries(mine)
     const theirs: { title: string; channelTitle: string; viewCount: number; publishedAt?: string }[] = []

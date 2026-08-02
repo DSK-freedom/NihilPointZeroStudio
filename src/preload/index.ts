@@ -651,8 +651,13 @@ const api = {
       series: ReturnType<typeof import('../shared/series').seriesReport>
     }> => ipcRenderer.invoke(IPC.channelLearn),
     /** Scores a proposed title against your own history, with the reasons. */
-    scoreTitle: (title: string): Promise<import('../shared/channelLearning').TitleScore> =>
-      ipcRenderer.invoke(IPC.channelScoreTitle, title),
+    scoreTitle: (
+      title: string
+    ): Promise<
+      import('../shared/channelLearning').TitleScore & {
+        problem: import('../shared/youtubeKeySetup').ChannelReadProblem | null
+      }
+    > => ipcRenderer.invoke(IPC.channelScoreTitle, title),
     /** Subjects other channels get views on that this one has never covered. */
     gaps: (): Promise<
       import('../shared/competitorGap').GapReport & {

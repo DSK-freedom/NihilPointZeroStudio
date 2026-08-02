@@ -300,7 +300,22 @@ export function offlineVerdict(): KeyVerdict {
  * Google is not evidence the channel does not exist.
  */
 export type ChannelResolution =
-  | { ok: true; channelId: string; title: string; videoCount?: number; subscribers?: number }
+  | {
+      ok: true
+      channelId: string
+      title: string
+      videoCount?: number
+      subscribers?: number
+      /**
+       * True when this came from a SEARCH rather than an exact handle/id lookup — i.e.
+       * it is the channel that best matched some words, not the channel that was asked
+       * for. A guess and an exact match must not arrive in the same shape: one can be
+       * saved silently, the other has to be confirmed, or a typo quietly points the whole
+       * app at a stranger's channel and every "what works on your channel" answer after
+       * that is about somebody else.
+       */
+      viaSearch?: boolean
+    }
   | { ok: false; problem: string; fix: string; certain: boolean }
 
 /**
@@ -328,6 +343,10 @@ export type ChannelReadProblem =
   | { kind: 'refused'; detail: string }
   | { kind: 'unreachable' }
   | { kind: 'empty-channel' }
+  /** Google answered with an error of its own (5xx, or something unrecognised). Not a refusal. */
+  | { kind: 'google-error'; detail: string }
+  /** Some pages were read and then the read stopped. Real data, but not all of it. */
+  | { kind: 'partial'; detail: string }
 
 /** The sentence to print, and whether the walkthrough is the answer to it. */
 export interface ProblemNotice {
@@ -352,9 +371,12 @@ export function describeChannelProblem(problem: ChannelReadProblem): ProblemNoti
     case 'no-channel':
       return {
         tone: 'setup',
-        title: 'The key works, but the app doesn’t know which channel is yours',
+        title: 'The app doesn’t know which channel is yours',
+        // Deliberately does NOT say "your key works". On this path the key was never
+        // tested — the read stopped before contacting Google at all — and claiming a
+        // pass for something unexamined is the same mistake in a smaller costume.
         message:
-          'Type your @name into “Find my channel” in Settings and it fills in the rest. Nothing here can run until it knows which channel to read.',
+          'Type your @name into “Find my channel” in Settings and it fills in the rest. Nothing here can run until it knows which channel to read. The same screen will check your key while you are there.',
         offerSetup: true
       }
     case 'refused':
@@ -378,6 +400,23 @@ export function describeChannelProblem(problem: ChannelReadProblem): ProblemNoti
         title: 'Read your channel fine — there are no videos on it yet',
         message:
           'Everything is set up correctly. These features work out what has succeeded on this channel before, so they need some published videos to read.',
+        offerSetup: false
+      }
+    case 'google-error':
+      // NOT 'refused'. A 500 from Google says nothing whatsoever about the key, and
+      // painting it red next to "Google refused the request" would send the user off to
+      // re-do four correct steps because a Google server hiccuped.
+      return {
+        tone: 'unknown',
+        title: 'Could not tell — the problem is at Google’s end',
+        message: `${problem.detail} Nothing is known about your channel either way. Nothing needs fixing here; try again in a few minutes.`,
+        offerSetup: false
+      }
+    case 'partial':
+      return {
+        tone: 'unknown',
+        title: 'Only part of your channel could be read',
+        message: `${problem.detail} What is shown below is real, but it is not everything, so treat the counts as a floor rather than a total.`,
         offerSetup: false
       }
   }

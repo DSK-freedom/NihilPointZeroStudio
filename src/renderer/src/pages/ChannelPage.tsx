@@ -79,13 +79,18 @@ export default function ChannelPage(): React.JSX.Element {
           </button>
         </div>
 
-        {learned && learned.videoCount === 0 && (
-          <div className="space-y-2">
-            {/* Was one sentence — "check the key and channel ID in Settings" — printed for
-                five different situations, four of which it described wrongly. */}
+        {/* Shown whenever there is a problem, INCLUDING when videos did come back: a
+            partial read returns real data and an incomplete-read notice at the same time,
+            and hiding the notice would let a half-read history pass as the whole story.
+            Was one sentence — "check the key and channel ID in Settings" — printed for
+            five different situations, four of which it described wrongly. */}
+        {learned?.problem && (
+          <div className="mb-2">
             <ChannelProblem problem={learned.problem} />
-            <p className="text-xs text-ink-500">With no data the honest answer is nothing, so nothing is claimed.</p>
           </div>
+        )}
+        {learned && learned.videoCount === 0 && (
+          <p className="text-xs text-ink-500">With no data the honest answer is nothing, so nothing is claimed.</p>
         )}
 
         {learned && learned.videoCount > 0 && (
@@ -187,7 +192,14 @@ export default function ChannelPage(): React.JSX.Element {
                   Score it
                 </button>
               </div>
-              {score && (
+              {score?.problem && (
+                <div className="mt-2">
+                  {/* Without this the score said "not enough history to tell" — a claim about
+                      the channel — when the read had actually failed. */}
+                  <ChannelProblem problem={score.problem} />
+                </div>
+              )}
+              {score && !score.problem && (
                 <div className="mt-2 rounded-md border border-ink-800 bg-ink-950 p-2 space-y-1">
                   {score.reasons.map((r, i) => (
                     <div key={i} className="text-xs text-ink-300">
@@ -219,7 +231,7 @@ export default function ChannelPage(): React.JSX.Element {
               "No competitor videos read yet — search a topic first", which is a statement
               about the channel rather than about the read having failed, sitting directly
               above a card saying nothing could be read. Suppressed when there is a problem. */}
-          {gaps && !gaps.problem
+          {gaps && (!gaps.problem || gaps.problem.kind === 'partial')
             ? gaps.headline
             : 'Trending tells you what is popular. This tells you what is popular that YOU have never made — demonstrated demand, with nothing of your own competing for it.'}
         </p>
@@ -229,7 +241,7 @@ export default function ChannelPage(): React.JSX.Element {
           </div>
         )}
 
-        {gaps && !gaps.problem && (
+        {gaps && (!gaps.problem || gaps.problem.kind === 'partial') && (
           <div className="text-[11px] text-ink-600 mt-1">
             Compared {gaps.myVideos} of your videos against {gaps.competitorVideos} from other channels
             {gaps.unmatched > 0 && `, ${gaps.unmatched} of which were about something outside finance`}.
@@ -290,7 +302,7 @@ export default function ChannelPage(): React.JSX.Element {
         <p className="text-xs text-ink-400">
           {/* Same trap: summarise(0 comments) says "No comments to read yet", which reads as
               a fact about the audience when in truth nothing was read at all. */}
-          {mined && !mined.problem
+          {mined && (!mined.problem || mined.problem.kind === 'partial')
             ? mined.summary
             : 'Nobody reads two thousand comments. The same question asked forty times is a video with an audience before you record a frame.'}
         </p>

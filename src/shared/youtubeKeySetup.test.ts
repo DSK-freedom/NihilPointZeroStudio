@@ -216,6 +216,29 @@ describe('explaining an empty channel read', () => {
     { kind: 'empty-channel' }
   ]
 
+  it('separates "Google itself broke" from "Google refused you"', () => {
+    // A 500 from Google says nothing about the key. Collapsing it into 'refused' painted
+    // it red next to "Google refused the request", which would send someone off to redo
+    // four correct steps because a Google server hiccuped.
+    const g = describeChannelProblem({ kind: 'google-error', detail: 'Could not tell — the problem is at Google’s end.' })
+    expect(g.tone).toBe('unknown')
+    expect(g.offerSetup).toBe(false)
+    expect(describeChannelProblem({ kind: 'refused', detail: 'x' }).tone).toBe('error')
+  })
+
+  it('reports a half-read channel as half-read, not as a clean read', () => {
+    const p = describeChannelProblem({ kind: 'partial', detail: 'Read 50 of your videos and then it stopped.' })
+    expect(p.tone).toBe('unknown')
+    expect(p.message).toMatch(/floor rather than a total/i)
+  })
+
+  it('does not claim the key works on the no-channel path, where it was never tested', () => {
+    // readMyChannel returns no-channel BEFORE contacting Google at all, so "the key works"
+    // was a pass awarded to something unexamined.
+    const n = describeChannelProblem({ kind: 'no-channel' })
+    expect(n.title).not.toMatch(/key works/i)
+  })
+
   it('says something DIFFERENT for each of the five — the whole point', () => {
     // These five all produced the identical sentence before, and four of the five were
     // being described wrongly by it.

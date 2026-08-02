@@ -210,7 +210,8 @@ export async function resolveYouTubeChannel(input: string, rawKey?: string): Pro
   }
   const hit = (searchRes.body as { items?: { id?: { channelId?: string }; snippet?: { title?: string } }[] })?.items?.[0]
   if (searchRes.status < 400 && hit?.id?.channelId) {
-    return { ok: true, channelId: hit.id.channelId, title: hit.snippet?.title ?? hit.id.channelId }
+    // Flagged as a guess: the caller must not save this without the user agreeing.
+    return { ok: true, channelId: hit.id.channelId, title: hit.snippet?.title ?? hit.id.channelId, viaSearch: true }
   }
 
   return {

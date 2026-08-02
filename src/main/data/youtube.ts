@@ -113,7 +113,12 @@ export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[
       /* an unreadable error body still leaves the status, which carries most of it */
     }
     const verdict = classifyKeyResponse(res.status, body)
-    const detail = verdict.state === 'broken' ? `${verdict.title}.` : verdict.state === 'unknown' ? `${verdict.title}.` : ''
+    // A 5xx from Google is NOT a refusal, and must not be painted red as one. Only a
+    // 'broken' verdict — an actual no, with a reason — counts as refused.
+    if (verdict.state === 'unknown') {
+      return { videos: [], problem: { kind: 'google-error', detail: `${verdict.title}.` } }
+    }
+    const detail = verdict.state === 'broken' ? `${verdict.title}.` : ''
     return { videos: [], problem: { kind: 'refused', detail } }
   }
 
@@ -133,6 +138,8 @@ export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[
 
     const found: { id: string; title: string; publishedAt: string }[] = []
     let pageToken = ''
+    /** Set when the read stopped early — see the partial-read note below. */
+    let truncated = ''
     // Bounded: a runaway pagination loop against a paid-quota API is its own bug.
     for (let page = 0; page < 10 && found.length < maxVideos; page++) {
       const url =
@@ -143,6 +150,10 @@ export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[
       // worth reporting. Refused later, we keep whatever pages did come back.
       if (!res.ok) {
         if (!found.length) return refused(res)
+        // Some pages came back and then it stopped. Keeping them beats losing them, but
+        // reporting it as a clean read would let a partial history quietly become the
+        // basis of "what works on your channel".
+        truncated = `Read ${found.length} of your videos and then the request was refused partway through.`
         break
       }
       const data = await res.json()
@@ -181,7 +192,7 @@ export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[
 
     return {
       videos: found.slice(0, maxVideos).map((v) => ({ ...v, views: stats.get(v.id)?.views ?? 0, ...stats.get(v.id) })),
-      problem: null
+      problem: truncated ? { kind: 'partial', detail: truncated } : null
     }
   } catch {
     // Timed out, DNS failed, offline. NOT the same as "this channel has no videos", and

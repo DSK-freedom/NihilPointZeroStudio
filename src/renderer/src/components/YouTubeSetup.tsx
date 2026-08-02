@@ -27,7 +27,7 @@
  * `openExternal` IPC would have opened a browser on the PC while the user held the phone.
  */
 import { useState } from 'react'
-import { SETUP_STEPS, type ChannelResolution, type KeyVerdict } from '../../../shared/youtubeKeySetup'
+import { SETUP_STEPS, cleanPastedKey, type ChannelResolution, type KeyVerdict } from '../../../shared/youtubeKeySetup'
 import { toast } from './Toast'
 
 function OpenLink({ href, label }: { href: string; label: string }): React.JSX.Element {
@@ -101,11 +101,15 @@ export default function YouTubeSetup({
   async function check(): Promise<void> {
     setChecking(true)
     setVerdict(null)
+    // Clean here, once, and use the SAME string for the check and the save. The checker
+    // used to clean its own copy while the raw text was what got stored, so a key pasted
+    // with quotes round it passed the check and was saved broken.
+    const candidate = cleanPastedKey(key)
     try {
-      const v = await window.api.youtube.verifyKey(key.trim() || undefined)
+      const v = await window.api.youtube.verifyKey(candidate || undefined)
       setVerdict(v)
-      if (v.state === 'working' && key.trim()) {
-        await window.api.settings.setYouTubeKey(key.trim())
+      if (v.state === 'working' && candidate) {
+        await window.api.settings.setYouTubeKey(candidate)
         setKey('')
         await onSaved()
         toast('YouTube key saved and working.', 'success')
@@ -126,9 +130,12 @@ export default function YouTubeSetup({
     setFinding(true)
     setFound(null)
     try {
-      const res = await window.api.youtube.resolveChannel(channelText, key.trim() || undefined)
+      const res = await window.api.youtube.resolveChannel(channelText, cleanPastedKey(key) || undefined)
       setFound(res)
-      if (res.ok) {
+      // An exact match on the handle or id is saved straight away. A SEARCH result is a
+      // guess — it is whichever channel best matched some words — so it is shown and left
+      // for the user to confirm rather than silently written over their setting.
+      if (res.ok && !res.viaSearch) {
         await window.api.settings.setYouTubeChannel(res.channelId)
         await onSaved()
         toast(`Channel saved: ${res.title}`, 'success')
@@ -143,6 +150,15 @@ export default function YouTubeSetup({
     } finally {
       setFinding(false)
     }
+  }
+
+  /** Saves a SEARCH result once the user has said it really is their channel. */
+  async function confirmFound(): Promise<void> {
+    if (!found?.ok) return
+    await window.api.settings.setYouTubeChannel(found.channelId)
+    setFound({ ...found, viaSearch: false })
+    await onSaved()
+    toast(`Channel saved: ${found.title}`, 'success')
   }
 
   return (
@@ -216,7 +232,12 @@ export default function YouTubeSetup({
               <input
                 type="password"
                 value={key}
-                onChange={(e) => setKey(e.target.value)}
+                onChange={(e) => {
+                  setKey(e.target.value)
+                  // A green tick from the LAST key, still on screen next to a different
+                  // one in the box, is a verdict about something that is no longer there.
+                  setVerdict(null)
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && key.trim() && !checking) void check()
                 }}
@@ -264,12 +285,18 @@ export default function YouTubeSetup({
               </button>
             </div>
             {found?.ok && (
-              <div className="rounded-md border border-emerald-500/40 bg-emerald-500/5 p-3 flex items-center gap-3">
+              <div
+                className={`rounded-md border p-3 space-y-2 ${
+                  found.viaSearch ? 'border-amber-500/40 bg-amber-500/5' : 'border-emerald-500/40 bg-emerald-500/5'
+                }`}
+              >
                 {/* No avatar: the app's CSP is img-src 'self' data: file:, so a Google-hosted
                     picture would render as a broken-image icon exactly where the user is being
                     asked to confirm. The name and the video count are the real check. */}
                 <div>
-                  <div className="text-xs text-emerald-300 font-medium">✓ Saved: {found.title}</div>
+                  <div className={`text-xs font-medium ${found.viaSearch ? 'text-amber-300' : 'text-emerald-300'}`}>
+                    {found.viaSearch ? `Is this you? ${found.title}` : `✓ Saved: ${found.title}`}
+                  </div>
                   <div className="text-[11px] text-ink-500 font-mono">{found.channelId}</div>
                   {found.videoCount !== undefined && (
                     <div className="text-[11px] text-ink-500">
@@ -278,6 +305,21 @@ export default function YouTubeSetup({
                     </div>
                   )}
                 </div>
+                {found.viaSearch && (
+                  <>
+                    <div className="text-[11px] text-ink-400">
+                      That name did not match a channel exactly, so this is the closest one YouTube could find — it
+                      might not be yours. Saving the wrong channel would make every answer about somebody else, so
+                      nothing has been saved yet.
+                    </div>
+                    <button
+                      onClick={() => void confirmFound()}
+                      className="rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 text-xs font-medium px-3 py-1.5 transition-colors"
+                    >
+                      Yes, that is my channel
+                    </button>
+                  </>
+                )}
               </div>
             )}
             {found && !found.ok && (

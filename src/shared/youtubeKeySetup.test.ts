@@ -54,6 +54,14 @@ describe('cleaning up whatever was pasted', () => {
     }
   })
 
+  it('handles a key copied straight out of a config file', () => {
+    // Stripping the prefix before the quotes could not see it here, and the user got the
+    // message "a Google key always starts with AIza, and this does not" — about a key
+    // that did.
+    expect(cleanPastedKey(`"key": "${GOOD}",`)).toBe(GOOD)
+    expect(cleanPastedKey(`{ "apiKey": "${GOOD}" }`)).toBe(GOOD)
+  })
+
   it('does not invent a key out of nothing', () => {
     expect(cleanPastedKey('')).toBe('')
     expect(cleanPastedKey('   ')).toBe('')
@@ -289,6 +297,19 @@ describe('what the user pastes for their channel', () => {
     })
     // Typed without the @, because the @ is punctuation nobody thinks of as part of a name.
     expect(normalizeChannelInput('NihilPointZero')).toEqual({ kind: 'handle', value: '@NihilPointZero' })
+  })
+
+  it('does not bite the first letter off a bare custom URL', () => {
+    // youtube.com/cricketwala used to parse as kind "c" plus the name "ricketwala",
+    // because the optional (channel|c|user) group was not anchored to a path segment.
+    expect(normalizeChannelInput('https://www.youtube.com/cricketwala')).toEqual({
+      kind: 'handle',
+      value: '@cricketwala'
+    })
+    expect(normalizeChannelInput('youtube.com/userfriendlyfinance')).toEqual({
+      kind: 'handle',
+      value: '@userfriendlyfinance'
+    })
   })
 
   it('takes the legacy /user/ and /c/ links', () => {

@@ -208,8 +208,19 @@ export async function resolveYouTubeChannel(input: string, rawKey?: string): Pro
       fix: 'Check the internet connection and press Find my channel again. Nothing has been saved.'
     }
   }
+  // The status has to be read BEFORE the body. Search is the 100-unit call, so it is the
+  // one most likely to be the request that exhausts the daily allowance — and a refused
+  // search returns no items, which looked exactly like "this channel does not exist". The
+  // app would then tell someone their own channel could not be found.
+  if (searchRes.status >= 400) {
+    const verdict = classifyKeyResponse(searchRes.status, searchRes.body)
+    return verdict.state === 'broken'
+      ? { ok: false, certain: true, problem: verdict.title, fix: verdict.fix }
+      : { ok: false, certain: false, problem: verdict.state === 'unknown' ? verdict.title : 'Unexpected reply', fix: 'Nothing has been saved. Try again in a moment.' }
+  }
+
   const hit = (searchRes.body as { items?: { id?: { channelId?: string }; snippet?: { title?: string } }[] })?.items?.[0]
-  if (searchRes.status < 400 && hit?.id?.channelId) {
+  if (hit?.id?.channelId) {
     // Flagged as a guess: the caller must not save this without the user agreeing.
     return { ok: true, channelId: hit.id.channelId, title: hit.snippet?.title ?? hit.id.channelId, viaSearch: true }
   }

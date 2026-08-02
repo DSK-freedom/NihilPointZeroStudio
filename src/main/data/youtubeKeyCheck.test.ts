@@ -161,6 +161,22 @@ describe('finding the channel', () => {
     expect(calls).toHaveLength(0)
   })
 
+  it('never says "no such channel" when the SEARCH itself was refused', async () => {
+    // Search is the 100-unit call, so it is the likeliest one to be the request that
+    // exhausts the day's allowance. Reading the body without the status turned that into
+    // "no channel was found with that name", stated as certain, about the user's own channel.
+    mockFetch((url) =>
+      url.includes('/search')
+        ? { status: 403, body: { error: { errors: [{ reason: 'quotaExceeded' }] } } }
+        : { status: 200, body: { items: [] } }
+    )
+    const r = await resolveYouTubeChannel('@ghost')
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.problem).not.toMatch(/No channel was found/i)
+    expect(r.problem).toMatch(/allowance/i)
+  })
+
   it('refuses a pasted VIDEO link without spending 100 units searching for "watch"', async () => {
     mockFetch(() => ({ status: 200, body: channelBody }))
     const r = await resolveYouTubeChannel('https://www.youtube.com/watch?v=dQw4w9WgXcQ')

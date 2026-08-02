@@ -103,9 +103,13 @@ export const QUOTA_URL = 'https://console.cloud.google.com/apis/api/youtube.goog
  * be reported as invalid.
  */
 export function cleanPastedKey(raw: string): string {
+  // Punctuation first, THEN the prefix. The other order could not see the prefix in
+  // `"key": "AIza…"` — copied straight out of a config file — because the leading quote
+  // blocked the match, and what survived was `key:AIza…`, rejected with the factually
+  // wrong message "a Google key always starts with AIza, and this does not".
   return (raw ?? '')
-    .replace(/^\s*(?:api[_\s-]?key|key)\s*[:=]\s*/i, '')
-    .replace(/[\s"'`<>]/g, '')
+    .replace(/[\s"'`<>{},]/g, '')
+    .replace(/^(?:api[_-]?key|key)[:=]/i, '')
     .trim()
 }
 
@@ -450,7 +454,12 @@ export function normalizeChannelInput(raw: string): ChannelInput {
   const videoUrl = text.match(/(?:youtube\.com\/(?:watch\?|shorts\/|live\/)|youtu\.be\/)/i)
   if (videoUrl) return { kind: 'video', value: text }
 
-  const urlMatch = text.match(/(?:youtube\.com|youtu\.be)\/(channel|c|user)?\/?(@?[\w.-]+)/i)
+  // The (channel|c|user) group MUST be followed by a slash. Unanchored, the "c" branch
+  // matched the first letter of a bare custom URL — youtube.com/cricketwala parsed as
+  // kind "c" with the name "ricketwala", and the app then searched for a channel that
+  // does not exist. Requiring the slash makes the group match a whole path segment or
+  // nothing at all.
+  const urlMatch = text.match(/(?:youtube\.com|youtu\.be)\/(?:(channel|c|user)\/)?(@?[\w.-]+)/i)
   if (urlMatch) {
     const [, kind, rawName] = urlMatch
     const name = rawName.replace(/\/$/, '')
@@ -459,7 +468,11 @@ export function normalizeChannelInput(raw: string): ChannelInput {
     if (name.startsWith('@')) return { kind: 'handle', value: name }
     // /c/Name — a vanity URL, which the API only resolves through search.
     if (kind?.toLowerCase() === 'c') return { kind: 'search', value: name }
-    return { kind: 'search', value: name }
+    // youtube.com/name with no /channel|/c|/user in front of it. YouTube itself now
+    // redirects that form to the handle, so try the 1-unit handle lookup first; the
+    // resolver falls through to forUsername and then to the 100-unit search anyway if
+    // it misses. Going straight to search would spend 100 units on the common case.
+    return { kind: 'handle', value: `@${name}` }
   }
 
   if (/^UC[\w-]{20,}$/.test(text)) return { kind: 'id', value: text }

@@ -134,7 +134,7 @@ checking in. See DO NOT ASK in `CLAUDE.md` for the three narrow exceptions.
 | #18 | Ollama becomes the default brain; PAID FEATURES SLEEP rule |
 | #17 | Ship-from-behind guard; local-model timeouts; unused paid keys go quiet |
 
-1634 tests passing, 0 lint errors, five clean typechecks, build green.
+1649 tests passing, 0 lint errors, five clean typechecks, build green.
 
 ### The sandbox now needs one workaround to run the tests at all
 
@@ -163,6 +163,25 @@ did not download. Neither is a defect; both pass on the Windows runner.
 **CI does not run on feature branches** — `windows-build.yml` is `branches: [main]` on
 purpose, because Windows runners bill at 2x. A PR with no checks is normal here; the build
 only happens after the merge, which is also when the rolling release is refreshed.
+
+## WHAT THE #23 AUDIT PROVED, AND WHY IT IS WORTH REPEATING
+
+After building the walkthrough I ran four independent reviewers over the diff — correctness,
+honesty, integration, quota — each told to REFUTE rather than confirm. They found **eighteen
+issues in code that already had 49 passing tests, a clean lint and five clean typechecks**.
+Three were real bugs that would have reached the user:
+
+- The saved key was not the verified key (cleaning applied to one and not the other), so a
+  key pasted with quotes went green and then failed every request afterwards.
+- The restricted-key branch could never fire, because Google buries the useful reason in
+  `error.details` behind a useless `errors[0].reason: 'forbidden'`. My test passed because
+  I had fed it a hand-simplified body instead of Google's real one.
+- "Find the gaps" spent 800 quota units — 8% of the free day — running searches whose
+  results it was guaranteed to discard.
+
+**The lesson: my own tests confirm what I already believed.** Where a test is built from an
+assumed response shape, it certifies the assumption. Use real payloads, and get an
+adversarial reader onto anything that classifies an external service's replies.
 
 ## BLOCKED FROM THIS SANDBOX — do not attempt blind
 

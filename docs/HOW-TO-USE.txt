@@ -182,9 +182,10 @@ WHAT IS NEW (1 August 2026)
 
    WHEN A CHANNEL PANEL COMES BACK EMPTY IT NOW SAYS WHY. It used to print "no videos
    could be read, check your key and channel ID in Settings" no matter what had
-   happened. There are five different reasons and only one of them was that. In
+   happened, and only one of the seven things that can actually happen was that. In
    particular, "could not reach YouTube" is now shown in amber and says plainly that it
-   does not know — it is not the app telling you that you have no videos.
+   does not know — it is not the app telling you that you have no videos. Amber always
+   means "I could not tell", and is never something for you to go and fix.
 
    A NEW TAB, "Your Channel". Everything else in the app helps you make a video. This
    one tells you what has already worked. It reads your own past videos and works out

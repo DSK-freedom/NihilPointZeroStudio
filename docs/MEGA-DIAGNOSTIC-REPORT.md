@@ -157,13 +157,17 @@ goes through the uploads playlist, not the search endpoint — search costs 100 
 call, so eight calls would burn a tenth of your day. Checking a key costs 1 unit; finding
 your channel from an @name costs 1 more.
 
-**When it reads nothing, it now says which of five reasons it was.** This used to be a
+**When it reads nothing, it now says which of seven reasons it was.** This used to be a
 single sentence — "no videos could be read, check the YouTube key and channel ID in
-Settings" — printed for all five, and it described four of them wrongly. The five: no key
-yet; a key but no channel set; Google refused the request (with Google's own reason
-translated); could not reach YouTube at all; or everything is working and the channel
-genuinely has no videos yet. The last one is not a fault, and the fourth is the app saying
-it does not know rather than making a claim about your channel.
+Settings" — printed for every case, and it described most of them wrongly. The seven: no
+key yet; a key but no channel set; Google refused the request (with Google's own reason
+translated); Google itself erroring; could not reach YouTube at all; only part of the
+channel readable; or everything working and the channel genuinely has no videos yet.
+
+Only the first three are things to act on. The rest are the app saying "I could not tell",
+shown in amber, and it will never dress one of those up as a fault of yours — a partial
+read in particular now says its numbers are a floor rather than a total, instead of
+letting half a history pass as the whole story.
 
 ### In the Script Writer
 - **Read it to me.** Hears the script back at 2x with the pitch held, so it still sounds

@@ -1136,16 +1136,24 @@ Google gives you every day, so you can run this as often as you like.
 
 IF A PANEL COMES BACK EMPTY, IT NOW TELLS YOU WHY
 It used to say "no videos could be read, check your key and channel ID" whatever
-had happened — including when nothing was wrong. There are five different reasons
-and they are now told apart:
+had happened — including when nothing was wrong at all. Seven different things
+can happen and they are now told apart:
 
-  - no key yet, with a button that takes you to the walkthrough
-  - the key works but the app does not know which channel is yours
+  - no key yet, with a button that takes you straight to the walkthrough
+  - there is a key but the app does not know which channel is yours
   - Google refused the request, and it says which reason Google gave
-  - it could not reach YouTube at all (amber, not red) — this is NOT the app
-    claiming you have no videos, it is the app saying it does not know
+  - Google itself had a problem (amber) — this says nothing about your key and
+    nothing needs fixing; try again in a few minutes
+  - it could not reach YouTube at all (amber) — this is NOT the app claiming you
+    have no videos, it is the app saying it does not know
+  - only part of your channel could be read — what is shown is real, but the
+    numbers are a floor rather than a total, and it says so
   - everything is set up correctly and the channel simply has no videos yet,
     which is not a fault at all
+
+The colours mean something. Red is "this is wrong and here is the fix". Amber is
+"I could not tell" — never treat amber as a fault to chase. Gold with a button is
+"three minutes of setup and this works".
 
 WORK IT OUT — WHAT THE THREE ANSWERS MEAN
 

@@ -167,10 +167,15 @@ export default function YouTubeSetup({
   /** Saves a SEARCH result once the user has said it really is their channel. */
   async function confirmFound(): Promise<void> {
     if (!found?.ok) return
-    await window.api.settings.setYouTubeChannel(found.channelId)
-    setFound({ ...found, viaSearch: false })
-    await onSaved()
-    toast(`Channel saved: ${found.title}`, 'success')
+    try {
+      await window.api.settings.setYouTubeChannel(found.channelId)
+      setFound({ ...found, viaSearch: false })
+      await onSaved()
+      toast(`Channel saved: ${found.title}`, 'success')
+    } catch (err) {
+      // A save that failed must not leave the card reading "✓ Saved".
+      toast(err instanceof Error ? err.message : 'That could not be saved. Nothing has changed.', 'error')
+    }
   }
 
   return (

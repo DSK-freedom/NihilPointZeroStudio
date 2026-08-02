@@ -47,6 +47,14 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    id: 'youtube-walkthrough',
+    date: '2026-08-02',
+    title: 'Connecting YouTube is now a walkthrough, not an instruction',
+    detail:
+      'Three tabs — Your channel, the questions from your comments, and the competitor gaps — read nothing without a free YouTube key, and all Settings ever did was tell you to go to Google Cloud, switch a service on, make a key, and get on with it. That is accurate and useless. Now it is five numbered steps with a button on each that opens the exact page, and when you paste the key the app really tries it: if something is wrong it says which step to go back to, in plain English. The commonest fault by far is a perfectly good key on a project where the service was never switched on, and it now says exactly that instead of letting you assume you mistyped it. Then type your @name and it finds your channel ID for you — the long UC… string YouTube buries three menus deep — and shows the channel name back so you can see it picked the right one. If a channel panel ever comes back empty it now says WHICH of seven reasons it was, and "could not reach YouTube" is amber and honest rather than a claim that you have no videos. Red means wrong and here is the fix; amber means the app could not tell, and is never something for you to chase.',
+    where: 'Settings → Connect YouTube → "Show me how"'
+  },
+  {
     id: 'version-panel',
     date: '2026-08-01',
     title: 'The app now tells you whether it is up to date',

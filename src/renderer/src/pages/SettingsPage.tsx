@@ -5,6 +5,7 @@ import { confirmDialog } from '../components/Confirm'
 import { toast } from '../components/Toast'
 import WhatsNewCard from '../components/WhatsNewCard'
 import VersionCard from '../components/VersionCard'
+import YouTubeSetup from '../components/YouTubeSetup'
 import type {
   AiErrorEntry,
   HardwareReport,
@@ -26,7 +27,6 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<ProviderSettings | null>(null)
   const [anthropicKey, setAnthropicKey] = useState('')
   const [openaiKey, setOpenaiKey] = useState('')
-  const [youtubeKey, setYoutubeKey] = useState('')
   const [hordeKey, setHordeKey] = useState('')
   const [mvsepToken, setMvsepToken] = useState('')
   const [demucsCmd, setDemucsCmd] = useState('')
@@ -329,6 +329,32 @@ export default function SettingsPage() {
     setSettings(await window.api.settings.get())
   }
 
+  /**
+   * Used ONLY by the walkthrough, which can save the channel id itself.
+   *
+   * The channel box has to follow when the walkthrough writes it, or it keeps showing the
+   * old value and the save looks like it failed. But doing that inside `refresh()` was
+   * wrong: every Save button on this page calls refresh(), so typing a channel id and then
+   * saving anything else silently wiped what had been typed.
+   */
+  async function refreshIncludingChannel(): Promise<void> {
+    const s = await window.api.settings.get()
+    setSettings(s)
+    setYtChannel(s.youtubeChannelId || '')
+  }
+
+  /**
+   * Arrive at #youtube-setup and land ON the walkthrough, not at the top of a very long
+   * page. "Scroll down until you see it" is exactly the kind of half-step this page is
+   * supposed to be removing.
+   */
+  useEffect(() => {
+    if (window.location.hash !== '#youtube-setup') return
+    // After paint, or the element is not on the page yet to scroll to.
+    const t = setTimeout(() => document.getElementById('youtube-setup')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+    return () => clearTimeout(t)
+  }, [])
+
   async function handleSetProvider(provider: LLMProviderId): Promise<void> {
     setSettings(await window.api.settings.setProvider(provider))
   }
@@ -350,14 +376,6 @@ export default function SettingsPage() {
     if (provider === 'anthropic') setAnthropicKey('')
     else setOpenaiKey('')
     setStatus(`${providerLabel[provider]} key saved.`)
-    await refresh()
-    setTimeout(() => setStatus(null), 2500)
-  }
-
-  async function handleSaveYoutubeKey(): Promise<void> {
-    await window.api.settings.setYouTubeKey(youtubeKey)
-    setYoutubeKey('')
-    setStatus('YouTube Data API key saved.')
     await refresh()
     setTimeout(() => setStatus(null), 2500)
   }
@@ -836,6 +854,10 @@ export default function SettingsPage() {
           AI-written title/description/tags to your clipboard and opens YOUR channel’s upload page so you just drop the
           file in — free, no sign-in, no limits.
         </p>
+        <p className="text-xs text-ink-600">
+          Don’t know your ID? Nobody does — YouTube hides it. Use “Find my channel” in the Connect YouTube box above
+          and type your @name instead; it fills this in for you.
+        </p>
         <div className="flex gap-2">
           <input
             value={ytChannel}
@@ -852,36 +874,14 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-ink-100 font-medium">YouTube Data API (optional, free)</span>
-          <span className={`text-xs ${settings.hasYouTubeKey ? 'text-emerald-400' : 'text-ink-500'}`}>
-            {settings.hasYouTubeKey ? 'Key configured' : 'No key set'}
-          </span>
-        </div>
-        <p className="text-xs text-ink-500">
-          When set, Ideas & Trends pulls real existing videos, channels, and view counts for your topic from
-          YouTube's official free API (10,000 quota units/day, no billing needed) to ground competition scoring in
-          real data instead of guesses. Get a free key from Google Cloud Console → enable "YouTube Data API v3" →
-          create an API key.
-        </p>
-        <div className="flex gap-2">
-          <input
-            type="password"
-            value={youtubeKey}
-            onChange={(e) => setYoutubeKey(e.target.value)}
-            placeholder="AIza…"
-            className="flex-1 rounded-md bg-ink-800 border border-ink-700 px-3 py-2 text-sm text-ink-100 outline-none focus:border-gold-500"
-          />
-          <button
-            onClick={handleSaveYoutubeKey}
-            disabled={!youtubeKey.trim()}
-            className="rounded-md bg-gold-500 hover:bg-gold-400 disabled:opacity-50 disabled:cursor-not-allowed text-ink-950 font-medium px-4 py-2 text-sm transition-colors"
-          >
-            Save Key
-          </button>
-        </div>
-      </div>
+      {/* The walkthrough. The old bare password box lived here and told the user to "get a
+          free key from Google Cloud Console", which is not an instruction anybody can
+          follow without already knowing the answer. */}
+      <YouTubeSetup
+        hasKey={settings.hasYouTubeKey}
+        savedChannelId={settings.youtubeChannelId || ''}
+        onSaved={refreshIncludingChannel}
+      />
 
       <div className="mt-4 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-3">
         <div className="flex items-center justify-between">

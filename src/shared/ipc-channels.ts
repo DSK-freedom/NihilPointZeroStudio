@@ -6,6 +6,10 @@ export const IPC = {
   settingsSetYouTubeKey: 'settings:set-youtube-key',
   settingsSetYouTubeChannel: 'settings:set-youtube-channel',
   youtubePublish: 'youtube:publish',
+  // The free-key walkthrough: prove a pasted key really works before trusting it, and
+  // find the channel id from the @handle so nobody has to hunt for a 24-character string.
+  youtubeKeyVerify: 'youtube:key-verify',
+  youtubeChannelResolve: 'youtube:channel-resolve',
   settingsSetHordeKey: 'settings:set-horde-key',
   ollamaStatus: 'ollama:status',
   ideasGenerate: 'ideas:generate',

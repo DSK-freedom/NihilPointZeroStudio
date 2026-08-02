@@ -637,24 +637,41 @@ const api = {
   },
   // What YOUR channel's own history says — not general advice about channels in general.
   channel: {
-    /** Title shapes that worked, when the audience shows up, and your series. */
+    /**
+     * Title shapes that worked, when the audience shows up, and your series.
+     *
+     * `problem` is non-null when nothing could be read, and says which of the five
+     * reasons it was — a bare empty result used to cover all of them at once.
+     */
     learn: (): Promise<{
+      problem: import('../shared/youtubeKeySetup').ChannelReadProblem | null
       videoCount: number
       titleFindings: import('../shared/channelLearning').Finding[]
       timing: ReturnType<typeof import('../shared/channelLearning').publishTimingReport>
       series: ReturnType<typeof import('../shared/series').seriesReport>
     }> => ipcRenderer.invoke(IPC.channelLearn),
     /** Scores a proposed title against your own history, with the reasons. */
-    scoreTitle: (title: string): Promise<import('../shared/channelLearning').TitleScore> =>
-      ipcRenderer.invoke(IPC.channelScoreTitle, title),
+    scoreTitle: (
+      title: string
+    ): Promise<
+      import('../shared/channelLearning').TitleScore & {
+        problem: import('../shared/youtubeKeySetup').ChannelReadProblem | null
+      }
+    > => ipcRenderer.invoke(IPC.channelScoreTitle, title),
     /** Subjects other channels get views on that this one has never covered. */
     gaps: (): Promise<
-      import('../shared/competitorGap').GapReport & { myVideos: number; competitorVideos: number; queries: string[] }
+      import('../shared/competitorGap').GapReport & {
+        problem: import('../shared/youtubeKeySetup').ChannelReadProblem | null
+        myVideos: number
+        competitorVideos: number
+        queries: string[]
+      }
     > => ipcRenderer.invoke(IPC.channelGaps),
     /** The questions your comments keep asking, quoted verbatim and ranked. */
     comments: (
       videoLimit?: number
     ): Promise<{
+      problem: import('../shared/youtubeKeySetup').ChannelReadProblem | null
       scanned: number
       videosRead: number
       clusters: import('../shared/commentMining').QuestionCluster[]
@@ -749,7 +766,17 @@ const api = {
   youtube: {
     // Assisted publish: prepare metadata (→ clipboard), open the upload page, reveal the file.
     publish: (videoId: string): Promise<{ title: string; description: string; tags: string[]; uploadUrl: string }> =>
-      ipcRenderer.invoke(IPC.youtubePublish, videoId)
+      ipcRenderer.invoke(IPC.youtubePublish, videoId),
+    /**
+     * Try the pasted key against Google for real. Pass nothing to re-check the saved
+     * one. The answer is three-state — working / broken / could-not-tell — because a
+     * check that cannot reach Google must never look like a pass.
+     */
+    verifyKey: (rawKey?: string): Promise<import('../shared/youtubeKeySetup').KeyVerdict> =>
+      ipcRenderer.invoke(IPC.youtubeKeyVerify, rawKey ?? ''),
+    /** @handle, channel URL or UC id → the id plus the channel NAME, so it can be confirmed by eye. */
+    resolveChannel: (input: string, rawKey?: string): Promise<import('../shared/youtubeKeySetup').ChannelResolution> =>
+      ipcRenderer.invoke(IPC.youtubeChannelResolve, input, rawKey ?? '')
   },
   voice: {
     // Windows NATURAL voices (WinRT) — the best free narration, and the only route to

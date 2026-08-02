@@ -183,7 +183,14 @@ function checkYouTubeKey(): HealthCheck {
   } catch {
     return warn('YouTube key', 'saved key could not be read')
   }
-  return key ? ok('YouTube key', 'set') : warn('YouTube key', 'not set — trend signals from YouTube are skipped')
+  // Free, so a missing one is worth naming as a thing to switch on rather than a bare
+  // "not set" — three whole tabs read nothing without it.
+  return key
+    ? ok('YouTube key', 'set')
+    : warn(
+        'YouTube key',
+        'not set — Your Channel, the comment questions and the competitor gaps all read nothing. Free to fix: Settings → Connect YouTube (about 3 minutes)'
+      )
 }
 
 /** Runs every check (network ones in parallel) and summarises. Never throws. */

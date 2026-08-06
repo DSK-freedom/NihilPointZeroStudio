@@ -8,7 +8,25 @@ work, not afterwards: before starting anything long, and again when it lands. It
 the repo because the container, the assistant's memory and the harness task list all die
 with the session — only what is pushed to GitHub survives.
 
-Last updated: **2026-08-02** (after PR #23).
+Last updated: **2026-08-07** (after PR #26).
+
+## The 2026-08-07 round — his screen recording, and what it exposed
+
+He sent a screen recording and a long voice-note. Shipped the same day (#25, #26):
+drawtext `expansion=none` (a % in a finance headline killed every build); `safe=true`
+plus a no-people/modest-dress clause on scene image prompts (NSFW/irrelevant imagery);
+the 402 "add a Claude/OpenAI key" message removed everywhere (PAID FEATURES SLEEP);
+a known-dead free service is skipped in the fallback chain; the Actions artifact upload
+(435 MB/build vs a 500 MB allowance — his "storage full" emails) now runs only when the
+release upload fails. Existing artifacts self-expire by 2026-08-16.
+
+**Approved-plan queue from his voice note is in the PR/report of this session** — the
+caretaker (scheduled self-diagnostic with its own Settings section), Gemini via free
+AI-Studio key walkthrough (NEVER via stored login/password), provider on/off switches,
+global + per-scene duration control, full-length music examples, delete-everywhere via
+one deletion service, Presenter black-video honesty gate, Script Writer/Pad merge. He
+asked to APPROVE the plan before building — do not start those unsolicited; wait for his
+yes on each.
 
 ---
 

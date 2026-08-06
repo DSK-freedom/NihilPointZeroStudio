@@ -39,7 +39,8 @@ build the app yourself.
 ## First-run setup (2 minutes, optional but recommended)
 
 1. Open **Settings** (bottom of the left sidebar).
-2. **AI brain** — nothing to do. The app runs on the local, free brain (Ollama) and
+2. **AI brain** — nothing to do. (Want Google's Gemini as a brain? **Settings →
+   Connect Gemini** walks you to a genuinely free key in about two minutes — optional.) The app runs on the local, free brain (Ollama) and
    falls back to a free keyless online service. Both are free and stay that way. The
    paid options (Claude, OpenAI) are present but asleep: they are never contacted and
    never chosen for you, and you only wake one by deliberately selecting it yourself.

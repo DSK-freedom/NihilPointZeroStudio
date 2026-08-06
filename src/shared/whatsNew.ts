@@ -47,6 +47,14 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    id: 'switchboard-gemini',
+    date: '2026-08-07',
+    title: 'An AI switchboard, and Gemini as a free brain',
+    detail:
+      'Settings now has a switchboard: every AI brain the studio can use, each with a plain ON/OFF switch and a "use this one" button. OFF finally means off — a switched-off brain is never contacted, not even as a backup. The old free online service (the one that started demanding payment) is off by default; your local brain stays on. And Gemini joins as a real brain through a key Google gives away free: a two-minute walkthrough with a button for each step, the key tested against Google before it is saved, and a generous free daily allowance that renews itself. ChatGPT and Grok give away their websites but not their machinery, so they get honest open-in-browser buttons instead — the studio will never ask to store your passwords.',
+    where: 'Settings → AI switchboard, and Settings → Connect Gemini → "Show me how"'
+  },
+  {
     id: 'recording-fixes',
     date: '2026-08-07',
     title: 'Percent signs no longer kill video builds, and scene images behave',

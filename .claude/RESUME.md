@@ -20,13 +20,24 @@ a known-dead free service is skipped in the fallback chain; the Actions artifact
 (435 MB/build vs a 500 MB allowance — his "storage full" emails) now runs only when the
 release upload fails. Existing artifacts self-expire by 2026-08-16.
 
-**Approved-plan queue from his voice note is in the PR/report of this session** — the
-caretaker (scheduled self-diagnostic with its own Settings section), Gemini via free
-AI-Studio key walkthrough (NEVER via stored login/password), provider on/off switches,
-global + per-scene duration control, full-length music examples, delete-everywhere via
-one deletion service, Presenter black-video honesty gate, Script Writer/Pad merge. He
-asked to APPROVE the plan before building — do not start those unsolicited; wait for his
-yes on each.
+**HE APPROVED ALL TEN ITEMS (2026-08-07, in his own words: "I approve all of your
+work").** Build order (dependencies first), each lands as its own small PR:
+
+1. ~~AI switchboard~~ — provider ON/OFF toggles; free-online OFF by default (went paid)
+2. Gemini as a real provider via the FREE AI-Studio API key + a YouTube-style walkthrough.
+   ChatGPT/Grok = open-in-browser buttons ONLY (he approved after the explanation —
+   NEVER stored passwords, NEVER browser automation)
+3. Presenter honesty gate — refuse to ship a video that is mostly failed slates
+4. Global scene-duration control + per-scene override (cards already have per-scene)
+5. Delete-everywhere — one deletion service behind every delete button (user-confirmed)
+6. Expert offline brain — Ollama + the full manual as grounding for offline Ask-AI
+7. Music examples — 3-5 full-length candidates with reasons, play in-app, pick one
+8. Merge Script Writer + Script Pad
+9. The Caretaker — scheduled self-diagnostic, Settings section, recommended schedule
+   "app start + every 6h while open, never during a render", history, user-editable
+10. Free-video watch — caretaker checks for new free video services and reports
+
+Work these in order without asking. Push at every coherent step.
 
 ---
 

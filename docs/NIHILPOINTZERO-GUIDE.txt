@@ -1106,6 +1106,21 @@ audience that is not yours. A Pakistani finance channel spoken in Roman Urdu has
 an audience with its own habits, and the only data that describes those habits is
 already sitting in your own uploads. Nothing was reading it.
 
+YOUR AI BRAINS — THE SWITCHBOARD
+Settings has a switchboard: every AI brain the studio can use, each with a plain
+ON/OFF switch and a "Use this one" button. OFF genuinely means off — a switched-off
+brain is never contacted, not even as a backup. The old free online service (the one
+that started demanding payment in 2026) sits OFF; your local brain (Ollama) stays ON.
+
+GEMINI, FREE. Google gives Gemini away through a free key — no card, a daily
+allowance that renews itself. Settings -> "Connect Gemini" -> "Show me how": two
+minutes, a button for each step, and the key is tested against Google for real before
+it is saved. Saving it switches Gemini ON.
+
+CHATGPT AND GROK. Their websites are free but their machinery is not — there is no
+free key for an app to use, and the only way to fake one would be storing your
+passwords, which this studio will never do. They get open-in-browser buttons instead.
+
 WHAT YOU NEED FIRST
 Settings -> "Connect YouTube". It is free, it takes about three minutes, and
 Google never asks for a card.

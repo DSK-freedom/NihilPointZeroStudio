@@ -93,6 +93,7 @@ import { KEN_BURNS_MOTIONS } from './video/render'
 import { searchYouTubeSignals } from './data/youtube'
 import { fetchComments, readMyChannel } from './data/youtube'
 import { resolveYouTubeChannel, verifySavedYouTubeKey, verifyYouTubeKey } from './data/youtubeKeyCheck'
+import { verifyGeminiKey, verifySavedGeminiKey } from './llm/geminiKeyCheck'
 import { buildCutArgs, planSilenceCut } from './video/silence'
 import { buildVideoEncoderArgs, chooseEncoderForJob } from './video/encoder'
 import { buildSpeedArgs } from './audio/speed'
@@ -222,6 +223,7 @@ import {
   setApiKey,
   setModel,
   setPiperVoiceId,
+  setProviderEnabled,
   setYouTubeApiKey,
   videosDir
 } from './store'
@@ -246,6 +248,22 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.settingsSetApiKey, (_e, provider: LLMProviderId, key: string) => {
     logActivity('user', `${key ? 'Updated' : 'Removed'} ${provider} API key`)
     return setApiKey(provider, key)
+  })
+
+  /**
+   * The switchboard: which brains may be contacted at all. Logged because "why did my
+   * AI change" must always be answerable from the Activity Log.
+   */
+  ipcMain.handle(IPC.settingsSetProviderEnabled, (_e, provider: LLMProviderId, on: boolean) => {
+    logActivity('user', `${on ? 'Switched ON' : 'Switched OFF'} the ${provider} AI`)
+    return setProviderEnabled(provider, on)
+  })
+
+  /** Gemini: verify only — saving happens separately, and only on a confirmed pass. */
+  ipcMain.handle(IPC.geminiKeyVerify, async (_e, rawKey: string) => {
+    const verdict = rawKey ? await verifyGeminiKey(rawKey) : await verifySavedGeminiKey()
+    logActivity('user', 'Checked the Gemini key', verdict.state === 'working' ? 'works' : verdict.title)
+    return verdict
   })
 
   ipcMain.handle(IPC.settingsSetYouTubeKey, (_e, key: string) => {

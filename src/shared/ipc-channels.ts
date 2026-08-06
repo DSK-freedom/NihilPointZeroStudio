@@ -9,6 +9,9 @@ export const IPC = {
   // The free-key walkthrough: prove a pasted key really works before trusting it, and
   // find the channel id from the @handle so nobody has to hunt for a 24-character string.
   youtubeKeyVerify: 'youtube:key-verify',
+  // The switchboard and the Gemini walkthrough (a free AI-Studio key, tested for real).
+  settingsSetProviderEnabled: 'settings:set-provider-enabled',
+  geminiKeyVerify: 'gemini:key-verify',
   youtubeChannelResolve: 'youtube:channel-resolve',
   settingsSetHordeKey: 'settings:set-horde-key',
   ollamaStatus: 'ollama:status',

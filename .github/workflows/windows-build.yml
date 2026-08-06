@@ -165,9 +165,14 @@ jobs:
 
           Build $NPZ_BUILD_TAG"
 
-      # Keeps the exes reachable for 14 days even if the release step ever fails.
-      - name: Keep a copy of the build
-        if: always()
+      # SAFETY NET ONLY ON FAILURE. This used to run on every build (if: always,
+      # 14-day retention), which stored ~435 MB of exes per build against GitHub's
+      # 500 MB free Actions-storage allowance — one build nearly filled it, the second
+      # blew past it, and the owner got "95% full" and "100% full" emails an hour
+      # apart. The artifact's only purpose is to save the exes when the RELEASE upload
+      # fails, so that is now the only time it exists. Normal-case storage cost: zero.
+      - name: Keep a copy of the build (only if the release upload failed)
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: windows-exes
@@ -175,4 +180,4 @@ jobs:
             release/NIHILPOINTZERO-OS-setup.exe
             release/NIHILPOINTZERO-OS-portable.exe
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 3

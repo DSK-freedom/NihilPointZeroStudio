@@ -100,7 +100,15 @@ export function getActiveProvider(): LLMProvider {
   // Keyless safety net, so the chain is never empty. Added only ONCE: it used to be pushed
   // twice, so a failing free service was asked the identical question a second time and the
   // user simply waited twice as long for the same error.
-  if (!labels.includes('free')) {
+  //
+  // BUT NOT WHEN IT IS KNOWN-DEAD. The hosted service began demanding payment (HTTP 402,
+  // permanent), which makes it a paid service in all but name — and the standing rule is
+  // that paid things are never contacted unless the user chose them. Appending it anyway
+  // meant every failed Ollama answer ended with ITS error on screen: "requires a paid
+  // account", which reads as *go and pay*. Skipped while dead (unless it is the active,
+  // deliberately-chosen provider); it re-enters the chain by itself if it ever recovers,
+  // because deadProviders re-probes and clears the mark on success.
+  if (!labels.includes('free') && (settings.activeProvider === 'free' || !isProviderDead('free'))) {
     chain.push(new PollinationsProvider(getModel('free') || 'openai'))
     labels.push('free')
   }

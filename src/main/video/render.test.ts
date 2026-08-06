@@ -254,3 +254,24 @@ describe('slideshow shot lengths: tightening pace, exact total', () => {
     expect(frames.every((f) => f >= 1)).toBe(true)
   })
 })
+
+describe('drawtext never re-enables % expansion', () => {
+  // THE INCIDENT: a headline containing "40%" killed the whole build — ffmpeg's drawtext
+  // expands %-sequences even when the text comes from a textfile, and a stray % is a
+  // hard filtergraph error ("Stray % near ..."), reported to the user as "ffmpeg exited
+  // with code null". Finance titles are FULL of percent signs, so this was not an edge
+  // case, it was the main case. Every drawtext that renders user text must therefore
+  // carry expansion=none. The chain is built inline inside renderVideo, so this pins the
+  // source itself — crude, but it fails the moment someone adds a drawtext without it.
+  it('every textfile drawtext in render.ts and thumbnail.ts carries expansion=none', async () => {
+    const { readFileSync } = await import('fs')
+    for (const file of ['src/main/video/render.ts', 'src/main/video/thumbnail.ts']) {
+      const src = readFileSync(file, 'utf-8')
+      for (const line of src.split('\n')) {
+        if (line.includes('drawtext=') && line.includes('textfile=')) {
+          expect(line, `${file}: ${line.trim().slice(0, 80)}`).toContain('drawtext=expansion=none')
+        }
+      }
+    }
+  })
+})

@@ -767,7 +767,10 @@ export async function renderVideo(opts: RenderOptions): Promise<void> {
     if (showText) {
       const titleAlpha = tpl.animateTitle ? `:alpha='${titleAlphaExpr()}'` : ''
       chains.push(
-        `[${base}]drawtext=fontfile='${font}':textfile='${fileArg(titleFile)}':fontcolor=${theme.titleColor}:fontsize=${titleFont}:x=(w-tw)/2:y=${layout.titleY}${titleAlpha}[v0]`
+        // expansion=none: drawtext expands %-sequences even in a textfile, so a headline
+        // like "OIL UP 40%!" kills the whole build with "Stray %". Nothing here uses
+        // text expansion, so it is switched off rather than escaped around.
+        `[${base}]drawtext=expansion=none:fontfile='${font}':textfile='${fileArg(titleFile)}':fontcolor=${theme.titleColor}:fontsize=${titleFont}:x=(w-tw)/2:y=${layout.titleY}${titleAlpha}[v0]`
       )
       chains.push(`[v0][wave]overlay=x=0:y=H-h-${layout.waveMargin}[v1]`)
     } else {
@@ -797,14 +800,14 @@ export async function renderVideo(opts: RenderOptions): Promise<void> {
             `enable='between(t,${s},${end})'[${bar}]`
         )
         chains.push(
-          `[${bar}]drawtext=fontfile='${font}':textfile='${fileArg(cardFile)}':fontcolor=${theme.bgColor}:fontsize=${Math.round(cardFont * 0.5)}:` +
+          `[${bar}]drawtext=expansion=none:fontfile='${font}':textfile='${fileArg(cardFile)}':fontcolor=${theme.bgColor}:fontsize=${Math.round(cardFont * 0.5)}:` +
             `x='${-barW}+${travel}*${slide}':y=${barY + Math.round(barH * 0.28)}:enable='between(t,${s},${end})'[${next}]`
         )
       } else {
         // Kinetic centered card: fade in while sliding up ~40px.
         const y = `(h-th)/2 + 40*(1-min((t-${s})/0.6,1))`
         chains.push(
-          `[${prev}]drawtext=fontfile='${font}':textfile='${fileArg(cardFile)}':fontcolor=${theme.cardColor}:fontsize=${cardFont}:` +
+          `[${prev}]drawtext=expansion=none:fontfile='${font}':textfile='${fileArg(cardFile)}':fontcolor=${theme.cardColor}:fontsize=${cardFont}:` +
             `x=(w-tw)/2:y='${y}':alpha='${alpha}':enable='between(t,${s},${end})'[${next}]`
         )
       }

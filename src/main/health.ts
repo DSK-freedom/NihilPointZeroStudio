@@ -59,10 +59,10 @@ async function checkFreeText(): Promise<HealthCheck> {
       signal: AbortSignal.timeout(15000)
     })
     if (res.status === 402) {
-      return fail(label, 'no longer free — the service now demands a paid account. Use Ollama or a Claude/OpenAI key')
+      return fail(label, 'no longer free — the service now demands a paid account. The local brain (Ollama) is the answer; nothing needs buying')
     }
     if (res.status === 404) {
-      return fail(label, 'the free model was removed from their API. Use Ollama or a Claude/OpenAI key')
+      return fail(label, 'the free model was withdrawn from their service. The local brain (Ollama) covers it; nothing needs buying')
     }
     if (res.status === 429) return warn(label, 'busy right now (rate-limited) — answers may fail or be slow')
     if (res.status >= 400) return fail(label, `service returned ${res.status} — answers will fail`)

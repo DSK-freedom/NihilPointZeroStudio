@@ -907,6 +907,13 @@ numbers** — if a figure can't be derived, it says so.
 - **"Beautify" is a retouch, not plastic surgery** — it smooths/brightens/sharpens; it does not
   reshape hair/skin/muscles into someone else.
 
+## Added on 2026-08-07 — the switchboard and Gemini
+- **AI switchboard** (Settings): every brain with a real ON/OFF. Off = never contacted,
+  not even as a fallback. Free-online defaults OFF (it went paid); Ollama ON; paid asleep.
+- **Gemini** as a full brain via Google's genuinely free AI-Studio key, with a two-minute
+  tested walkthrough. ChatGPT/Grok: open-in-browser buttons only — no free machinery
+  exists, and the studio will never store passwords.
+
 ## Fixed on 2026-08-07, from the owner's screen recording
 - **A percent sign in a headline crashed the whole video build** ("Stray %", "ffmpeg
   exited with code null"). Finance titles are full of percent signs, so this was the main

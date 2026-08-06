@@ -2,6 +2,7 @@ import { AnthropicProvider } from './anthropic'
 import { OpenAIProvider } from './openai'
 import { OllamaProvider } from './ollama'
 import { PollinationsProvider } from './pollinations'
+import { GeminiProvider } from './gemini'
 import { ResilientProvider } from './resilient'
 import { LLMConfigError, LLMRequestError, type LLMProvider } from './types'
 import { logAiError } from './errorLog'
@@ -10,7 +11,7 @@ import { isProviderDead, recordProviderFailure, recordProviderSuccess } from './
 import { CHOSEN_TIMEOUT_MS, FALLBACK_TIMEOUT_MS } from './limits'
 import { fallbackTimeoutMs } from './timeouts'
 
-import { getDecryptedKey, getModel, getSettings, logActivity } from '../store'
+import { getDecryptedKey, getModel, getProviderEnabled, getSettings, logActivity } from '../store'
 import { broadcastAiFallback } from '../notify'
 
 /** Builds the raw provider for the chosen id (throws for a paid provider with no key). */
@@ -20,8 +21,9 @@ function buildProvider(id: string, model: string, timeoutMs = CHOSEN_TIMEOUT_MS)
   const m = (model || '').trim()
   if (id === 'free') return new PollinationsProvider(m || 'openai')
   if (id === 'ollama') return new OllamaProvider(m)
-  const key = getDecryptedKey(id as 'anthropic' | 'openai')
+  const key = getDecryptedKey(id as 'anthropic' | 'openai' | 'gemini')
   if (!key) throw new LLMConfigError(`No API key configured for ${id}. Add one in Settings before generating.`)
+  if (id === 'gemini') return new GeminiProvider(key, m, timeoutMs)
   if (id === 'anthropic') return new AnthropicProvider(key, m, timeoutMs)
   return new OpenAIProvider(key, m, timeoutMs)
 }
@@ -37,6 +39,11 @@ function buildProvider(id: string, model: string, timeoutMs = CHOSEN_TIMEOUT_MS)
  */
 export function getActiveProvider(): LLMProvider {
   const settings = getSettings()
+  // THE SWITCHBOARD IS LAW. A brain the user switched off is never contacted — not as
+  // a fallback, not as a safety net, not "just this once". An off switch that still
+  // answers is not an off switch. The active provider is always allowed (choosing it
+  // was the clearest possible ON), which getProviderEnabled() guarantees.
+  const enabled = getProviderEnabled()
   const chain: LLMProvider[] = []
   const labels: string[] = []
   // A provider that recently refused permanently (revoked key, service now demanding
@@ -91,11 +98,21 @@ export function getActiveProvider(): LLMProvider {
   // Being generous here is close to free: the underlying deadline is a socket INACTIVITY
   // timeout, so a fast answer still returns immediately. It only bites when nothing is
   // coming back at all, which is exactly when it should.
-  if (!labels.includes('ollama')) {
+  if (!labels.includes('ollama') && enabled.ollama) {
     // Not the last resort at this point: the keyless free service is appended below.
     const ollamaMs = fallbackTimeoutMs({ isLocal: true, isLastResort: false })
     chain.push(new OllamaProvider(getModel('ollama'), ollamaMs))
     labels.push('ollama')
+  }
+  // Gemini as a fallback when it is switched on and has its (free) key: a genuinely
+  // different brain that costs nothing, tried after the local one, before the free net.
+  if (!labels.includes('gemini') && enabled.gemini && !isProviderDead('gemini')) {
+    try {
+      chain.push(buildProvider('gemini', getModel('gemini'), FALLBACK_TIMEOUT_MS))
+      labels.push('gemini')
+    } catch {
+      /* no key saved — nothing to add, and nothing to report: it is simply not set up */
+    }
   }
   // Keyless safety net, so the chain is never empty. Added only ONCE: it used to be pushed
   // twice, so a failing free service was asked the identical question a second time and the
@@ -108,7 +125,7 @@ export function getActiveProvider(): LLMProvider {
   // account", which reads as *go and pay*. Skipped while dead (unless it is the active,
   // deliberately-chosen provider); it re-enters the chain by itself if it ever recovers,
   // because deadProviders re-probes and clears the mark on success.
-  if (!labels.includes('free') && (settings.activeProvider === 'free' || !isProviderDead('free'))) {
+  if (!labels.includes('free') && enabled.free && (settings.activeProvider === 'free' || !isProviderDead('free'))) {
     chain.push(new PollinationsProvider(getModel('free') || 'openai'))
     labels.push('free')
   }

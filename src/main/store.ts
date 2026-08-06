@@ -25,6 +25,11 @@ interface PersistedSettings {
   ollamaModel: string
   anthropicKeyEnc: string | null
   openaiKeyEnc: string | null
+  /** Gemini: a FREE AI-Studio key — keyed like YouTube, not billed like Anthropic. */
+  geminiKeyEnc?: string | null
+  geminiModel?: string
+  /** The switchboard: which brains may be contacted at all. Absent field = defaults. */
+  providerEnabled?: Partial<Record<LLMProviderId, boolean>>
   youtubeKeyEnc: string | null
   hordeKeyEnc: string | null
   mvsepTokenEnc: string | null
@@ -74,6 +79,8 @@ const DEFAULT_SETTINGS: PersistedSettings = {
   ollamaModel: 'llama3.1:8b',
   anthropicKeyEnc: null,
   openaiKeyEnc: null,
+  geminiKeyEnc: null,
+  geminiModel: 'gemini-2.5-flash',
   youtubeKeyEnc: null,
   hordeKeyEnc: null,
   mvsepTokenEnc: null,
@@ -167,6 +174,37 @@ function decrypt(stored: string): string {
   return Buffer.from(stored, 'base64').toString('utf-8')
 }
 
+/**
+ * The effective switchboard. Defaults, chosen with the user (2026-08-07):
+ *  - ollama ON: the local free brain the app runs on.
+ *  - free OFF: the hosted service went paid; a thing that demands payment is treated
+ *    like the paid ones — asleep until deliberately switched on.
+ *  - gemini ON once its (free) key exists, because saving the key IS the deliberate act.
+ *  - anthropic/openai OFF: PAID FEATURES SLEEP; only an explicit toggle wakes them.
+ * The active provider is always allowed — choosing it was the clearest possible "on".
+ */
+export function getProviderEnabled(): Record<LLMProviderId, boolean> {
+  const s = readSettings()
+  const saved = s.providerEnabled ?? {}
+  const defaults: Record<LLMProviderId, boolean> = {
+    ollama: true,
+    free: false,
+    gemini: !!s.geminiKeyEnc,
+    anthropic: false,
+    openai: false
+  }
+  const merged = { ...defaults, ...saved }
+  merged[s.activeProvider] = true
+  return merged
+}
+
+export function setProviderEnabled(provider: LLMProviderId, on: boolean): ProviderSettings {
+  const s = readSettings()
+  s.providerEnabled = { ...(s.providerEnabled ?? {}), [provider]: on }
+  writeSettings(s)
+  return getSettings()
+}
+
 export function getSettings(): ProviderSettings {
   const s = readSettings()
   return {
@@ -176,6 +214,9 @@ export function getSettings(): ProviderSettings {
     openaiModel: s.openaiModel,
     ollamaModel: s.ollamaModel,
     hasAnthropicKey: !!s.anthropicKeyEnc,
+    hasGeminiKey: !!s.geminiKeyEnc,
+    geminiModel: s.geminiModel || 'gemini-2.5-flash',
+    providerEnabled: getProviderEnabled(),
     hasOpenAIKey: !!s.openaiKeyEnc,
     hasYouTubeKey: !!s.youtubeKeyEnc,
     hasHordeKey: !!s.hordeKeyEnc,
@@ -323,6 +364,7 @@ export function setModel(provider: LLMProviderId, model: string): ProviderSettin
   if (provider === 'anthropic') s.anthropicModel = m
   else if (provider === 'openai') s.openaiModel = m
   else if (provider === 'free') s.freeModel = m
+  else if (provider === 'gemini') s.geminiModel = m
   else s.ollamaModel = m
   writeSettings(s)
   return getSettings()
@@ -331,7 +373,8 @@ export function setModel(provider: LLMProviderId, model: string): ProviderSettin
 export function setApiKey(provider: LLMProviderId, rawKey: string): ProviderSettings {
   const s = readSettings()
   const enc = rawKey ? encrypt(rawKey) : null
-  if (provider === 'anthropic') s.anthropicKeyEnc = enc
+  if (provider === 'gemini') s.geminiKeyEnc = enc
+  else if (provider === 'anthropic') s.anthropicKeyEnc = enc
   else if (provider === 'openai') s.openaiKeyEnc = enc
   // 'free' and 'ollama' carry no API key — ignore rather than misrouting the value
   // into the OpenAI slot (which would silently clobber a real OpenAI key).
@@ -341,7 +384,8 @@ export function setApiKey(provider: LLMProviderId, rawKey: string): ProviderSett
 
 export function getDecryptedKey(provider: LLMProviderId): string | null {
   const s = readSettings()
-  const enc = provider === 'anthropic' ? s.anthropicKeyEnc : s.openaiKeyEnc
+  const enc =
+    provider === 'anthropic' ? s.anthropicKeyEnc : provider === 'gemini' ? s.geminiKeyEnc : s.openaiKeyEnc
   if (!enc) return null
   return decrypt(enc)
 }
@@ -351,7 +395,27 @@ export function getModel(provider: LLMProviderId): string {
   if (provider === 'anthropic') return s.anthropicModel
   if (provider === 'openai') return s.openaiModel
   if (provider === 'free') return s.freeModel
+  if (provider === 'gemini') return s.geminiModel || 'gemini-2.5-flash'
   return s.ollamaModel
+}
+
+/**
+ * The Gemini key, cleaned the same way it is verified — see setYouTubeApiKey below for
+ * the incident that rule comes from. Gemini AI-Studio keys are Google keys and share the
+ * AIza shape, so they share the cleaner too.
+ */
+export function setGeminiApiKey(rawKey: string): ProviderSettings {
+  const s = readSettings()
+  const key = cleanPastedKey(rawKey ?? '')
+  s.geminiKeyEnc = key ? encrypt(key) : null
+  writeSettings(s)
+  return getSettings()
+}
+
+export function getGeminiApiKey(): string | null {
+  const s = readSettings()
+  if (!s.geminiKeyEnc) return null
+  return decrypt(s.geminiKeyEnc)
 }
 
 /**

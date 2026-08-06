@@ -17,6 +17,9 @@ const api = {
     setModel: (provider: LLMProviderId, model: string) => ipcRenderer.invoke(IPC.settingsSetModel, provider, model),
     setApiKey: (provider: LLMProviderId, key: string) => ipcRenderer.invoke(IPC.settingsSetApiKey, provider, key),
     setYouTubeKey: (key: string) => ipcRenderer.invoke(IPC.settingsSetYouTubeKey, key),
+    /** The switchboard: turn a brain ON or OFF. Off means never contacted, even as a fallback. */
+    setProviderEnabled: (provider: LLMProviderId, on: boolean) =>
+      ipcRenderer.invoke(IPC.settingsSetProviderEnabled, provider, on),
     setYouTubeChannel: (id: string) => ipcRenderer.invoke(IPC.settingsSetYouTubeChannel, id),
     setHordeKey: (key: string) => ipcRenderer.invoke(IPC.settingsSetHordeKey, key),
     setMvsepToken: (key: string) => ipcRenderer.invoke(IPC.settingsSetMvsepToken, key),
@@ -774,6 +777,9 @@ const api = {
      */
     verifyKey: (rawKey?: string): Promise<import('../shared/youtubeKeySetup').KeyVerdict> =>
       ipcRenderer.invoke(IPC.youtubeKeyVerify, rawKey ?? ''),
+    /** Gemini's free AI-Studio key, tested for real — same three-state verdict as YouTube's. */
+    verifyGeminiKey: (rawKey?: string): Promise<import('../shared/youtubeKeySetup').KeyVerdict> =>
+      ipcRenderer.invoke(IPC.geminiKeyVerify, rawKey ?? ''),
     /** @handle, channel URL or UC id → the id plus the channel NAME, so it can be confirmed by eye. */
     resolveChannel: (input: string, rawKey?: string): Promise<import('../shared/youtubeKeySetup').ChannelResolution> =>
       ipcRenderer.invoke(IPC.youtubeChannelResolve, input, rawKey ?? '')

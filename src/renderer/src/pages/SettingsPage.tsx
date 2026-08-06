@@ -6,6 +6,8 @@ import { toast } from '../components/Toast'
 import WhatsNewCard from '../components/WhatsNewCard'
 import VersionCard from '../components/VersionCard'
 import YouTubeSetup from '../components/YouTubeSetup'
+import AiSwitchboard from '../components/AiSwitchboard'
+import GeminiSetup from '../components/GeminiSetup'
 import type {
   AiErrorEntry,
   HardwareReport,
@@ -19,6 +21,7 @@ import type {
 const providerLabel: Record<LLMProviderId, string> = {
   free: 'Free (online)',
   ollama: 'Local (Free)',
+  gemini: 'Gemini (free key)',
   anthropic: 'Claude (Anthropic)',
   openai: 'OpenAI'
 }
@@ -354,10 +357,6 @@ export default function SettingsPage() {
     const t = setTimeout(() => document.getElementById('youtube-setup')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
     return () => clearTimeout(t)
   }, [])
-
-  async function handleSetProvider(provider: LLMProviderId): Promise<void> {
-    setSettings(await window.api.settings.setProvider(provider))
-  }
 
   /** The main process saves AND registers with Windows; re-read so the checkbox reflects
    * what was actually stored rather than what was clicked. */
@@ -695,24 +694,11 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <div className="mt-6 rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-2">
-        <label className="text-xs text-ink-400">Active provider</label>
-        <div className="flex gap-2">
-          {(['free', 'ollama', 'anthropic', 'openai'] as LLMProviderId[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => handleSetProvider(p)}
-              className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
-                settings.activeProvider === p
-                  ? 'border-gold-500 bg-ink-800 text-gold-400'
-                  : 'border-ink-700 text-ink-300 hover:border-ink-500'
-              }`}
-            >
-              {providerLabel[p]}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* The switchboard replaced the bare "Active provider" row: same choice, plus an
+          honest ON/OFF per brain, so "off" finally means never-contacted. */}
+      <AiSwitchboard settings={settings} onChanged={setSettings} />
+
+      <GeminiSetup hasKey={settings.hasGeminiKey} onSaved={refresh} />
 
       {settings.activeProvider === 'free' && (
         <div className="mt-4 rounded-lg border border-emerald-700/50 bg-emerald-950/20 p-4">

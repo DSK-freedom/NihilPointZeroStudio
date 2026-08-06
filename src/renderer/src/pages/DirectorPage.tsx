@@ -12,6 +12,7 @@ import MicButton, { appendDictation } from '../components/MicButton'
 const BRAIN_LABEL: Record<LLMProviderId, string> = {
   free: 'Free online AI (no key)',
   ollama: 'Free local AI (Ollama)',
+  gemini: 'Gemini (free key)',
   anthropic: 'Claude (paid)',
   openai: 'OpenAI (paid)'
 }

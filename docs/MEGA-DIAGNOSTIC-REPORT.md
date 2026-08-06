@@ -907,6 +907,22 @@ numbers** — if a figure can't be derived, it says so.
 - **"Beautify" is a retouch, not plastic surgery** — it smooths/brightens/sharpens; it does not
   reshape hair/skin/muscles into someone else.
 
+## Fixed on 2026-08-07, from the owner's screen recording
+- **A percent sign in a headline crashed the whole video build** ("Stray %", "ffmpeg
+  exited with code null"). Finance titles are full of percent signs, so this was the main
+  case, not a corner. Fixed at the filter level and pinned with a test.
+- **Scene images could come out with inappropriate, mostly-female subjects** on scripts
+  that never mentioned a person. Two causes: the image service's strict content filter was
+  never being sent (now sent on every request), and the model invents a person for abstract
+  finance prompts (scenes that don't mention one now ban people from the frame; scenes that
+  do require modest professional dress).
+- **The app recommended buying a paid key when the free online AI died.** Removed
+  everywhere; the free local brain is the answer, and a dead free service is no longer
+  consulted on every request.
+- **GitHub "storage full" emails**: every build was storing 435 MB of exes as a 14-day
+  Actions artifact against a 500 MB allowance. It now stores nothing unless the release
+  upload itself fails; the old copies expire by themselves within two weeks.
+
 ## Honest note on "bug-free forever"
 The logic and math are tested and correct today. The parts that reach the internet (live PSX
 prices, free AI services, online music removal) depend on those services staying up and

@@ -52,7 +52,7 @@ export const CHANGELOG: ChangeEntry[] = [
     title: 'Percent signs no longer kill video builds, and scene images behave',
     detail:
       'Three fixes straight from your screen recording. A headline with a percent sign in it — "OIL UP 40%" — crashed the whole video build with a cryptic ffmpeg error; fixed, with a test so it stays fixed. Scene images now carry the image service’s strict content filter on every request (it existed and was never being switched on), scenes that never mention a person now say NO PEOPLE to the image maker instead of letting it invent one, and scenes that do ask for a person require modest professional dress. And when the free online AI died, the error told you to add a paid key — that sentence is gone everywhere; the answer to a free service dying is the free local brain, and the app stops consulting a dead service on every request.',
-    where: 'Nothing to do — builds and Scene Studio just behave now. Regenerate any scenes you disliked.'
+    where: 'Automatic — nothing to set. Scene Studio → regenerate any scenes you disliked and they follow the new rules.'
   },
   {
     id: 'youtube-walkthrough',

@@ -243,8 +243,13 @@ export default function WriterPage() {
   async function handleSaveThumbnail(): Promise<void> {
     if (!thumbImage) return
     const src = decodeURI(thumbImage.replace(/^file:\/\/\//, '').replace(/\?t=\d+$/, ''))
-    const res = await window.api.script.saveThumbnail(src)
-    if (res.saved) setThumbSaveNote(`Saved to ${res.path}`)
+    try {
+      const res = await window.api.script.saveThumbnail(src)
+      // Cancel and failure must not look identical to "the button did nothing".
+      setThumbSaveNote(res.saved ? `Saved to ${res.path}` : 'Save cancelled.')
+    } catch (err) {
+      setThumbSaveNote(err instanceof Error ? err.message : 'Could not save the thumbnail.')
+    }
   }
 
   async function handleGenerateVoiceover(): Promise<void> {
@@ -270,7 +275,7 @@ export default function WriterPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-serif text-ink-100">Script Writer</h1>
-            <span className="text-[11px] text-ink-500">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved ✓' : ''}</span>
+            <span className="text-[11px] text-ink-500">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved ✓' : saveStatus === 'error' ? '! not saved (disk error)' : ''}</span>
           </div>
           <p className="text-ink-400 text-sm mt-1">
             Institutional-grade scripts, multi-style. Your work auto-saves and survives restart.
@@ -299,7 +304,9 @@ export default function WriterPage() {
             <div>
               <div className="flex items-center justify-between">
                 <label className="text-xs text-ink-400">Topic</label>
-                <MicButton onText={(t) => setWriter({ topic: appendDictation(writer.topic, t) })} />
+                {/* Functional form: the transcript arrives async, so a patch built from
+                    the render-time value overwrote anything typed while the mic ran. */}
+                <MicButton onText={(t) => setWriter((prev) => ({ topic: appendDictation(prev.topic, t) }))} />
               </div>
               <textarea
                 value={writer.topic}
@@ -312,7 +319,7 @@ export default function WriterPage() {
             <div>
               <div className="flex items-center justify-between">
                 <label className="text-xs text-ink-400">Angle / context (optional)</label>
-                <MicButton onText={(t) => setWriter({ ideaContext: appendDictation(writer.ideaContext, t) })} />
+                <MicButton onText={(t) => setWriter((prev) => ({ ideaContext: appendDictation(prev.ideaContext, t) }))} />
               </div>
               <textarea
                 value={writer.ideaContext}
@@ -324,7 +331,7 @@ export default function WriterPage() {
             <div>
               <div className="flex items-center justify-between">
                 <label className="text-xs text-ink-400">Audience note (optional)</label>
-                <MicButton onText={(t) => setWriter({ audienceNote: appendDictation(writer.audienceNote, t) })} />
+                <MicButton onText={(t) => setWriter((prev) => ({ audienceNote: appendDictation(prev.audienceNote, t) }))} />
               </div>
               <input
                 value={writer.audienceNote}
@@ -335,7 +342,7 @@ export default function WriterPage() {
             <div>
               <div className="flex items-center justify-between">
                 <label className="text-xs text-ink-400">Verified numbers / sources (optional)</label>
-                <MicButton onText={(t) => setWriter({ verifiedData: appendDictation(writer.verifiedData, t) })} />
+                <MicButton onText={(t) => setWriter((prev) => ({ verifiedData: appendDictation(prev.verifiedData, t) }))} />
               </div>
               <textarea
                 value={writer.verifiedData}
@@ -372,7 +379,10 @@ export default function WriterPage() {
                 Fetches exactly the one document you link to (psx.com.pk only) — for personal reference, per PSX's
                 own terms. Not a crawler; it won't browse the site on its own.
               </p>
-              {psxStatus && <p className="text-[11px] text-ink-500 mt-1">{psxStatus}</p>}
+              {/* break-all: this can contain a full absolute Windows path, which is one
+                  unbreakable token — without it the ~315px column forced the whole
+                  page to scroll horizontally. */}
+              {psxStatus && <p className="text-[11px] text-ink-500 mt-1 break-all">{psxStatus}</p>}
 
               <button
                 onClick={handleCorrelate}
@@ -482,7 +492,12 @@ export default function WriterPage() {
                 className="mt-3 flex-1 min-h-[420px] w-full rounded-md bg-ink-800 border border-ink-700 px-3 py-3 text-sm text-ink-100 leading-relaxed outline-none focus:border-gold-500 font-serif"
               />
               <div className="flex flex-wrap gap-2 mt-3 items-center">
-                <span className="text-xs text-emerald-400">Auto-saved to Library ✓</span>
+                {/* Honest label: only the ORIGINAL generated script is in the Library;
+                    edits made in this box live in this tab's autosave, not the Library.
+                    The old "Auto-saved to Library ✓" claimed edits were saved there too. */}
+                <span className="text-xs text-emerald-400" title="The original generated script is in the Library. Edits you make here are kept in this tab's autosave (they survive restart) but do not update the Library copy.">
+                  Original in Library ✓ · edits kept here
+                </span>
                 <button
                   onClick={handleExport}
                   className="rounded-md border border-ink-600 hover:border-ink-400 text-ink-200 text-sm px-4 py-1.5 transition-colors"

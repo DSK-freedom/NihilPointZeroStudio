@@ -154,6 +154,9 @@ export const IPC = {
   // built to be time-identical to its source.
   timelineProxy: 'timeline:proxy',
   timelinePickClips: 'timeline:pick-clips',
+  // Separate picker for the audio track: the clips dialog filters to video/image
+  // only, which made it impossible to ever select a music/voice file.
+  timelinePickAudio: 'timeline:pick-audio',
   storyboardPlan: 'storyboard:plan',
   storyboardRender: 'storyboard:render',
   storyboardPickPhoto: 'storyboard:pick-photo',

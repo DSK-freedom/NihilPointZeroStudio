@@ -6,6 +6,7 @@ import { isPiperInstalled, synthesizeWithPiper } from '../voice/piper'
 import { synthesizeWithWinNatural } from '../voice/winNatural'
 import {
   beginRenderSession,
+  CANCELLED_MESSAGE,
   endRenderSession,
   ffprobeDuration,
   makeFfmpegProgressLogger,
@@ -129,6 +130,10 @@ export async function buildVideoFromScript(
   const scratch = mkdtempSync(join(tmpdir(), 'finscript-vid-'))
   const wav = resume.narrationPath
   let finished = false
+  // Stock B-roll downloads land in their own temp dir (possibly hundreds of MB).
+  // Tracked out here so the finally can remove it on EVERY exit — the old cleanup
+  // ran only after a successful render, so Stop/failure leaked the whole folder.
+  let stockTempDir: string | undefined
   try {
     // Voice priority: use the NATURAL (Piper) voice whenever it's installed, unless the
     // user explicitly picked the robotic Windows voice. This makes "natural" the default
@@ -164,9 +169,17 @@ export async function buildVideoFromScript(
       }
     }
     if (!narrated && wantNatural && isPiperInstalled()) {
-      onProgress?.('Generating narration (natural voice)…')
-      await synthesizeWithPiper(stripStageDirections(body), wav)
-      narrated = true
+      try {
+        onProgress?.('Generating narration (natural voice)…')
+        await synthesizeWithPiper(stripStageDirections(body), wav)
+        narrated = true
+      } catch (err) {
+        // A user Stop must abort the build; anything else falls through to the
+        // Windows voice — this was the ONLY voice branch without a net, so a
+        // Piper hiccup used to kill the whole render mid-build.
+        if (err instanceof Error && err.message === CANCELLED_MESSAGE) throw err
+        onProgress?.('Natural voice failed — using the Windows voice instead…')
+      }
     }
     if (!narrated) {
       onProgress?.('Generating narration (Windows voice)…')
@@ -210,7 +223,9 @@ export async function buildVideoFromScript(
 
     if (engine === 'ai-cloud') {
       onProgress?.('Generating AI footage (cloud)…')
-      aiFootage = await generateCloudFootage({ title, body, durationSec, style: options.style, resolution: options.resolution })
+      // scratchDir: the footage lands in this build's scratch, so the finally-cleanup
+      // covers it — it used to leak a %TEMP%\ai-cloud-* dir per run.
+      aiFootage = await generateCloudFootage({ title, body, durationSec, style: options.style, resolution: options.resolution, scratchDir: scratch })
     } else if (engine === 'ai-free-video' || engine === 'ai-local') {
       const style = options.style ?? 'cinematic'
       const scenes = deriveScenes()
@@ -374,6 +389,7 @@ export async function buildVideoFromScript(
           apiKey: options.stockApiKey,
           onProgress
         })
+        stockTempDir = dirname(stockBg)
       } catch (err) {
         onProgress?.(`Stock footage unavailable (${err instanceof Error ? err.message : 'error'}) — using the animated look instead.`)
       }
@@ -410,13 +426,6 @@ export async function buildVideoFromScript(
       onProgress,
       onPreview: options.onPreview
     })
-    if (stockBg) {
-      try {
-        rmSync(dirname(stockBg), { recursive: true, force: true })
-      } catch {
-        /* temp cleanup best-effort */
-      }
-    }
     onProgress?.('Finalizing…')
     finished = true
   } finally {
@@ -427,6 +436,13 @@ export async function buildVideoFromScript(
     // again. Anything a user never retried is swept after a week, at the top of the next
     // build.
     if (finished) discardCheckpoint(resume.dir)
+    if (stockTempDir) {
+      try {
+        rmSync(stockTempDir, { recursive: true, force: true })
+      } catch {
+        /* temp cleanup best-effort */
+      }
+    }
   }
 }
 

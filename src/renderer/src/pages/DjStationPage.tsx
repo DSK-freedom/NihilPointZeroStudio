@@ -29,7 +29,12 @@ interface SoundSource {
   resolve: () => Promise<string>
 }
 
-let clipSeq = 0
+// Random-suffix ids: a plain counter reset to 0 on every app start while the
+// autosaved timeline still holds clip-0, clip-1… — so the first sound added
+// after a restart collided with an existing clip and edits hit the wrong one.
+function newClipId(): string {
+  return `clip-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+}
 
 export default function DjStationPage({
   embedded = false,
@@ -159,7 +164,7 @@ export default function DjStationPage({
     try {
       const path = await resolveCached(src)
       const clip: AudioClip = {
-        id: `clip-${clipSeq++}`,
+        id: newClipId(),
         src: path,
         label: src.label,
         atSec: 0,

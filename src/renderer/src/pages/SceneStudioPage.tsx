@@ -6,6 +6,7 @@ import { SCENE_TRANSITIONS, VIDEO_STYLES, VIDEO_TEMPLATES } from '../../../share
 import MicButton, { appendDictation } from '../components/MicButton'
 import { useAutosave } from '../hooks/useAutosave'
 import { toast } from '../components/Toast'
+import { confirmDialog } from '../components/Confirm'
 
 import { fileUrl, pathFromFileUrl as plainPath } from '../../../shared/mediaUrl'
 
@@ -110,6 +111,11 @@ export default function SceneStudioPage(): React.JSX.Element {
   // Refs so the async generation loop always reads the latest prompts/pause state.
   const scenesRef = useRef<Scene[]>([])
   const pausedRef = useRef(false)
+  // Each generateRemaining() run gets its own id; a worker whose id is stale exits.
+  // Without this, pressing Resume while a paused run still had a request in flight
+  // reset pausedRef and REVIVED the old pool alongside the new one — doubling the
+  // request rate against the rate-limited free image service.
+  const runIdRef = useRef(0)
   const fastRef = useRef(fast)
   const strengthRef = useRef(photoStrength)
   useEffect(() => {
@@ -171,6 +177,19 @@ export default function SceneStudioPage(): React.JSX.Element {
       setError('Paste or write a script first (use [SECTION] headers for scene boundaries).')
       return
     }
+    // Same guard the Storyboard page has: re-planning replaces the whole board —
+    // hand-edited prompts, attached photos, every generated image — so never do
+    // that silently over existing work.
+    if (scenes.length > 0) {
+      const ok = await confirmDialog({
+        title: 'Re-plan and replace your scenes?',
+        message:
+          'This replaces the current scene board — including edited prompts, attached photos and generated pictures — with a fresh plan from the script. (The last board stays in autosave history.)',
+        confirmLabel: 'Re-plan',
+        danger: true
+      })
+      if (!ok) return
+    }
     setError(null)
     setBuilt(null)
     const planned = await window.api.scene.plan(title.trim() || 'Video', body, style, direction)
@@ -199,6 +218,8 @@ export default function SceneStudioPage(): React.JSX.Element {
    * busy, instead of leaving scenes on "✗ failed" for the user to regenerate by hand.
    */
   async function generateRemaining(): Promise<void> {
+    // Starting a run invalidates any previous pool instantly (see runIdRef note).
+    const myRun = ++runIdRef.current
     setGenerating(true)
     setPaused(false)
     pausedRef.current = false
@@ -212,7 +233,7 @@ export default function SceneStudioPage(): React.JSX.Element {
       const worker = async (offsetMs: number): Promise<void> => {
         await new Promise((r) => setTimeout(r, offsetMs))
         while (true) {
-          if (pausedRef.current) return
+          if (pausedRef.current || runIdRef.current !== myRun) return
           const at = cursor++
           if (at >= indexes.length) return
           await genOne(indexes[at], seedBump)
@@ -221,14 +242,16 @@ export default function SceneStudioPage(): React.JSX.Element {
       await Promise.all(Array.from({ length: workers }, (_, w) => worker(w * 700)))
     }
     await runPool(scenesRef.current.filter((s) => s.status !== 'done').map((s) => s.index), 0)
-    for (let round = 1; round <= 2 && !pausedRef.current; round++) {
+    for (let round = 1; round <= 2 && !pausedRef.current && runIdRef.current === myRun; round++) {
       const failed = scenesRef.current.filter((s) => s.status === 'error').map((s) => s.index)
       if (!failed.length) break
       toast(`Retrying ${failed.length} failed scene${failed.length === 1 ? '' : 's'} — the free queue was busy…`, 'info')
       await new Promise((r) => setTimeout(r, 8000))
       await runPool(failed, round * 1000)
     }
-    setGenerating(false)
+    // Only the run that still owns the board may clear the busy flag — a stale
+    // (superseded) run finishing must not hide a newer run's progress.
+    if (runIdRef.current === myRun) setGenerating(false)
   }
 
   function pause(): void {
@@ -357,7 +380,7 @@ export default function SceneStudioPage(): React.JSX.Element {
       <header className="mb-5">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-serif text-gold-400">Scene Studio</h1>
-          <span className="text-[11px] text-ink-500">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved ✓' : ''}</span>
+          <span className="text-[11px] text-ink-500">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved ✓' : saveStatus === 'error' ? '! not saved (disk error)' : ''}</span>
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={sceneHistory.undo}

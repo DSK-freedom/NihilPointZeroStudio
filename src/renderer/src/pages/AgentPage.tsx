@@ -211,7 +211,7 @@ export default function AgentPage(): React.JSX.Element {
           {interpreting && <BusyTimer label="Planning" />}
           <span className="text-[11px] text-ink-600">Ctrl+Enter to plan · 🎤 to speak</span>
           <span className="ml-auto text-[11px] text-ink-500">
-            {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved ✓' : ''}
+            {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved ✓' : saveStatus === 'error' ? '! not saved (disk error)' : ''}
           </span>
         </div>
 

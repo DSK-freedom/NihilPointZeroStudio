@@ -2763,6 +2763,19 @@ export function registerIpcHandlers(): void {
     return res.canceled ? [] : res.filePaths
   })
 
+  // Audio-track picker. Must NOT reuse the clips dialog: its video/image filter
+  // made selecting an mp3/wav impossible, so "+ Add audio" could never work.
+  ipcMain.handle(IPC.timelinePickAudio, async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const dialogOptions: Electron.OpenDialogOptions = {
+      title: 'Add music or voice to the timeline',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Audio', extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'opus', 'wma'] }]
+    }
+    const res = win ? await dialog.showOpenDialog(win, dialogOptions) : await dialog.showOpenDialog(dialogOptions)
+    return res.canceled ? [] : res.filePaths
+  })
+
   // Probe a source file's duration (seconds) so the UI can default a clip's out-point.
   ipcMain.handle(IPC.timelineProbe, async (_e, src: string) => {
     try {

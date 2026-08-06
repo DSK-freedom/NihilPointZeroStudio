@@ -159,6 +159,13 @@ export default function SettingsPage() {
   }
 
   async function saveStockKey(): Promise<void> {
+    // The input is always empty on load (keys are never echoed back), so an
+    // unguarded save wiped the stored key from disk while announcing success.
+    if (!pixabayKey.trim()) {
+      setStatus('Paste your Pixabay key into the box first — the saved key was not changed.')
+      setTimeout(() => setStatus(null), 3500)
+      return
+    }
     const r = await window.api.stock.setKey('pixabay', pixabayKey.trim())
     setHasPixabay(r.hasPixabay)
     setPixabayKey('')
@@ -307,15 +314,25 @@ export default function SettingsPage() {
 
   async function toggleWebServer(): Promise<void> {
     setWebBusy(true)
-    const s = webUrl ? await window.api.webServer.stop() : await window.api.webServer.start()
-    await adoptWebStatus(s)
-    setWebBusy(false)
+    try {
+      const s = webUrl ? await window.api.webServer.stop() : await window.api.webServer.start()
+      await adoptWebStatus(s)
+    } catch (err) {
+      // Without this the button stayed disabled on "Working…" until app restart.
+      setStatus(err instanceof Error ? err.message : 'Could not switch phone access — try again.')
+      setTimeout(() => setStatus(null), 4000)
+    } finally {
+      setWebBusy(false)
+    }
   }
 
   async function checkOllama(): Promise<void> {
     setCheckingOllama(true)
-    setOllamaStatus(await window.api.settings.ollamaStatus())
-    setCheckingOllama(false)
+    try {
+      setOllamaStatus(await window.api.settings.ollamaStatus())
+    } finally {
+      setCheckingOllama(false)
+    }
   }
 
   /** Live test of every dependency — including whether saved keys are ACCEPTED. */

@@ -128,6 +128,13 @@ describe('buildFfmpegArgs', () => {
     const inputCount = args.filter((a, i) => a === '-i' && args[i + 1] === 'wh.wav').length
     expect(inputCount).toBe(3)
   })
+  // Regression: -shortest governs the output, so a file background even slightly
+  // shorter than the narration used to silently cut off the end of the video.
+  it('loops a file background so -shortest is governed by the narration', () => {
+    const args = buildFfmpegArgs({ ...base, background: { kind: 'file', path: 'bg.mp4' }, audioMap: '1:a' })
+    expect(args.join(' ')).toContain('-stream_loop -1 -i bg.mp4')
+    expect(args).toContain('-shortest')
+  })
 })
 
 describe('extractCards', () => {

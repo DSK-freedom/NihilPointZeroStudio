@@ -126,7 +126,7 @@ export default function PresenterPage(): React.JSX.Element {
   return (
     <div className="max-w-4xl mx-auto p-8">
       <h1 className="text-2xl font-serif text-gold-400">Presenter Studio
-        <span className="ml-3 align-middle text-[11px] text-ink-500">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved ✓' : ''}</span>
+        <span className="ml-3 align-middle text-[11px] text-ink-500">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved ✓' : saveStatus === 'error' ? '! not saved (disk error)' : ''}</span>
       </h1>
       <p className="text-ink-400 text-sm mt-1">Put yourself in the video — real footage or your photo — and the AI cuts to theme b-roll + AI scenes on your voice.</p>
 

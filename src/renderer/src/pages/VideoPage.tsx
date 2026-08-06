@@ -137,6 +137,11 @@ export default function VideoPage() {
     () => ({ title, body, engine, style, resolution, aspect, template }),
     [title, body, engine, style, resolution, aspect, template]
   )
+  // True once the autosave restore has put real user content into the editor.
+  // The source-list loader below MUST NOT seed title/body over it: that seeding
+  // used to run after every restore (mount order makes it deterministic) and
+  // silently destroyed the user's pasted/typed script on every return to this tab.
+  const restoredContentRef = useRef(false)
   useAutosave('video-editor', editorPersist, (v) => {
     if (v.engine != null && v.engine in ENGINE_INFO) setEngine(v.engine)
     if (typeof v.style === 'string' && v.style) setStyle(v.style as VideoStyle)
@@ -146,6 +151,7 @@ export default function VideoPage() {
     if (wantScriptPad) return
     if (v.title != null) setTitle(v.title)
     if (v.body != null) setBody(v.body)
+    restoredContentRef.current = Boolean((v.title ?? '').trim() || (v.body ?? '').trim())
   })
   const [images, setImages] = useState<string[]>([])
   const [useStock, setUseStock] = useState(false)
@@ -355,6 +361,13 @@ export default function VideoPage() {
         if (c.hasPixabay) setUseStock(true)
       })
       if (selectedKey) return
+      // A restored draft owns the editor: select the paste slate WITHOUT touching
+      // title/body. (drafts.get is sent before this effect's requests and every
+      // handler is synchronous, so the restore has already landed by now.)
+      if (restoredContentRef.current) {
+        setSelectedKey(PASTE_KEY)
+        return
+      }
       // If the user arrived via the Script Pad's "Send to Video Generator", start
       // on that. Otherwise prefer a real script (Writer/Library/Pad) over the
       // blank slate, falling back to the blank slate when nothing else exists.
@@ -369,12 +382,20 @@ export default function VideoPage() {
   }, [])
 
   function handleSelect(key: string): void {
-    setSelectedKey(key)
+    if (key === selectedKey) return
     const src = sources.find((s) => s.key === key)
-    if (src) {
-      setTitle(src.title)
-      setBody(src.body)
+    if (!src) {
+      setSelectedKey(key)
+      return
     }
+    // Park the editor's current content on the source it belongs to before
+    // switching. Without this, re-selecting "Paste / write my own" re-read the
+    // frozen empty PASTE_SOURCE constant and wiped everything the user had
+    // typed, pasted, or imported — with no confirm and no undo.
+    setSources((prev) => prev.map((s) => (s.key === selectedKey ? { ...s, title, body } : s)))
+    setSelectedKey(key)
+    setTitle(src.title)
+    setBody(src.body)
   }
 
   /**

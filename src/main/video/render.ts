@@ -253,7 +253,11 @@ export function buildFfmpegArgs(params: {
       ? ['-f', 'lavfi', '-i', `color=c=${bg.color}:s=${layout.w}x${layout.h}:d=${dur.toFixed(2)}`]
       : bg.kind === 'animated'
         ? ['-f', 'lavfi', '-i', bg.source]
-        : ['-i', bg.path]
+        : // Loop a file background: the output uses -shortest, so a background even
+          // slightly shorter than the narration (stock B-roll with a failed segment,
+          // a short AI clip) used to silently cut off the END of the user's video.
+          // Looping makes the narration the governing duration in every case.
+          ['-stream_loop', '-1', '-i', bg.path]
   const args = ['-y', ...bgInput, '-i', audioPath]
   if (musicPath) args.push('-stream_loop', '-1', '-i', musicPath)
   for (let i = 0; i < sfxCount; i++) args.push('-i', whooshPath as string)
@@ -441,7 +445,10 @@ export interface SlideshowShot {
  */
 export function planSlideshowShots(imageCount: number, durationSec: number): SlideshowShot[] {
   const imgs = Math.max(1, imageCount)
-  const target = Math.min(12, Math.max(imgs, Math.round(Math.max(1, durationSec) / 6)))
+  // The image floor must WIN over the 12-shot pacing cap: with the old
+  // min(12, max(imgs, …)) ordering, a 30-image build silently discarded every
+  // image past the 12th — images the app had just spent minutes generating.
+  const target = Math.max(imgs, Math.min(12, Math.round(Math.max(1, durationSec) / 6)))
   // Shot lengths TIGHTEN toward the end instead of every shot getting an equal slice.
   // The last third of a finance video is where people leave, and an even 6-6-6 split
   // makes the end feel exactly as slow as the beginning when it needs to feel faster.

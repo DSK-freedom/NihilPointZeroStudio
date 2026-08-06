@@ -276,6 +276,7 @@ const api = {
   },
   timeline: {
     pickClips: (): Promise<string[]> => ipcRenderer.invoke(IPC.timelinePickClips),
+    pickAudio: (): Promise<string[]> => ipcRenderer.invoke(IPC.timelinePickAudio),
     probe: (src: string): Promise<{ ok: boolean; duration?: number; error?: string }> =>
       ipcRenderer.invoke(IPC.timelineProbe, src),
     render: (

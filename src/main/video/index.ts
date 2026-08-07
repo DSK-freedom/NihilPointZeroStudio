@@ -281,6 +281,19 @@ export async function buildVideoFromScript(
         throw err
       }
       const { assets, motionCount, stoppedReason } = seam
+      /**
+       * THE HONESTY GATE. If most scenes produced nothing, the "video" would be a black
+       * void with a filename — the user found 8 or 9 of those in his folder before
+       * anything admitted a problem. One or two lost scenes still pass (the soft-fail
+       * promise); a majority lost does not.
+       */
+      if (scenes.length > 1 && assets.length < scenes.length / 2) {
+        throw new Error(
+          `Refusing to build: only ${assets.length} of ${scenes.length} scenes could be generated` +
+            `${stoppedReason ? ` (${stoppedReason})` : ''}, so the result would be mostly empty. ` +
+            'Usually the image/video service is refusing or unreachable right now — check Settings → Setup Health, then build again.'
+        )
+      }
       const firstStill = assets.find((a) => a.kind === 'image')
       if (firstStill) options.onPreview?.(firstStill.path)
       if (motionCount > 0) {
@@ -330,6 +343,17 @@ export async function buildVideoFromScript(
         } catch (err) {
           onProgress?.(`AI visual ${i + 1} failed (${err instanceof Error ? err.message : 'error'}) — continuing…`)
         }
+      }
+      // Same honesty gate as the motion path: a slideshow missing MOST of its scenes is
+      // not the video that was asked for. Zero images keeps the old graceful fallback to
+      // the animated look (that is a different, honest product); a majority-failed set
+      // refuses with the reason instead of shipping the gaps.
+      if (made.length && scenes.length > 1 && made.length < scenes.length / 2) {
+        throw new Error(
+          `Refusing to build: only ${made.length} of ${scenes.length} scene images could be generated, ` +
+            'so the result would be missing most of its scenes. Usually the free image service is refusing or ' +
+            'unreachable right now — check Settings → Setup Health, then build again.'
+        )
       }
       if (made.length) aiImages = made
       else onProgress?.('Free AI visuals unavailable — using the animated look instead.')

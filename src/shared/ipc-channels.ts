@@ -12,6 +12,11 @@ export const IPC = {
   // The switchboard and the Gemini walkthrough (a free AI-Studio key, tested for real).
   settingsSetProviderEnabled: 'settings:set-provider-enabled',
   geminiKeyVerify: 'gemini:key-verify',
+  // The Caretaker: the scheduled self-diagnostic and its record (see main/caretaker.ts).
+  caretakerStatus: 'caretaker:status',
+  caretakerRunNow: 'caretaker:run-now',
+  caretakerSetSchedule: 'caretaker:set-schedule',
+  caretakerClearLog: 'caretaker:clear-log',
   youtubeChannelResolve: 'youtube:channel-resolve',
   settingsSetHordeKey: 'settings:set-horde-key',
   ollamaStatus: 'ollama:status',

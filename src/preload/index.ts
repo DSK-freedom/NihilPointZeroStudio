@@ -32,6 +32,14 @@ const api = {
       ipcRenderer.invoke(IPC.settingsSetStartWithWindows, on),
     ollamaStatus: () => ipcRenderer.invoke(IPC.ollamaStatus)
   },
+  // The Caretaker: the scheduled self-diagnostic and its record (Settings → Caretaker).
+  caretaker: {
+    status: (): Promise<import('../shared/caretaker').CaretakerStatus> => ipcRenderer.invoke(IPC.caretakerStatus),
+    runNow: (): Promise<import('../shared/caretaker').CaretakerRun> => ipcRenderer.invoke(IPC.caretakerRunNow),
+    setSchedule: (hours: number, paused: boolean): Promise<import('../shared/caretaker').CaretakerStatus> =>
+      ipcRenderer.invoke(IPC.caretakerSetSchedule, hours, paused),
+    clearLog: (): Promise<import('../shared/caretaker').CaretakerStatus> => ipcRenderer.invoke(IPC.caretakerClearLog)
+  },
   ideas: {
     generate: (req: IdeaGenRequest) => ipcRenderer.invoke(IPC.ideasGenerate, req)
   },

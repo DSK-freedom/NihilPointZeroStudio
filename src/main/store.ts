@@ -54,6 +54,9 @@ interface PersistedSettings {
   startWithWindows?: boolean
   /** Last time the single-disk backup reminder was shown. */
   lastBackupNudgeAt?: string
+  /** The Caretaker's schedule — see main/caretaker.ts. Absent = defaults (6h, running). */
+  caretakerIntervalHours?: number
+  caretakerPaused?: boolean
 }
 
 const DEFAULT_SETTINGS: PersistedSettings = {
@@ -204,6 +207,24 @@ export function setProviderEnabled(provider: LLMProviderId, on: boolean): Provid
   s.providerEnabled = { ...(s.providerEnabled ?? {}), [provider]: on }
   writeSettings(s)
   return getSettings()
+}
+
+/** The Caretaker's saved schedule; clamped so a corrupt value cannot arm a 0ms loop. */
+export function getCaretakerSchedule(): { intervalHours: number; paused: boolean } {
+  const s = readSettings()
+  const h = Number(s.caretakerIntervalHours)
+  return {
+    intervalHours: Number.isFinite(h) && h >= 1 && h <= 168 ? h : 6,
+    paused: !!s.caretakerPaused
+  }
+}
+
+export function setCaretakerSchedule(intervalHours: number, paused: boolean): void {
+  const s = readSettings()
+  const h = Number(intervalHours)
+  s.caretakerIntervalHours = Number.isFinite(h) && h >= 1 && h <= 168 ? h : 6
+  s.caretakerPaused = !!paused
+  writeSettings(s)
 }
 
 export function getSettings(): ProviderSettings {

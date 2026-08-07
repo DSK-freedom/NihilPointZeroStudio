@@ -29,14 +29,17 @@ work").** Build order (dependencies first), each lands as its own small PR:
 3. ~~Honesty gate~~ — DONE, #29 (all three builders refuse a mostly-failed video, with
    reasons; fixes the "8-9 empty black videos")
 4. ~~Scene-length control~~ — DONE, #30 ("Every scene stays N sec" + per-card override)
-5. Delete-everywhere — one deletion service behind every delete button (user-confirmed,
-   file + backups + library entry together). NEXT UP.
-6. Expert offline brain — Ollama + the full manual as grounding for offline Ask-AI
-7. Music examples — 3-5 full-length candidates with reasons, play in-app, pick one
+5. ~~Delete-everywhere~~ — DONE, #31 (library images: file + backups + entry together;
+   the boundary test caught an outside-userData deletion — never weaken it)
+6. ~~Expert offline brain~~ — DONE, #32 (Expert prefers Ollama whenever its switch is ON)
+7. Music examples — 3-5 full-length candidates with reasons, play in-app, pick one.
+   NEXT UP. Existing seams: music:suggest / music:mood-search / renderMusic moods.
 8. Merge Script Writer + Script Pad
-9. The Caretaker — scheduled self-diagnostic, Settings section, recommended schedule
-   "app start + every 6h while open, never during a render", history, user-editable
-10. Free-video watch — caretaker checks for new free video services and reports
+9. ~~The Caretaker~~ — DONE (this branch): src/main/caretaker.ts + shared/caretaker.ts +
+   CaretakerCard in Settings. Replaces the old weekly quiet health check. Busy-check
+   injected from main/index (setCaretakerBusyCheck) to avoid the import cycle.
+10. Free-video watch — fold into a caretaker note when a candidate service appears;
+    nothing reliable exists today (researched 2026-08-07)
 
 Work these in order without asking. Push at every coherent step. Every done item is
 already MERGED to main and in the rolling release — nothing in flight is unpushed.

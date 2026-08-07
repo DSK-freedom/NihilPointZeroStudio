@@ -7,6 +7,7 @@ import WhatsNewCard from '../components/WhatsNewCard'
 import VersionCard from '../components/VersionCard'
 import YouTubeSetup from '../components/YouTubeSetup'
 import AiSwitchboard from '../components/AiSwitchboard'
+import CaretakerCard from '../components/CaretakerCard'
 import GeminiSetup from '../components/GeminiSetup'
 import type {
   AiErrorEntry,
@@ -710,6 +711,8 @@ export default function SettingsPage() {
           </>
         )}
       </div>
+
+      <CaretakerCard />
 
       {/* The switchboard replaced the bare "Active provider" row: same choice, plus an
           honest ON/OFF per brain, so "off" finally means never-contacted. */}

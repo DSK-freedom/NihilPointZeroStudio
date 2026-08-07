@@ -47,6 +47,14 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    id: 'caretaker',
+    date: '2026-08-07',
+    title: 'The Caretaker — the studio now checks itself on a schedule',
+    detail:
+      'A new section in Settings. On a schedule you control (recommended: at every app start and every 6 hours while open — the reason is stated right on the card), the studio runs its live health checks, moves your AI brain off a service that has died, looks for finished videos it lost track of, and keeps a record of every check-up: what it looked at, what it found, what it fixed. You can change the schedule, pause it, run a check-up on demand, and delete the record — only you can. It never runs during a render, and it fixes settings and services only; it never touches your videos, scripts or work.',
+    where: 'Settings → 🩺 Caretaker (top of the page)'
+  },
+  {
     id: 'expert-local-brain',
     date: '2026-08-07',
     title: 'The Expert now runs on its own local brain whenever it can',

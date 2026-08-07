@@ -784,14 +784,23 @@ export function registerIpcHandlers(): void {
     const flat = `${system}\n\n${msgs.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')}\n\nASSISTANT:`
     let reply: string
     try {
-      if (settings.activeProvider === 'ollama') {
+      /**
+       * THE EXPERT PREFERS THE LOCAL BRAIN — his ask: the Expert "should have its own
+       * LLM model in which it should know each and everything about the studio", working
+       * even when nothing else does. So whenever Ollama is switched ON (not merely
+       * active), the Expert tries it first with the full manual as its grounding: no
+       * internet, no keys, no allowances. Only if the local brain is unreachable does it
+       * degrade to the active chain — and the no-AI "Instant" mode still answers from
+       * the manual when every brain is down.
+       */
+      if (settings.providerEnabled.ollama || settings.activeProvider === 'ollama') {
         const turns: ChatTurn[] = [{ role: 'system', content: system }, ...msgs]
         try {
           reply = await ollamaChatStream(getModel('ollama'), turns, (delta) => {
             if (!e.sender.isDestroyed()) e.sender.send(IPC.guideStream, delta)
           })
         } catch {
-          // Ollama unreachable — degrade to the active chain (which itself degrades to free)
+          // Ollama unreachable — degrade to the active chain (which itself degrades)
           // so the Expert still answers instead of dying with ECONNREFUSED.
           reply = await getActiveProvider().generateText(flat, 1200)
           if (!e.sender.isDestroyed()) e.sender.send(IPC.guideStream, reply)

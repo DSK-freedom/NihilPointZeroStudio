@@ -907,6 +907,12 @@ numbers** — if a figure can't be derived, it says so.
 - **"Beautify" is a retouch, not plastic surgery** — it smooths/brightens/sharpens; it does not
   reshape hair/skin/muscles into someone else.
 
+## Added on 2026-08-07 — the Caretaker
+The studio checks itself on a visible, user-controlled schedule (Settings → Caretaker):
+live health checks, dead-brain rescue, lost-video detection, every pass recorded. Honest
+scope: it fixes settings, state and services; it cannot rewrite its own code, and it
+never runs during a render. Only the user can delete its record.
+
 ## Added on 2026-08-07 — the honesty gate on video builds
 A build where MOST scenes failed to get their real image now refuses to finish, naming
 the failed scenes and the reason, instead of shipping a dark void with a filename (one

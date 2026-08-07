@@ -94,6 +94,7 @@ import { searchYouTubeSignals } from './data/youtube'
 import { fetchComments, readMyChannel } from './data/youtube'
 import { resolveYouTubeChannel, verifySavedYouTubeKey, verifyYouTubeKey } from './data/youtubeKeyCheck'
 import { verifyGeminiKey, verifySavedGeminiKey } from './llm/geminiKeyCheck'
+import { caretakerStatus, clearCaretakerLog, runCaretakerPass, updateCaretakerSchedule } from './caretaker'
 import { buildCutArgs, planSilenceCut } from './video/silence'
 import { buildVideoEncoderArgs, chooseEncoderForJob } from './video/encoder'
 import { buildSpeedArgs } from './audio/speed'
@@ -228,6 +229,15 @@ import {
   videosDir
 } from './store'
 
+/**
+ * The Caretaker needs "is a render running?" which lives in main/index.ts; injected here
+ * so ipc.ts does not import main/index (which imports ipc.ts back).
+ */
+let caretakerBusyCheck: () => boolean = () => true
+export function setCaretakerBusyCheck(fn: () => boolean): void {
+  caretakerBusyCheck = fn
+}
+
 export function registerIpcHandlers(): void {
   // Last-good PSX data cache lives with the rest of the user's data (travels with the
   // portable folder). psxLive.ts takes the dir by injection so it stays Electron-free.
@@ -257,6 +267,23 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.settingsSetProviderEnabled, (_e, provider: LLMProviderId, on: boolean) => {
     logActivity('user', `${on ? 'Switched ON' : 'Switched OFF'} the ${provider} AI`)
     return setProviderEnabled(provider, on)
+  })
+
+  // ---- The Caretaker (see main/caretaker.ts for the whole idea) ----
+  ipcMain.handle(IPC.caretakerStatus, () => caretakerStatus())
+  ipcMain.handle(IPC.caretakerRunNow, async () => {
+    logActivity('user', 'Ran the Caretaker by hand')
+    return runCaretakerPass('manual', caretakerBusyCheck)
+  })
+  ipcMain.handle(IPC.caretakerSetSchedule, (_e, hours: number, paused: boolean) => {
+    updateCaretakerSchedule(hours, paused, caretakerBusyCheck)
+    return caretakerStatus()
+  })
+  ipcMain.handle(IPC.caretakerClearLog, () => {
+    // Only from the user's click — his rule, same as the Activity Log.
+    logActivity('user', "Cleared the Caretaker's record")
+    clearCaretakerLog()
+    return caretakerStatus()
   })
 
   /** Gemini: verify only — saving happens separately, and only on a confirmed pass. */

@@ -8,7 +8,7 @@ work, not afterwards: before starting anything long, and again when it lands. It
 the repo because the container, the assistant's memory and the harness task list all die
 with the session — only what is pushed to GitHub survives.
 
-Last updated: **2026-08-07** (after PR #26).
+Last updated: **2026-08-07** (after PR #37, the lockfile-test merge).
 
 ## The 2026-08-07 round — his screen recording, and what it exposed
 
@@ -59,23 +59,19 @@ needs them — but `npm ci` installs strictly from the lock and aborts:
 So nine merges produced NO exes. Fixed in #35 by restoring the complete lock, verified
 with `npm ci --dry-run` (773 packages, no missing entries) rather than by eye.
 
-**THE RULE, restated because I broke it:** "pushed is not shipped" applies to THE RUN,
-not just the release assets. Before the word "shipped" is used, read the workflow run's
-conclusion for the merge commit. A merge that cannot even install is not a merge that
-shipped. If the lock is ever regenerated, check `npm ci --dry-run` in the same breath.
+**CLOSED OUT, verified end to end:** the build for the fix commit (`5b3194f`, run
+31171239755) concluded `success`. The rolling `latest` release was read back afterwards:
+both exes carry the `10:54` timestamp from that run, and all six docs (plus
+BACKUP-NOW.cmd) are present and freshly re-uploaded. **It was safe to tell the user to
+update at that point**, and he was told so.
 
-## CI WAS RED FOR NINE MERGES AND I DID NOT LOOK (2026-08-07) — read this before reporting
-
-I merged #28-#34, said "shipped", and only checked the build afterwards. It had been
-FAILING since a2f5c80: that commit is a 512-line pure DELETION of the lock file which
-removed every `@esbuild/*` platform entry for esbuild 0.28.1 (vitest's copy) while
-leaving the 0.21.5 tree intact. Nothing local complains — an existing node_modules never
-needs them — but `npm ci` installs strictly from the lock and aborts:
-
-    npm error Missing: @esbuild/win32-x64@0.28.1 from lock file
-
-So nine merges produced NO exes. Fixed in #35 by restoring the complete lock, verified
-with `npm ci --dry-run` (773 packages, no missing entries) rather than by eye.
+A permanent guard against the same class of bug is now merged too: `#37` added
+`src/shared/lockfile.test.ts`, which reads `package.json` + `package-lock.json` and
+performs the same completeness check `npm ci` does (every optional/hard dependency of
+every locked package actually resolves) as a plain `npm test` — no network, runs in this
+sandbox. It passed against the restored lock and `npm run lint` + all five typechecks
+were clean before merging. Merging #37 produced one more `main` build (`0ba9321`,
+run 31195069652) — **check its conclusion before assuming green**, same rule as above.
 
 **THE RULE, restated because I broke it:** "pushed is not shipped" applies to THE RUN,
 not just the release assets. Before the word "shipped" is used, read the workflow run's

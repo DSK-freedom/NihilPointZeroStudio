@@ -47,6 +47,14 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    id: 'expert-local-brain',
+    date: '2026-08-07',
+    title: 'The Expert now runs on its own local brain whenever it can',
+    detail:
+      'The Expert widget\u2019s "Ask AI" mode used to use whichever brain the whole app was set to — so with an online brain selected and no internet, the one helper you need when things break could not answer. Now the Expert prefers your local brain (Ollama) whenever its switch is ON, with the complete manual as its knowledge, regardless of which brain the rest of the studio uses: no internet, no keys, no allowances. If the local brain is not running it falls back to your active brain, and the Instant button still answers from the manual with no AI at all.',
+    where: '🧭 Expert (bottom-left) → Ask AI — automatic when Ollama\u2019s switch is ON in Settings.'
+  },
+  {
     id: 'library-delete-everywhere',
     date: '2026-08-07',
     title: 'Deleting from the Library now really deletes — file and backups together',

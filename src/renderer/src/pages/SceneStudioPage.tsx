@@ -56,6 +56,10 @@ export default function SceneStudioPage(): React.JSX.Element {
   // the stills automatically, so the build never breaks.
   const [motion, setMotion] = useState<'stills' | 'ai-free-video' | 'ai-local'>('stills')
   const [photoStrength, setPhotoStrength] = useState(0.5)
+  // The GLOBAL scene length. Typed once here, it fills every card's "Stays" box in one
+  // go; any card can still be edited afterwards to run longer or shorter than the rest.
+  // Empty = automatic pacing (the total always stretches to fit the narration).
+  const [everySceneSec, setEverySceneSec] = useState<number | ''>('')
 
   // Autosave the script + settings (not the generated images, which are files).
   const inputs = useMemo(
@@ -497,14 +501,44 @@ export default function SceneStudioPage(): React.JSX.Element {
             <input type="range" min={0.2} max={0.9} step={0.05} value={photoStrength} onChange={(e) => setPhotoStrength(Number(e.target.value))} />
             <span className="tabular-nums">{Math.round(photoStrength * 100)}%</span>
           </label>
+          <label
+            className="flex items-center gap-1"
+            title="Sets every scene's 'Stays' time in one go — 0.5 seconds to minutes. After applying, change any single scene's own box to make just that one longer or shorter. Empty = automatic pacing."
+          >
+            ⏱ Every scene stays
+            <input
+              type="number"
+              min={0.5}
+              max={600}
+              step={0.5}
+              value={everySceneSec}
+              placeholder="auto"
+              onChange={(e) => setEverySceneSec(e.target.value === '' ? '' : Math.max(0.5, Number(e.target.value)))}
+              className="w-16 rounded bg-ink-950 border border-ink-800 px-1 py-0.5 text-[10px] text-ink-200"
+            />
+            sec
+            <button
+              onClick={() => {
+                const v = everySceneSec === '' ? undefined : everySceneSec
+                setScenes((prev) => prev.map((sc) => ({ ...sc, seconds: v })))
+              }}
+              disabled={!scenes.length}
+              className="rounded border border-gold-500/40 px-2 py-0.5 text-gold-400 hover:bg-gold-500/10 disabled:opacity-40"
+              title="Writes this time into every scene card below (you can still change single cards afterwards)"
+            >
+              Apply to all
+            </button>
+          </label>
           <button onClick={plan} disabled={generating || building} className="ml-auto rounded-md bg-gold-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-gold-400 disabled:opacity-40">
             Plan scenes
           </button>
         </div>
         </div>
         <p className="text-[10px] text-ink-500">
-          ⏱ Each scene card below has its own “Stays … sec” box and an “Arrives by” transition (fade, slide,
-          dissolve…). Leave them alone for automatic pacing — the total always stretches to fit the narration.
+          ⏱ “Every scene stays … sec” sets ALL the cards in one go (0.5 sec to minutes — your call), and each
+          card’s own “Stays” box can then override just that scene: pick 1.5 sec for everything and give scene 12
+          five seconds. Leave everything empty for automatic pacing — the total always stretches to fit the
+          narration.
         </p>
         <p className="text-[10px] text-ink-500">
           📎 “Put me in (photo)” on any scene uses your photo as the base (free image-to-image). It keeps your
@@ -598,8 +632,8 @@ export default function SceneStudioPage(): React.JSX.Element {
                     ⏱ Stays
                     <input
                       type="number"
-                      min={1}
-                      max={120}
+                      min={0.5}
+                      max={600}
                       step={0.5}
                       value={s.seconds ?? ''}
                       placeholder="auto"

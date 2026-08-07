@@ -46,6 +46,42 @@ work").** Build order (dependencies first), each lands as its own small PR:
 Work these in order without asking. Push at every coherent step. Every done item is
 already MERGED to main and in the rolling release — nothing in flight is unpushed.
 
+## CI WAS RED FOR NINE MERGES AND I DID NOT LOOK (2026-08-07) — read this before reporting
+
+I merged #28-#34, said "shipped", and only checked the build afterwards. It had been
+FAILING since a2f5c80: that commit is a 512-line pure DELETION of the lock file which
+removed every `@esbuild/*` platform entry for esbuild 0.28.1 (vitest's copy) while
+leaving the 0.21.5 tree intact. Nothing local complains — an existing node_modules never
+needs them — but `npm ci` installs strictly from the lock and aborts:
+
+    npm error Missing: @esbuild/win32-x64@0.28.1 from lock file
+
+So nine merges produced NO exes. Fixed in #35 by restoring the complete lock, verified
+with `npm ci --dry-run` (773 packages, no missing entries) rather than by eye.
+
+**THE RULE, restated because I broke it:** "pushed is not shipped" applies to THE RUN,
+not just the release assets. Before the word "shipped" is used, read the workflow run's
+conclusion for the merge commit. A merge that cannot even install is not a merge that
+shipped. If the lock is ever regenerated, check `npm ci --dry-run` in the same breath.
+
+## CI WAS RED FOR NINE MERGES AND I DID NOT LOOK (2026-08-07) — read this before reporting
+
+I merged #28-#34, said "shipped", and only checked the build afterwards. It had been
+FAILING since a2f5c80: that commit is a 512-line pure DELETION of the lock file which
+removed every `@esbuild/*` platform entry for esbuild 0.28.1 (vitest's copy) while
+leaving the 0.21.5 tree intact. Nothing local complains — an existing node_modules never
+needs them — but `npm ci` installs strictly from the lock and aborts:
+
+    npm error Missing: @esbuild/win32-x64@0.28.1 from lock file
+
+So nine merges produced NO exes. Fixed in #35 by restoring the complete lock, verified
+with `npm ci --dry-run` (773 packages, no missing entries) rather than by eye.
+
+**THE RULE, restated because I broke it:** "pushed is not shipped" applies to THE RUN,
+not just the release assets. Before the word "shipped" is used, read the workflow run's
+conclusion for the merge commit. A merge that cannot even install is not a merge that
+shipped. If the lock is ever regenerated, check `npm ci --dry-run` in the same breath.
+
 ## THE 493-SHOT INCIDENT (2026-08-08, from his screenshot) — fixed on this branch
 storyboardFromScript: beat count ignored the target (2 sentences/beat → 493 beats) and
 the scaler's per-beat round+clamp let the 2s floor push a "606s" film to 986s real

@@ -1,7 +1,7 @@
 import { app, safeStorage } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'fs'
 import { randomUUID } from 'crypto'
-import { join } from 'path'
+import { join, sep } from 'path'
 import type {
   ActivityActor,
   ActivityLogEntry,
@@ -11,6 +11,7 @@ import type {
   LLMProviderId,
   LibraryEntry,
   ProviderSettings,
+  SavedImage,
   ScriptPad,
   VideoJob
 } from '../shared/types'
@@ -152,9 +153,9 @@ function encrypt(value: string): string {
 }
 
 function decrypt(stored: string): string {
-  const sep = stored.indexOf(':')
-  const scheme = sep === -1 ? '' : stored.slice(0, sep)
-  const payload = sep === -1 ? stored : stored.slice(sep + 1)
+  const colonAt = stored.indexOf(':')
+  const scheme = colonAt === -1 ? '' : stored.slice(0, colonAt)
+  const payload = colonAt === -1 ? stored : stored.slice(colonAt + 1)
   if (scheme === 'dpapi') {
     try {
       return safeStorage.decryptString(Buffer.from(payload, 'base64'))
@@ -546,17 +547,66 @@ export function restoreLibraryEntry(id: string): LibraryEntry[] {
 }
 
 /** Permanent removal — only ever called from the explicit user-initiated IPC handlers. */
-export function deleteFromLibrary(id: string): LibraryEntry[] {
-  const entries = readLibrary().filter((e) => e.id !== id)
-  writeLibrary(entries)
-  return listLibrary()
+/**
+ * The file(s) on disk that belong to a library entry, as userData-relative paths.
+ *
+ * DELETE-EVERYWHERE (his instruction, 2026-08-07): "once I delete them from the studio,
+ * they get deleted from wherever they're sitting in my computer. I don't wanna go in my
+ * computer and start looking for things." Videos already behaved; a saved IMAGE deleted
+ * from the Library only lost its list entry while the file — and its backup copies —
+ * stayed on disk forever. Only paths inside the app's own data folder are ever touched:
+ * an entry pointing outside it (a picture imported from Desktop) is the user's original,
+ * not the studio's copy, and deleting originals is not this feature.
+ */
+export function libraryEntryFiles(entry: LibraryEntry): string[] {
+  if (entry.kind !== 'image') return []
+  const p = (entry.data as SavedImage).path
+  const dataDir = app.getPath('userData')
+  if (!p || !p.toLowerCase().startsWith(dataDir.toLowerCase() + sep)) return []
+  return [p.slice(dataDir.length + 1).replace(/\\/g, '/')]
 }
 
-/** Permanently removes every trashed entry — only from the user's "Empty Trash" click. */
-export function emptyLibraryTrash(): LibraryEntry[] {
-  const entries = readLibrary().filter((e) => !e.trashedAt)
-  writeLibrary(entries)
-  return listLibrary()
+/** Removes an entry AND its files (inside the data folder only). Returns the relative
+ * paths that were deleted, so the caller can purge the backup copies too. */
+export function deleteFromLibrary(id: string): { entries: LibraryEntry[]; removedRels: string[] } {
+  const all = readLibrary()
+  const target = all.find((e) => e.id === id)
+  // Delete ONLY what libraryEntryFiles vouched for. It returns paths solely inside the
+  // app's data folder, so an entry pointing at the user's own picture on the Desktop
+  // produces an empty list — and an empty list means nothing is removed. The rm must
+  // key off that same answer, or the boundary is decoration.
+  const removedRels = target ? libraryEntryFiles(target) : []
+  if (target && removedRels.length) {
+    try {
+      rmSync((target.data as SavedImage).path, { force: true })
+    } catch {
+      /* file may already be gone; removing the entry is what matters */
+    }
+  }
+  writeLibrary(all.filter((e) => e.id !== id))
+  return { entries: listLibrary(), removedRels }
+}
+
+/** Permanently removes every trashed entry AND their files — only from the user's
+ * "Empty Trash" click. Same delete-everywhere contract as deleteFromLibrary. */
+export function emptyLibraryTrash(): { entries: LibraryEntry[]; removedRels: string[] } {
+  const all = readLibrary()
+  const removedRels: string[] = []
+  for (const e of all) {
+    if (!e.trashedAt) continue
+    const rels = libraryEntryFiles(e)
+    removedRels.push(...rels)
+    // Same boundary as deleteFromLibrary: no vouched path, no removal.
+    if (rels.length) {
+      try {
+        rmSync((e.data as SavedImage).path, { force: true })
+      } catch {
+        /* best effort */
+      }
+    }
+  }
+  writeLibrary(all.filter((e) => !e.trashedAt))
+  return { entries: listLibrary(), removedRels }
 }
 
 function readActivityLog(): ActivityLogEntry[] {

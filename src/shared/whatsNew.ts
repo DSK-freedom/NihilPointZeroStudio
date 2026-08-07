@@ -47,6 +47,14 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    id: 'library-delete-everywhere',
+    date: '2026-08-07',
+    title: 'Deleting from the Library now really deletes — file and backups together',
+    detail:
+      'Deleting a saved image "forever" (or emptying the Trash) used to remove only the list entry: the picture itself, and its backup copies, stayed on your disk as ghosts you would have to hunt down by hand. Now the entry, the file and the backup copies go together, in one action, and the Activity Log records it. Two protections stand: only files inside the studio\u2019s own data folder are ever touched — a picture you imported from your Desktop is YOUR original and is never deleted — and as always, only you can delete anything; nothing automatic ever does.',
+    where: 'Automatic — Library → Trash → "Delete forever" / "Empty Trash" now clean up completely.'
+  },
+  {
     id: 'scene-length-control',
     date: '2026-08-07',
     title: 'One box sets how long every scene stays — and any scene can still differ',

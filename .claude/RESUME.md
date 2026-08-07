@@ -23,13 +23,14 @@ release upload fails. Existing artifacts self-expire by 2026-08-16.
 **HE APPROVED ALL TEN ITEMS (2026-08-07, in his own words: "I approve all of your
 work").** Build order (dependencies first), each lands as its own small PR:
 
-1. ~~AI switchboard~~ — provider ON/OFF toggles; free-online OFF by default (went paid)
-2. Gemini as a real provider via the FREE AI-Studio API key + a YouTube-style walkthrough.
-   ChatGPT/Grok = open-in-browser buttons ONLY (he approved after the explanation —
-   NEVER stored passwords, NEVER browser automation)
-3. Presenter honesty gate — refuse to ship a video that is mostly failed slates
-4. Global scene-duration control + per-scene override (cards already have per-scene)
-5. Delete-everywhere — one deletion service behind every delete button (user-confirmed)
+1. ~~AI switchboard~~ — DONE, #28 (free-online OFF by default; off = never contacted)
+2. ~~Gemini + browser doors~~ — DONE, #28 (free AI-Studio key walkthrough; ChatGPT/Grok
+   open-in-browser only — NEVER stored passwords, NEVER browser automation)
+3. ~~Honesty gate~~ — DONE, #29 (all three builders refuse a mostly-failed video, with
+   reasons; fixes the "8-9 empty black videos")
+4. ~~Scene-length control~~ — DONE, #30 ("Every scene stays N sec" + per-card override)
+5. Delete-everywhere — one deletion service behind every delete button (user-confirmed,
+   file + backups + library entry together). NEXT UP.
 6. Expert offline brain — Ollama + the full manual as grounding for offline Ask-AI
 7. Music examples — 3-5 full-length candidates with reasons, play in-app, pick one
 8. Merge Script Writer + Script Pad
@@ -37,7 +38,8 @@ work").** Build order (dependencies first), each lands as its own small PR:
    "app start + every 6h while open, never during a render", history, user-editable
 10. Free-video watch — caretaker checks for new free video services and reports
 
-Work these in order without asking. Push at every coherent step.
+Work these in order without asking. Push at every coherent step. Every done item is
+already MERGED to main and in the rolling release — nothing in flight is unpushed.
 
 ---
 

@@ -789,6 +789,9 @@ const api = {
     /** Gemini's free AI-Studio key, tested for real — same three-state verdict as YouTube's. */
     verifyGeminiKey: (rawKey?: string): Promise<import('../shared/youtubeKeySetup').KeyVerdict> =>
       ipcRenderer.invoke(IPC.geminiKeyVerify, rawKey ?? ''),
+    /** 3 full-length music beds with a plain WHY each — play, compare, pick one. */
+    musicExamples: (scriptText: string, durationSec: number): Promise<{ examples: { mood: string; why: string; path: string }[] }> =>
+      ipcRenderer.invoke(IPC.musicExamples, scriptText, durationSec),
     /** @handle, channel URL or UC id → the id plus the channel NAME, so it can be confirmed by eye. */
     resolveChannel: (input: string, rawKey?: string): Promise<import('../shared/youtubeKeySetup').ChannelResolution> =>
       ipcRenderer.invoke(IPC.youtubeChannelResolve, input, rawKey ?? '')

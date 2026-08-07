@@ -47,6 +47,14 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    id: 'music-examples-and-shot-math',
+    date: '2026-08-08',
+    title: 'Music examples you can hear, and film lengths that finally add up',
+    detail:
+      'Two things. Video Studio\u2019s music panel gains "Make me examples to listen to": three genuinely different full-length beds, composed offline for free, each with one plain sentence saying why it fits your script — play them, compare, press "Use this one"; nothing is picked for you. And the Storyboard Director\u2019s maths is fixed: a long script with a 10-minute target used to explode into hundreds of two-second flashes whose real total was far longer than asked (seen on your screen: 493 shots "for" 606 seconds that actually summed to 986). Now the target decides how many shots fit, the seconds are shared out so the total equals the target TO THE SECOND, and longer sentences get proportionally longer on screen.',
+    where: 'Video Studio → Background music → "🎼 Make me examples", and Storyboard Director → Direct storyboard (automatic)'
+  },
+  {
     id: 'caretaker',
     date: '2026-08-07',
     title: 'The Caretaker — the studio now checks itself on a schedule',

@@ -32,9 +32,11 @@ work").** Build order (dependencies first), each lands as its own small PR:
 5. ~~Delete-everywhere~~ — DONE, #31 (library images: file + backups + entry together;
    the boundary test caught an outside-userData deletion — never weaken it)
 6. ~~Expert offline brain~~ — DONE, #32 (Expert prefers Ollama whenever its switch is ON)
-7. Music examples — 3-5 full-length candidates with reasons, play in-app, pick one.
-   NEXT UP. Existing seams: music:suggest / music:mood-search / renderMusic moods.
-8. Merge Script Writer + Script Pad
+7. ~~Music examples~~ — DONE (this branch): musicExamplePlan (pure, tested) + IPC
+   music:examples + Video Studio UI ("Make me examples to listen to").
+8. Merge Script Writer + Script Pad — THE ONLY ITEM LEFT. UI-heavy; plan: Script
+   Writer's generate flow becomes a panel inside Script Pad, one sidebar entry, old
+   route redirects.
 9. ~~The Caretaker~~ — DONE (this branch): src/main/caretaker.ts + shared/caretaker.ts +
    CaretakerCard in Settings. Replaces the old weekly quiet health check. Busy-check
    injected from main/index (setCaretakerBusyCheck) to avoid the import cycle.
@@ -43,6 +45,13 @@ work").** Build order (dependencies first), each lands as its own small PR:
 
 Work these in order without asking. Push at every coherent step. Every done item is
 already MERGED to main and in the rolling release — nothing in flight is unpushed.
+
+## THE 493-SHOT INCIDENT (2026-08-08, from his screenshot) — fixed on this branch
+storyboardFromScript: beat count ignored the target (2 sentences/beat → 493 beats) and
+the scaler's per-beat round+clamp let the 2s floor push a "606s" film to 986s real
+seconds. Fix: target decides beat count (~6s/shot), largest-remainder distribution sums
+to the target EXACTLY. Pinned in src/shared/storyboard.test.ts — do not weaken the
+"sums to the requested total EXACTLY" test.
 
 ---
 

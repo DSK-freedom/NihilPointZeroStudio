@@ -59,6 +59,8 @@ export const IPC = {
   // interface failures alongside AI ones instead of them vanishing silently.
   aiErrorsRecordUi: 'ai-errors:record-ui',
   musicSuggest: 'music:suggest',
+  // 3 full-length music candidates with a WHY each — play, compare, pick one.
+  musicExamples: 'music:examples',
   musicMoodSearch: 'music:mood-search',
   musicApplyRegion: 'music:apply-region',
   videoExtras: 'video:extras',

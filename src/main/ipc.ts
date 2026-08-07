@@ -364,12 +364,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.libraryDeleteForever, (_e, id: string) => {
     logActivity('user', 'Permanently deleted library item', id)
-    return deleteFromLibrary(id)
+    // DELETE-EVERYWHERE: the entry, its file on disk, and the backup copies go together.
+    // The UI contract is unchanged — callers still get the entries list back.
+    const { entries, removedRels } = deleteFromLibrary(id)
+    if (removedRels.length) void purgeFromBackups(removedRels)
+    return entries
   })
 
   ipcMain.handle(IPC.libraryEmptyTrash, () => {
     logActivity('user', 'Emptied the Library Trash')
-    return emptyLibraryTrash()
+    const { entries, removedRels } = emptyLibraryTrash()
+    if (removedRels.length) void purgeFromBackups(removedRels)
+    return entries
   })
 
   ipcMain.handle(IPC.exportText, async (e, suggestedName: string, content: string) => {

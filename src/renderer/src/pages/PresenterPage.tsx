@@ -130,10 +130,12 @@ export default function PresenterPage(): React.JSX.Element {
       </h1>
       <p className="text-ink-400 text-sm mt-1">Put yourself in the video — real footage or your photo — and the AI cuts to theme b-roll + AI scenes on your voice.</p>
 
-      {/* Mode selector */}
+      {/* Mode selector. Switching between photo- and video-based modes clears the
+          attached file: a photo picked in Photo mode used to stay attached as "your
+          narration video" in the video modes (and vice versa), building the wrong thing. */}
       <div className="mt-4 inline-flex rounded-md border border-ink-700 overflow-hidden text-sm">
         {(['video', 'photo', 'graft'] as Mode[]).map((m) => (
-          <button key={m} onClick={() => setMode(m)} className={`px-3 py-1.5 ${mode === m ? 'bg-gold-500 text-ink-950' : 'text-ink-300 hover:bg-ink-800'}`}>
+          <button key={m} onClick={() => { if ((m === 'photo') !== (mode === 'photo')) setPresenterPath(''); setMode(m) }} className={`px-3 py-1.5 ${mode === m ? 'bg-gold-500 text-ink-950' : 'text-ink-300 hover:bg-ink-800'}`}>
             {m === 'video' ? '🎥 Real Video' : m === 'photo' ? '🖼 Photo' : '✨ Living Picture'}
           </button>
         ))}

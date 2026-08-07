@@ -271,6 +271,15 @@ export default function DjStationPage({
         </div>
       </details>
 
+      {/* Errors surface ABOVE both columns: they used to render only at the very
+          bottom of the right-hand column, so a failed Listen/＋Timeline click in
+          the left column gave no visible feedback at all. */}
+      {error && (
+        <div className={`${embedded ? '' : 'mt-4 '}rounded-md border border-red-800 bg-red-950/40 px-3 py-2 text-sm text-red-300`}>
+          {error}
+        </div>
+      )}
+
       <div className={`${embedded ? '' : 'mt-6 '}grid grid-cols-1 lg:grid-cols-2 gap-6`}>
         {/* Library */}
         <div className="rounded-lg border border-ink-700 bg-ink-900 p-4 space-y-4">

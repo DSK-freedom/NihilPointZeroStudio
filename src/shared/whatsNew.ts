@@ -47,6 +47,14 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    id: 'scene-length-control',
+    date: '2026-08-07',
+    title: 'One box sets how long every scene stays — and any scene can still differ',
+    detail:
+      'Scene Studio now has "Every scene stays … sec" at the top: type 1.5 and press Apply to all, and every scene card is set to a second and a half — from half a second up to minutes, your call. Then change any single card\u2019s own "Stays" box to make just that scene run longer or shorter than the rest, like five seconds for the one that matters. Leave everything empty and the automatic pacing still fits the total to the narration exactly as before.',
+    where: 'Scene Studio → the "⏱ Every scene stays" box next to Plan scenes'
+  },
+  {
     id: 'honesty-gate',
     date: '2026-08-07',
     title: 'No more black-void videos pretending to be finished',

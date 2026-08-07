@@ -47,6 +47,14 @@ export interface ChangeEntry {
  */
 export const CHANGELOG: ChangeEntry[] = [
   {
+    id: 'honesty-gate',
+    date: '2026-08-07',
+    title: 'No more black-void videos pretending to be finished',
+    detail:
+      'You found videos in your folder that were just dark emptiness with a filename. Cause: when a scene image failed to arrive, the builder quietly substituted a plain dark frame — or skipped the scene — and kept going, so on a day the free image service refused everything, it happily built an hour of nothing and told no one. Now every builder counts its failures: one or two lost scenes still pass (that has always been the promise), but a build where MOST scenes failed refuses to finish and says which scenes failed and why, instead of wasting an hour producing a void.',
+    where: 'Automatic — Video Studio, Storyboard Director and Presenter builds all refuse dishonest results and name the reason.'
+  },
+  {
     id: 'switchboard-gemini',
     date: '2026-08-07',
     title: 'An AI switchboard, and Gemini as a free brain',

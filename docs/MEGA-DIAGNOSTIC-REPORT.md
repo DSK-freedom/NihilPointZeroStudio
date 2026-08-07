@@ -907,6 +907,12 @@ numbers** — if a figure can't be derived, it says so.
 - **"Beautify" is a retouch, not plastic surgery** — it smooths/brightens/sharpens; it does not
   reshape hair/skin/muscles into someone else.
 
+## Added on 2026-08-07 — the honesty gate on video builds
+A build where MOST scenes failed to get their real image now refuses to finish, naming
+the failed scenes and the reason, instead of shipping a dark void with a filename (one
+or two lost scenes still pass — that has always been the soft-fail promise). This is the
+fix for the "8 or 9 empty black videos" found in the output folder.
+
 ## Added on 2026-08-07 — the switchboard and Gemini
 - **AI switchboard** (Settings): every brain with a real ON/OFF. Off = never contacted,
   not even as a fallback. Free-online defaults OFF (it went paid); Ollama ON; paid asleep.

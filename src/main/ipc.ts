@@ -38,7 +38,7 @@ import type { HardwareReport } from '../shared/types'
 
 /** Probed once per session — spawning processes is slow and the answer can't change. */
 let cachedHardware: HardwareReport | null = null
-import { freeLibraryLinks, MOOD_PROMPT_HINT, moodsFromText, parseMoodReply, synthMoodFromText } from './music/mood'
+import { freeLibraryLinks, MOOD_PROMPT_HINT, moodsFromText, musicExamplePlan, parseMoodReply, synthMoodFromText } from './music/mood'
 import { getOllamaStatus, ollamaChatStream, type ChatTurn } from './llm/ollama'
 import { buildAdvisorSystemPrompt } from './prompts'
 import { importPhoneProject, importPhoneProjectJson } from './project/import'
@@ -2405,6 +2405,29 @@ export function registerIpcHandlers(): void {
 
   // FREE COPYRIGHT-SAFE MUSIC (Pixabay). Every handler degrades to "no music" with a
   // readable note rather than throwing — a missing soundtrack must never break a video.
+  /**
+   * HIS ASK (2026-08-07): "it gives me multiple examples... I play, I listen... and it
+   * would tell me why." Three genuinely different full-length beds from the built-in
+   * synthesizer — offline, free, each as long as the video — with one plain sentence of
+   * reasoning apiece. He listens and clicks "Use this one"; nothing is chosen for him.
+   */
+  ipcMain.handle(IPC.musicExamples, async (_e, scriptText: string, durationSec: number) => {
+    // Full length, but bounded: a runaway duration must not synthesize for an hour.
+    const dur = Math.max(8, Math.min(Number(durationSec) || 60, 900))
+    const plan = musicExamplePlan(scriptText || '')
+    const out: { mood: string; why: string; path: string }[] = []
+    for (let i = 0; i < plan.length; i++) {
+      try {
+        const path = await renderMusic(plan[i].mood, dur, i + 1)
+        out.push({ mood: plan[i].mood, why: plan[i].why, path })
+      } catch {
+        /* one failed bed must not empty the list — the others still play */
+      }
+    }
+    logActivity('ai', `Made ${out.length} music example(s) to listen to`, plan.map((p) => p.mood).join(', '))
+    return { examples: out }
+  })
+
   ipcMain.handle(IPC.musicSuggest, async (_e, scriptText: string) => {
     // Ask the AI for the mood, but never let a slow/broken AI hold up the music: the
     // word-matching fallback is good enough and instant.

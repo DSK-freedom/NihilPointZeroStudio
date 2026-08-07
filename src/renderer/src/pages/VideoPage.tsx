@@ -122,6 +122,9 @@ export default function VideoPage() {
   const [winVoiceId, setWinVoiceId] = useState('')
   const [previewing, setPreviewing] = useState(false)
   const [musicPath, setMusicPath] = useState<string | null>(null)
+  // The music EXAMPLES: 3 full-length beds to listen through, each with its why.
+  const [musicExamples, setMusicExamples] = useState<{ mood: string; why: string; path: string }[]>([])
+  const [makingExamples, setMakingExamples] = useState(false)
   const [soundEffects, setSoundEffects] = useState(true)
   // Default to the free per-scene AI engine so the visuals actually follow the script
   // (a real generated image per section) instead of plain text cards over a gradient.
@@ -1497,6 +1500,50 @@ export default function VideoPage() {
               <p className="text-[10px] text-ink-600 mt-1">
                 Mixed softly under the narration (auto fade in/out). Use your own file, or grab a free track below.
               </p>
+              {/* HIS ASK: "it gives me multiple examples... I play, I listen... and it
+                  would tell me why." Three full-length beds from the offline synthesizer,
+                  each with one sentence of reasoning; he picks, nothing is picked for him. */}
+              <div className="mt-2">
+                <button
+                  onClick={() => {
+                    if (makingExamples) return
+                    setMakingExamples(true)
+                    const words = body.trim().split(/\s+/).filter(Boolean).length
+                    // Full length: narration runs ~2.4 words/second in this app's voices.
+                    const estSec = Math.max(20, Math.round(words / 2.4))
+                    void window.api.youtube
+                      .musicExamples(body, estSec)
+                      .then((r) => {
+                        setMusicExamples(r.examples)
+                        if (!r.examples.length) toast('Could not make music examples this time.', 'error')
+                      })
+                      .finally(() => setMakingExamples(false))
+                  }}
+                  disabled={makingExamples || !body.trim()}
+                  className="rounded-md border border-gold-500/40 text-gold-400 hover:bg-gold-500/10 disabled:opacity-40 text-xs px-3 py-1.5 transition-colors"
+                >
+                  {makingExamples ? 'Composing examples…' : '🎼 Make me examples to listen to'}
+                </button>
+                {musicExamples.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {musicExamples.map((ex) => (
+                      <div key={ex.path} className={`rounded-md border p-2 ${musicPath === ex.path ? 'border-gold-500/60 bg-gold-500/5' : 'border-ink-700 bg-ink-800/60'}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-ink-100 font-medium capitalize">{ex.mood}</span>
+                          <button
+                            onClick={() => setMusicPath(ex.path)}
+                            className="rounded-md bg-gold-500 hover:bg-gold-400 text-ink-950 text-[11px] font-medium px-2.5 py-1 transition-colors"
+                          >
+                            {musicPath === ex.path ? '✓ Chosen' : 'Use this one'}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-ink-500 mt-1">{ex.why}</p>
+                        <audio controls preload="none" src={fileUrl(ex.path)} className="mt-1.5 w-full h-8" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <details className="mt-2 rounded-md border border-ink-700 bg-ink-800/60">
                 <summary className="cursor-pointer px-3 py-1.5 text-xs text-gold-400 select-none">
                   🎼 Get free, legal music ↗

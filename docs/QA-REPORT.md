@@ -95,6 +95,9 @@ reach you.
   the already-updated code** (the ship swaps it in place); on machines where that
   doesn't apply it falls back to revealing the installer/download page **and says so
   in the banner**.
+- **Update checks could silently fail when the GitHub release notes did not include
+  the expected build stamp**. The app now falls back to the release tag and published
+  timestamp, so the Settings page can still tell whether the installed app is current.
 - **Updates were being blocked by Windows Smart App Control** — every new unsigned
   installer is an unknown file to Windows. Ships now update the installed app in
   place; nothing new for Windows to judge.

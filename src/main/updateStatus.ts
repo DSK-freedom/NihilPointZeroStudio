@@ -49,7 +49,7 @@ export function describeUpdateStatus(runningTag: string, publishedTag: string | 
       runningTag,
       publishedTag: publishedTag ?? null,
       // Deliberately not "you are up to date". Never claim a result that was not obtained.
-      message: 'Could not determine whether a newer version exists right now. Try again in a minute.'
+      message: 'Could not read the latest published version from GitHub right now. Try again in a minute.'
     }
   }
 

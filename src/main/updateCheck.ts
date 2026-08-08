@@ -18,9 +18,9 @@ export function getAvailableUpdate(): { remoteTag: string; localTag: string } | 
 
 /** Parses the "yyyy-MM-dd HH:mm" timestamp out of a build tag; null if absent. */
 export function tagDate(tag: string): number | null {
-  const m = /(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/.exec(tag)
+  const m = /(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}(?::\d{2})?)/.exec(tag)
   if (!m) return null
-  const t = Date.parse(`${m[1]}T${m[2]}:00`)
+  const t = Date.parse(`${m[1]}T${m[2].length === 5 ? `${m[2]}:00` : m[2]}`)
   return Number.isNaN(t) ? null : t
 }
 
@@ -28,12 +28,18 @@ function pad2(value: number): string {
   return String(value).padStart(2, '0')
 }
 
-export function buildTagFromRelease(release: { body?: string; tag_name?: string; published_at?: string | null }): string | null {
+export function buildTagFromRelease(release: {
+  body?: string
+  tag_name?: string
+  published_at?: string | null
+  created_at?: string | null
+}): string | null {
   const buildLine = /Build (v[^\n*]+)/.exec(release.body ?? '')?.[1]?.trim()
   if (buildLine) return buildLine
 
-  if (!release.tag_name || !release.published_at) return null
-  const publishedAt = Date.parse(release.published_at)
+  const dateString = release.published_at ?? release.created_at
+  if (!release.tag_name || !dateString) return null
+  const publishedAt = Date.parse(dateString)
   if (Number.isNaN(publishedAt)) return null
 
   const when = new Date(publishedAt)

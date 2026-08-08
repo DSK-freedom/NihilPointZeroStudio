@@ -4,6 +4,17 @@ _What was tested, how it was tested, what broke, what got fixed, and what genuin
 cannot be fixed. Written to be re-checkable: every claim here comes from an actual
 run, not from reading code and hoping._
 
+## Current release hardening (2026-08-08)
+
+The release process is now hardened so the latest shipped build carries a current changelog,
+CI validation, and the same documentation set across the workshop, Desktop studio folder,
+and GitHub release assets. The repository now includes:
+
+- `CHANGELOG.md` for the current shipped build summary.
+- `scripts/update-changelog.mjs` and `npm run changelog:update` for refreshing the changelog.
+- `.github/workflows/ci.yml` for push/PR validation.
+- Updated GitHub release uploads so the changelog and QA notes travel with the build.
+
 ## How the testing works now (the part that outlives this report)
 
 The app is tested by a machine, not by promises. A hard gate in the ship pipeline

@@ -20,6 +20,7 @@ Changing it would orphan the user's installed-app data — never rename it.
 npm run dev        # run the app in dev mode (electron-vite)
 npm run test       # vitest (tests are colocated: src/**/*.test.ts)
 npm run lint       # eslint src
+npm run changelog:update  # refresh CHANGELOG.md from the current repo state
 npm run dist:win   # full build -> release\ (portable exe + NSIS installer)
 npm run build:bridge      # just the phone bridge -> out/remote/bridge.js
 npm run typecheck:remote  # the bridge + preload + shared, with BROWSER types only

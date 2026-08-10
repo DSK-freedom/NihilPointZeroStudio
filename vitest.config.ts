@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
 // Vitest does NOT load electron.vite.config.ts, so anything the app gets from there
@@ -6,6 +7,7 @@ import { resolve } from 'path'
 // Main-process tests run in node (default); renderer tests opt into jsdom per-file
 // with a `// @vitest-environment jsdom` comment.
 export default defineConfig({
+  plugins: [react()],
   resolve: {
     alias: {
       '@renderer': resolve('src/renderer/src')

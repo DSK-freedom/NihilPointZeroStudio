@@ -253,6 +253,11 @@ export default function ChannelPage(): React.JSX.Element {
         )}
 
         {gaps && (!gaps.problem || gaps.problem.kind === 'partial') && (
+          {gaps
+            ? gaps.headline
+            : 'Trending tells you what is popular. This tells you what is popular that YOU have never made — demonstrated demand, with nothing of your own competing for it.'}
+        </p>
+        {gaps && (
           <div className="text-[11px] text-ink-600 mt-1">
             Compared {gaps.myVideos} of your videos against {gaps.competitorVideos} from other channels
             {gaps.unmatched > 0 && `, ${gaps.unmatched} of which were about something outside finance`}.

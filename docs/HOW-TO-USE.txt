@@ -261,6 +261,11 @@ ONE VERSION, EVERYWHERE — AND HOW TO CHECK
    installs whichever file is sitting there. A new file only appears after a build.
    See "If updates don't show up" in MEGA-DIAGNOSTIC-REPORT.md.
 
+HOW TO UPDATE, WITHOUT TYPING ANYTHING
+   Open the NihilPointZeroStudio-workshop folder on your PC and double-click
+   UPDATE-MY-STUDIO.cmd. That is the whole procedure. It fetches the new code,
+   builds it, copies it into your Desktop studio folder, updates the installed app
+   and pushes to GitHub. Five to ten minutes, and you can walk away while it runs.
 AM I UP TO DATE? (one look, any time)
    Settings -> the Version box at the top. It says plainly whether you are up to date,
    and shows which version you are running next to the newest published one. There is a

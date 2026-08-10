@@ -33,7 +33,8 @@ type Gaps = Awaited<ReturnType<typeof window.api.channel.gaps>>
 export default function ChannelPage(): React.JSX.Element {
   const [learned, setLearned] = useState<Learned | null>(null)
   const [mined, setMined] = useState<Mined | null>(null)
-  const [busy, setBusy] = useState<'learn' | 'comments' | null>(null)
+  const [gaps, setGaps] = useState<Gaps | null>(null)
+  const [busy, setBusy] = useState<'learn' | 'comments' | 'gaps' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [titleDraft, setTitleDraft] = useState('')
   const [score, setScore] = useState<Awaited<ReturnType<typeof window.api.channel.scoreTitle>> | null>(null)
@@ -278,6 +279,11 @@ export default function ChannelPage(): React.JSX.Element {
         )}
 
         {gaps && (!gaps.problem || gaps.problem.kind === 'partial') && (
+          {gaps
+            ? gaps.headline
+            : 'Trending tells you what is popular. This tells you what is popular that YOU have never made — demonstrated demand, with nothing of your own competing for it.'}
+        </p>
+        {gaps && (
           <div className="text-[11px] text-ink-600 mt-1">
             Compared {gaps.myVideos} of your videos against {gaps.competitorVideos} from other channels
             {gaps.unmatched > 0 && `, ${gaps.unmatched} of which were about something outside finance`}.

@@ -439,6 +439,8 @@ export default function SettingsPage() {
 
       {/* What changed — an upgrade is otherwise invisible: the app looks identical after
           one. Sits above health so it is the first thing seen after an update. */}
+      <WhatsNewCard />
+
       {/* Version, stated out loud. FIRST, above everything: after an update the only
           question is "did that work?", and the app used to answer it with silence. */}
       <VersionCard />

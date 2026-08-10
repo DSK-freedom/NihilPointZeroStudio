@@ -1106,6 +1106,10 @@ audience that is not yours. A Pakistani finance channel spoken in Roman Urdu has
 an audience with its own habits, and the only data that describes those habits is
 already sitting in your own uploads. Nothing was reading it.
 
+WHAT YOU NEED FIRST
+Settings -> your YouTube key and your channel ID. Both are free. Reading a
+hundred of your own videos costs about four of the ten thousand requests Google
+gives you every day, so you can run this as often as you like.
 YOUR AI BRAINS — THE SWITCHBOARD
 Settings has a switchboard: every AI brain the studio can use, each with a plain
 ON/OFF switch and a "Use this one" button. OFF genuinely means off — a switched-off

@@ -1,6 +1,12 @@
 ==============================  NIHILPOINTZERO — 1-PAGE CHEAT SHEET  ==============================
 (Full manual: NIHILPOINTZERO-GUIDE.txt · Start here: HOW-TO-USE.txt · What's real/free/online: MEGA-DIAGNOSTIC-REPORT.md)
 
+UPDATE IT ......... double-click UPDATE-MY-STUDIO.cmd in the workshop code folder. That
+                    is the whole procedure - it gets the new code, builds it, copies it to
+                    your Desktop folder and updates the installed app. 5-10 min, walk away.
+                    NO code folder? Download the finished app instead:
+                    github.com/DSKJazz/NihilPointZeroStudio/releases/latest -> Assets ->
+                    NIHILPOINTZERO-OS-setup.exe -> double-click it.
 AM I CURRENT? ..... Settings -> Version box at the top. Says up to date / newer available /
                     could not check, and shows both version stamps. "Check now" re-checks.
 UPDATES ........... nothing to do. The studio opens when Windows starts and installs

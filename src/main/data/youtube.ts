@@ -83,6 +83,12 @@ export interface MyVideo {
  * caller treats an empty history as "not enough data to say anything", which is the
  * honest answer when the data could not be read.
  */
+export async function fetchMyChannelVideos(maxVideos = 200): Promise<MyVideo[]> {
+  const apiKey = getYouTubeApiKey()
+  const channelId = getYouTubeChannelId()
+  if (!apiKey || !channelId) return []
+  const keyHeader = { 'X-Goog-Api-Key': apiKey }
+
 /**
  * Reads the user's own uploads AND says why, when it cannot.
  *
@@ -127,6 +133,13 @@ export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[
       headers: keyHeader,
       signal: AbortSignal.timeout(20_000)
     })
+    if (!chRes.ok) return []
+    const chData = await chRes.json()
+    const uploads: string | undefined = chData?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads
+    if (!uploads) return []
+
+    const found: { id: string; title: string; publishedAt: string }[] = []
+    let pageToken = ''
     if (!chRes.ok) return refused(chRes)
     const chData = await chRes.json()
     const uploads: string | undefined = chData?.items?.[0]?.contentDetails?.relatedPlaylists?.uploads
@@ -145,6 +158,7 @@ export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[
         `${BASE_URL}/playlistItems?part=snippet&maxResults=50&playlistId=${uploads}` +
         (pageToken ? `&pageToken=${pageToken}` : '')
       const res = await fetch(url, { headers: keyHeader, signal: AbortSignal.timeout(20_000) })
+      if (!res.ok) break
       // A refusal on the FIRST page means nothing was read at all, and that is a reason
       // worth reporting. Refused later, we keep whatever pages did come back.
       if (!res.ok) {
@@ -165,6 +179,7 @@ export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[
       pageToken = data.nextPageToken ?? ''
       if (!pageToken) break
     }
+    if (!found.length) return []
     if (!found.length) return { videos: [], problem: { kind: 'empty-channel' } }
 
     // Statistics come 50 ids at a time.
@@ -175,6 +190,7 @@ export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[
         headers: keyHeader,
         signal: AbortSignal.timeout(20_000)
       })
+      if (!res.ok) continue
       if (!res.ok) {
         // Not a shrug. Every video in this batch would otherwise be recorded as having
         // ZERO views — a number, not a blank — and the title analysis would then conclude
@@ -196,6 +212,9 @@ export async function readMyChannel(maxVideos = 200): Promise<{ videos: MyVideo[
       }
     }
 
+    return found.slice(0, maxVideos).map((v) => ({ ...v, views: stats.get(v.id)?.views ?? 0, ...stats.get(v.id) }))
+  } catch {
+    return []
     return {
       videos: found.slice(0, maxVideos).map((v) => ({ ...v, views: stats.get(v.id)?.views ?? 0, ...stats.get(v.id) })),
       problem: truncated ? { kind: 'partial', detail: truncated } : null

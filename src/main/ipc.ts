@@ -44,6 +44,7 @@ import { buildAdvisorSystemPrompt } from './prompts'
 import { importPhoneProject, importPhoneProjectJson } from './project/import'
 import { closeTeleprompter, openTeleprompter, setTeleprompterProtection, teleprompterState } from './teleprompter/window'
 import { APP_GUIDE } from './appGuide'
+import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
 import { buildTagFromRelease, diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
 import { fetchLatestRelease, runSelfUpdate, type SelfUpdateDeps } from './selfUpdate'
 import { applyOpenAtLogin } from './autoStart'
@@ -77,6 +78,7 @@ import { DEFAULT_SPEED, planReadAloud, type ReadSpeed } from '../shared/readAlou
 import { learnTitlePatterns, publishTimingReport, scoreTitle } from '../shared/channelLearning'
 import { mineQuestions, summarise as summariseQuestions } from '../shared/commentMining'
 import { seriesReport } from '../shared/series'
+import { fetchComments, fetchMyChannelVideos } from './data/youtube'  
 import { gapReport, searchQueries } from '../shared/competitorGap'
 import { checkCopyright } from '../shared/copyrightCheck'
 import {
@@ -1007,6 +1009,8 @@ export function registerIpcHandlers(): void {
   // arithmetic questions, and a fluent wrong answer here would change how the user titles
   // videos for a year. When the history is too short, the modules refuse to answer and
   // say so; an empty fetch reads as exactly that rather than as "nothing works".
+  ipcMain.handle(IPC.channelLearn, async () => {
+    const videos = await fetchMyChannelVideos()
   /**
    * One line in the Activity Log whenever a channel read did not fully succeed.
    *
@@ -1050,6 +1054,11 @@ export function registerIpcHandlers(): void {
 
   /** Score a proposed title against the channel's OWN history, with reasons. */
   ipcMain.handle(IPC.channelScoreTitle, async (_e, title: string) => {
+    const videos = await fetchMyChannelVideos()
+    return scoreTitle(
+      typeof title === 'string' ? title : '',
+      videos.map((v) => ({ title: v.title, publishedAt: v.publishedAt, views: v.views }))
+    )
     // Was on the blind read, so a refused key scored the title against zero videos and
     // reported "not enough history to tell" — a statement about the channel, when in
     // truth nothing had been read. Same treatment as the other three.
@@ -1068,6 +1077,7 @@ export function registerIpcHandlers(): void {
   // verbatim from a real comment, so it can be checked — a model summary of "what people
   // are asking" reads well and may match nothing anybody actually wrote.
   ipcMain.handle(IPC.channelComments, async (_e, videoLimit?: number) => {
+    const videos = await fetchMyChannelVideos()
     const { videos, problem } = await readMyChannel()
     logRead('Comment questions', problem)
     // Newest first, and only the recent ones: a question from three years ago has usually
@@ -1077,6 +1087,7 @@ export function registerIpcHandlers(): void {
       .slice(0, Math.max(1, Math.min(30, typeof videoLimit === 'number' ? videoLimit : 12)))
     const comments = await fetchComments(recent.map((v) => v.id))
     const clusters = mineQuestions(comments)
+    return { scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
     return { problem, scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
   })
 
@@ -1161,6 +1172,81 @@ export function registerIpcHandlers(): void {
       }
     }
   )
+
+  // THE RENDER QUEUE. Batch already worked through a list, but it lived only in memory, so
+  // closing the app lost everything not yet built — and one failure at item three lost items
+  // four to ten, after the app had worked perfectly for two hours. This is written to disk
+  // after every change, can be added to while it runs, and a failure costs exactly one item.
+  const broadcastQueue = (items: import('../shared/renderQueue').QueueItem[]): void => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send(IPC.queueChanged, items)
+    }
+  }
+
+  /** Starts the runner if it is not already going. Safe to call after every add. */
+  const pumpQueue = (): void => {
+    void runQueue({
+      build: async (item, onProgress) => {
+        const job = await performVideoBuild(item.request as VideoBuildRequest, onProgress)
+        return { videoId: job.id }
+      },
+      onChange: broadcastQueue,
+      onProgress: (item, stage) => {
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+            win.webContents.send(IPC.videoProgress, `${item.title}: ${stage}`)
+          }
+        }
+      }
+    })
+  }
+
+  ipcMain.handle(IPC.queueList, () => listRenderQueue())
+
+  ipcMain.handle(IPC.queueAdd, (_e, req: VideoBuildRequest) => {
+    const items = saveRenderQueue([
+      ...listRenderQueue(),
+      {
+        id: randomUUID(),
+        title: req?.title || 'Untitled video',
+        state: 'waiting' as const,
+        addedAt: new Date().toISOString(),
+        request: req
+      }
+    ])
+    logActivity('user', 'Added a video to the render queue', req?.title)
+    broadcastQueue(items)
+    pumpQueue()
+    return items
+  })
+
+  ipcMain.handle(IPC.queueCancel, (_e, id: string) => {
+    const items = saveRenderQueue(cancelQueued(listRenderQueue(), id))
+    // Cancelling the one RENDERING has to stop the actual ffmpeg too — the queue module
+    // records intent, it does not kill processes.
+    if (currentQueued(listRenderQueue()) === null) cancelActiveFfmpeg()
+    broadcastQueue(items)
+    return items
+  })
+
+  ipcMain.handle(IPC.queueRetry, (_e, id: string) => {
+    const items = saveRenderQueue(retryQueued(listRenderQueue(), id))
+    broadcastQueue(items)
+    pumpQueue()
+    return items
+  })
+
+  ipcMain.handle(IPC.queueReorder, (_e, id: string, direction: number) => {
+    const items = saveRenderQueue(reorderQueued(listRenderQueue(), id, direction < 0 ? -1 : 1))
+    broadcastQueue(items)
+    return items
+  })
+
+  ipcMain.handle(IPC.queueClearFinished, () => {
+    const items = saveRenderQueue(clearFinishedQueued(listRenderQueue()))
+    broadcastQueue(items)
+    return items
+  })
 
   // THE RENDER QUEUE. Batch already worked through a list, but it lived only in memory, so
   // closing the app lost everything not yet built — and one failure at item three lost items

@@ -21,6 +21,9 @@ import { useState } from 'react'
 import { formatHour } from '../../../shared/channelLearning'
 import { seriesHeadline, seriesLinks, type Series } from '../../../shared/series'
 import type { QuestionCluster } from '../../../shared/commentMining'
+
+type Learned = Awaited<ReturnType<typeof window.api.channel.learn>>
+type Mined = Awaited<ReturnType<typeof window.api.channel.comments>>
 import ChannelProblem from '../components/ChannelProblem'
 
 type Learned = Awaited<ReturnType<typeof window.api.channel.learn>>
@@ -30,6 +33,13 @@ type Gaps = Awaited<ReturnType<typeof window.api.channel.gaps>>
 export default function ChannelPage(): React.JSX.Element {
   const [learned, setLearned] = useState<Learned | null>(null)
   const [mined, setMined] = useState<Mined | null>(null)
+  const [busy, setBusy] = useState<'learn' | 'comments' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [titleDraft, setTitleDraft] = useState('')
+  const [score, setScore] = useState<Awaited<ReturnType<typeof window.api.channel.scoreTitle>> | null>(null)
+  const [openSeries, setOpenSeries] = useState<Series | null>(null)
+
+  async function run(which: 'learn' | 'comments'): Promise<void> {
   const [gaps, setGaps] = useState<Gaps | null>(null)
   const [busy, setBusy] = useState<'learn' | 'comments' | 'gaps' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +70,8 @@ export default function ChannelPage(): React.JSX.Element {
         average across millions of channels that are not yours. This is not that.
       </p>
       <p className="text-ink-500 text-xs mt-2">
+        Needs your YouTube key and channel ID in Settings. Reading a hundred of your own videos costs about four of
+        the ten thousand daily free requests, so this is effectively free to run.
         Needs the free YouTube connection — Settings has a three-minute walkthrough that finds your channel from your
         @name. Reading a hundred of your own videos costs about four of the ten thousand daily free requests, so this
         is effectively free to run.
@@ -80,6 +92,11 @@ export default function ChannelPage(): React.JSX.Element {
           </button>
         </div>
 
+        {learned && learned.videoCount === 0 && (
+          <p className="text-xs text-ink-400">
+            No videos could be read. Check the YouTube key and channel ID in Settings — with no data the honest answer
+            is nothing, so nothing is claimed.
+          </p>
         {/* Shown whenever there is a problem, INCLUDING when videos did come back: a
             partial read returns real data and an incomplete-read notice at the same time,
             and hiding the notice would let a half-read history pass as the whole story.
@@ -186,6 +203,14 @@ export default function ChannelPage(): React.JSX.Element {
                   className="flex-1 rounded-md bg-ink-950 border border-ink-700 text-ink-200 text-xs px-2 py-1.5"
                 />
                 <button
+                  onClick={() => void window.api.channel.scoreTitle(titleDraft).then(setScore)}
+                  disabled={!titleDraft.trim()}
+                  className="rounded-md border border-gold-500/40 text-gold-400 hover:bg-gold-500/10 disabled:opacity-40 text-xs px-3 py-1.5 transition-colors"
+                >
+                  Score it
+                </button>
+              </div>
+              {score && (
                   // Guarded: each press is a FULL channel read, so an impatient double-click
                   // spent the quota twice and let two replies race — the slower one winning
                   // and scoring a title the user had already changed.
@@ -311,6 +336,10 @@ export default function ChannelPage(): React.JSX.Element {
           </button>
         </div>
         <p className="text-xs text-ink-400">
+          {mined
+            ? mined.summary
+            : 'Nobody reads two thousand comments. The same question asked forty times is a video with an audience before you record a frame.'}
+        </p>
           {/* Same trap: summarise(0 comments) says "No comments to read yet", which reads as
               a fact about the audience when in truth nothing was read at all. */}
           {mined && (!mined.problem || mined.problem.kind === 'partial')

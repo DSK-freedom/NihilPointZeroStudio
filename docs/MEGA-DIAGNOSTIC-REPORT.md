@@ -3,7 +3,7 @@
 _What actually works, what needs internet, what needs a one-time setup, and what it
 deliberately doesn't do. No hype — this is the "will it do X?" reference._
 
-## Build: v0.1.1 · 2026-08-01 04:30
+## Build: v0.1.1 · 2026-08-10 03:02
 The running app shows this in the sidebar (under "OS") as a gold badge. The badge is now stamped
 **automatically at build time** (version · build date+time · code id) — it can never be forgotten
 or go stale by hand. If yours shows an older tag, you launched a stale copy — see **"If updates
@@ -155,6 +155,20 @@ that does.
 **Cost:** about 4 of the free 10,000 daily YouTube requests to read a hundred videos. It
 goes through the uploads playlist, not the search endpoint — search costs 100 units per
 call, so eight calls would burn a tenth of your day.
+call, so eight calls would burn a tenth of your day. Checking a key costs 1 unit; finding
+your channel from an @name costs 1 more.
+
+**When it reads nothing, it now says which of seven reasons it was.** This used to be a
+single sentence — "no videos could be read, check the YouTube key and channel ID in
+Settings" — printed for every case, and it described most of them wrongly. The seven: no
+key yet; a key but no channel set; Google refused the request (with Google's own reason
+translated); Google itself erroring; could not reach YouTube at all; only part of the
+channel readable; or everything working and the channel genuinely has no videos yet.
+
+Only the first three are things to act on. The rest are the app saying "I could not tell",
+shown in amber, and it will never dress one of those up as a fault of yours — a partial
+read in particular now says its numbers are a floor rather than a total, instead of
+letting half a history pass as the whole story.
 
 ### In the Script Writer
 - **Read it to me.** Hears the script back at 2x with the pitch held, so it still sounds
@@ -208,6 +222,10 @@ send you looking for a button that is not there yet. What you have already read 
 remembered per item, not per date, because this project ships more than once a day.
 
 ### Not yet done, so you know
+Eight of the twenty-seven are still not built: thumbnail A/B testing, competitor topic
+gaps, dual-language upload metadata, a copyright pre-check, resuming a failed render,
+proxy editing, scene preview, and a crash reporter. Undo and the render queue partly
+exist already and were left alone rather than duplicated.
 **All twenty-seven are now built.** The last three were the render-lifecycle ones, and
 they are the ones where a mistake loses somebody a finished video, so they were left until
 last and each was verified against the real bundled ffmpeg rather than only in tests:
@@ -234,6 +252,23 @@ last and each was verified against the real bundled ffmpeg rather than only in t
 
 Undo already existed for the Timeline and Storyboard and was extended to the Scene Studio
 rather than a second undo being written alongside it.
+**Four** of the twenty-seven are still not built, and they are the four that need real
+work inside the render pipeline rather than a new screen:
+
+- **Resuming a failed render.** A twenty-minute render that dies at minute eighteen starts
+  again from nothing. Fixing it properly means keeping the half-finished pieces instead of
+  deleting them, and skipping the stages already done — a change to the part of the app
+  where a mistake loses somebody a finished video. Worth doing carefully, not quickly.
+- **A render queue.** Line several videos up and walk away. Batch already exists and does
+  part of this; a real queue that survives a restart does not.
+- **Proxy editing.** Edit against a small stand-in file and apply the cuts to the
+  full-quality one at the end, so scrubbing a 4K video stops being slow.
+- **Scene preview.** Watch a single scene before committing to the whole render.
+
+Since the morning list, four more landed and are described above: thumbnail testing,
+competitor topic gaps, dual-language upload metadata, and the credit check. The crash
+reporter landed too. Undo already existed for the Timeline and Storyboard and has now been
+extended to the Scene Studio, rather than a second undo being written alongside it.
 
 On **thumbnail A/B specifically**, one thing is worth being straight about: a properly
 automated test is not possible from this app. YouTube does not expose click-through per
@@ -872,7 +907,14 @@ numbers** — if a figure can't be derived, it says so.
 - **Natural voice (Piper)** — a one-time ~80 MB download (already done on this PC).
 - **Offline music separation (Demucs)** — needs Python (already set up on this PC); not needed
   if you have internet (the Online button removes music).
-- **YouTube signals / Pixabay stock footage** — optional free API keys in Settings.
+- **YouTube (Your channel, comment questions, competitor gaps)** — needs the free YouTube
+  Data API key, and **Settings → Connect YouTube** now walks you through getting one: five
+  numbered steps, a button on each that opens the exact Google page, then a real test of the
+  key with a plain-English answer if it fails. It also finds your channel ID from your @name,
+  so the buried "UC..." string is no longer something you have to know. Free, ~3 minutes, no
+  card. **Until it is done, those three features read nothing** — and they now say so with
+  the reason, instead of showing an empty panel.
+- **Pixabay / Pexels stock footage** — optional free API keys in Settings.
 
 ## What it deliberately does NOT do (so you're never misled)
 - **NCCPL live auto-fetch** — NCCPL's portal blocks automated access, so the app does NOT scrape
@@ -886,6 +928,41 @@ numbers** — if a figure can't be derived, it says so.
   can't be accurate from a screenshot; the app charts real PSX data itself instead.
 - **"Beautify" is a retouch, not plastic surgery** — it smooths/brightens/sharpens; it does not
   reshape hair/skin/muscles into someone else.
+
+## Added on 2026-08-07 — the Caretaker
+The studio checks itself on a visible, user-controlled schedule (Settings → Caretaker):
+live health checks, dead-brain rescue, lost-video detection, every pass recorded. Honest
+scope: it fixes settings, state and services; it cannot rewrite its own code, and it
+never runs during a render. Only the user can delete its record.
+
+## Added on 2026-08-07 — the honesty gate on video builds
+A build where MOST scenes failed to get their real image now refuses to finish, naming
+the failed scenes and the reason, instead of shipping a dark void with a filename (one
+or two lost scenes still pass — that has always been the soft-fail promise). This is the
+fix for the "8 or 9 empty black videos" found in the output folder.
+
+## Added on 2026-08-07 — the switchboard and Gemini
+- **AI switchboard** (Settings): every brain with a real ON/OFF. Off = never contacted,
+  not even as a fallback. Free-online defaults OFF (it went paid); Ollama ON; paid asleep.
+- **Gemini** as a full brain via Google's genuinely free AI-Studio key, with a two-minute
+  tested walkthrough. ChatGPT/Grok: open-in-browser buttons only — no free machinery
+  exists, and the studio will never store passwords.
+
+## Fixed on 2026-08-07, from the owner's screen recording
+- **A percent sign in a headline crashed the whole video build** ("Stray %", "ffmpeg
+  exited with code null"). Finance titles are full of percent signs, so this was the main
+  case, not a corner. Fixed at the filter level and pinned with a test.
+- **Scene images could come out with inappropriate, mostly-female subjects** on scripts
+  that never mentioned a person. Two causes: the image service's strict content filter was
+  never being sent (now sent on every request), and the model invents a person for abstract
+  finance prompts (scenes that don't mention one now ban people from the frame; scenes that
+  do require modest professional dress).
+- **The app recommended buying a paid key when the free online AI died.** Removed
+  everywhere; the free local brain is the answer, and a dead free service is no longer
+  consulted on every request.
+- **GitHub "storage full" emails**: every build was storing 435 MB of exes as a 14-day
+  Actions artifact against a 500 MB allowance. It now stores nothing unless the release
+  upload itself fails; the old copies expire by themselves within two weeks.
 
 ## Honest note on "bug-free forever"
 The logic and math are tested and correct today. The parts that reach the internet (live PSX

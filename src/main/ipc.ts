@@ -38,13 +38,14 @@ import type { HardwareReport } from '../shared/types'
 
 /** Probed once per session — spawning processes is slow and the answer can't change. */
 let cachedHardware: HardwareReport | null = null
-import { freeLibraryLinks, MOOD_PROMPT_HINT, moodsFromText, parseMoodReply, synthMoodFromText } from './music/mood'
+import { freeLibraryLinks, MOOD_PROMPT_HINT, moodsFromText, musicExamplePlan, parseMoodReply, synthMoodFromText } from './music/mood'
 import { getOllamaStatus, ollamaChatStream, type ChatTurn } from './llm/ollama'
 import { buildAdvisorSystemPrompt } from './prompts'
 import { importPhoneProject, importPhoneProjectJson } from './project/import'
 import { closeTeleprompter, openTeleprompter, setTeleprompterProtection, teleprompterState } from './teleprompter/window'
 import { APP_GUIDE } from './appGuide'
 import { diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
+import { buildTagFromRelease, diskIsNewerThanRunning, getAvailableUpdate, tagDate } from './updateCheck'
 import { fetchLatestRelease, runSelfUpdate, type SelfUpdateDeps } from './selfUpdate'
 import { applyOpenAtLogin } from './autoStart'
 import { describeUpdateStatus } from './updateStatus'
@@ -77,6 +78,7 @@ import { DEFAULT_SPEED, planReadAloud, type ReadSpeed } from '../shared/readAlou
 import { learnTitlePatterns, publishTimingReport, scoreTitle } from '../shared/channelLearning'
 import { mineQuestions, summarise as summariseQuestions } from '../shared/commentMining'
 import { seriesReport } from '../shared/series'
+import { fetchComments, fetchMyChannelVideos } from './data/youtube'  
 import { gapReport, searchQueries } from '../shared/competitorGap'
 import { checkCopyright } from '../shared/copyrightCheck'
 import {
@@ -91,7 +93,10 @@ import { buildScenePreviewArgs, previewSeconds } from './video/scenePreview'
 import { buildProxyArgs, proxyIsTrustworthy, proxySize, worthProxying } from './video/proxy'
 import { KEN_BURNS_MOTIONS } from './video/render'
 import { searchYouTubeSignals } from './data/youtube'
-import { fetchComments, fetchMyChannelVideos } from './data/youtube'
+import { fetchComments, readMyChannel } from './data/youtube'
+import { resolveYouTubeChannel, verifySavedYouTubeKey, verifyYouTubeKey } from './data/youtubeKeyCheck'
+import { verifyGeminiKey, verifySavedGeminiKey } from './llm/geminiKeyCheck'
+import { caretakerStatus, clearCaretakerLog, runCaretakerPass, updateCaretakerSchedule } from './caretaker'
 import { buildCutArgs, planSilenceCut } from './video/silence'
 import { buildVideoEncoderArgs, chooseEncoderForJob } from './video/encoder'
 import { buildSpeedArgs } from './audio/speed'
@@ -221,9 +226,19 @@ import {
   setApiKey,
   setModel,
   setPiperVoiceId,
+  setProviderEnabled,
   setYouTubeApiKey,
   videosDir
 } from './store'
+
+/**
+ * The Caretaker needs "is a render running?" which lives in main/index.ts; injected here
+ * so ipc.ts does not import main/index (which imports ipc.ts back).
+ */
+let caretakerBusyCheck: () => boolean = () => true
+export function setCaretakerBusyCheck(fn: () => boolean): void {
+  caretakerBusyCheck = fn
+}
 
 export function registerIpcHandlers(): void {
   // Last-good PSX data cache lives with the rest of the user's data (travels with the
@@ -247,9 +262,62 @@ export function registerIpcHandlers(): void {
     return setApiKey(provider, key)
   })
 
+  /**
+   * The switchboard: which brains may be contacted at all. Logged because "why did my
+   * AI change" must always be answerable from the Activity Log.
+   */
+  ipcMain.handle(IPC.settingsSetProviderEnabled, (_e, provider: LLMProviderId, on: boolean) => {
+    logActivity('user', `${on ? 'Switched ON' : 'Switched OFF'} the ${provider} AI`)
+    return setProviderEnabled(provider, on)
+  })
+
+  // ---- The Caretaker (see main/caretaker.ts for the whole idea) ----
+  ipcMain.handle(IPC.caretakerStatus, () => caretakerStatus())
+  ipcMain.handle(IPC.caretakerRunNow, async () => {
+    logActivity('user', 'Ran the Caretaker by hand')
+    return runCaretakerPass('manual', caretakerBusyCheck)
+  })
+  ipcMain.handle(IPC.caretakerSetSchedule, (_e, hours: number, paused: boolean) => {
+    updateCaretakerSchedule(hours, paused, caretakerBusyCheck)
+    return caretakerStatus()
+  })
+  ipcMain.handle(IPC.caretakerClearLog, () => {
+    // Only from the user's click — his rule, same as the Activity Log.
+    logActivity('user', "Cleared the Caretaker's record")
+    clearCaretakerLog()
+    return caretakerStatus()
+  })
+
+  /** Gemini: verify only — saving happens separately, and only on a confirmed pass. */
+  ipcMain.handle(IPC.geminiKeyVerify, async (_e, rawKey: string) => {
+    const verdict = rawKey ? await verifyGeminiKey(rawKey) : await verifySavedGeminiKey()
+    logActivity('user', 'Checked the Gemini key', verdict.state === 'working' ? 'works' : verdict.title)
+    return verdict
+  })
+
   ipcMain.handle(IPC.settingsSetYouTubeKey, (_e, key: string) => {
     logActivity('user', `${key ? 'Updated' : 'Removed'} YouTube API key`)
     return setYouTubeApiKey(key)
+  })
+
+  /**
+   * Does this key actually work? One 1-unit request to Google, and a plain sentence back.
+   * Nothing is saved here — verifying and saving are separate on purpose, so a key is
+   * never stored on the strength of having been typed.
+   */
+  ipcMain.handle(IPC.youtubeKeyVerify, async (_e, rawKey: string) => {
+    const verdict = rawKey ? await verifyYouTubeKey(rawKey) : await verifySavedYouTubeKey()
+    // Logged either way: a check that came back "could not tell" is exactly the event
+    // that used to leave no trace at all and cost an evening to find.
+    logActivity('user', 'Checked the YouTube key', verdict.state === 'working' ? 'works' : verdict.title)
+    return verdict
+  })
+
+  /** @handle / channel URL / UC id → the id and the channel's NAME, to confirm by eye. */
+  ipcMain.handle(IPC.youtubeChannelResolve, async (_e, input: string, rawKey: string) => {
+    const found = await resolveYouTubeChannel(input, rawKey)
+    logActivity('user', 'Looked up a YouTube channel', found.ok ? found.title : found.problem)
+    return found
   })
 
   ipcMain.handle(IPC.ollamaStatus, () => getOllamaStatus())
@@ -325,12 +393,18 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC.libraryDeleteForever, (_e, id: string) => {
     logActivity('user', 'Permanently deleted library item', id)
-    return deleteFromLibrary(id)
+    // DELETE-EVERYWHERE: the entry, its file on disk, and the backup copies go together.
+    // The UI contract is unchanged — callers still get the entries list back.
+    const { entries, removedRels } = deleteFromLibrary(id)
+    if (removedRels.length) void purgeFromBackups(removedRels)
+    return entries
   })
 
   ipcMain.handle(IPC.libraryEmptyTrash, () => {
     logActivity('user', 'Emptied the Library Trash')
-    return emptyLibraryTrash()
+    const { entries, removedRels } = emptyLibraryTrash()
+    if (removedRels.length) void purgeFromBackups(removedRels)
+    return entries
   })
 
   ipcMain.handle(IPC.exportText, async (e, suggestedName: string, content: string) => {
@@ -739,14 +813,23 @@ export function registerIpcHandlers(): void {
     const flat = `${system}\n\n${msgs.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')}\n\nASSISTANT:`
     let reply: string
     try {
-      if (settings.activeProvider === 'ollama') {
+      /**
+       * THE EXPERT PREFERS THE LOCAL BRAIN — his ask: the Expert "should have its own
+       * LLM model in which it should know each and everything about the studio", working
+       * even when nothing else does. So whenever Ollama is switched ON (not merely
+       * active), the Expert tries it first with the full manual as its grounding: no
+       * internet, no keys, no allowances. Only if the local brain is unreachable does it
+       * degrade to the active chain — and the no-AI "Instant" mode still answers from
+       * the manual when every brain is down.
+       */
+      if (settings.providerEnabled.ollama || settings.activeProvider === 'ollama') {
         const turns: ChatTurn[] = [{ role: 'system', content: system }, ...msgs]
         try {
           reply = await ollamaChatStream(getModel('ollama'), turns, (delta) => {
             if (!e.sender.isDestroyed()) e.sender.send(IPC.guideStream, delta)
           })
         } catch {
-          // Ollama unreachable — degrade to the active chain (which itself degrades to free)
+          // Ollama unreachable — degrade to the active chain (which itself degrades)
           // so the Expert still answers instead of dying with ECONNREFUSED.
           reply = await getActiveProvider().generateText(flat, 1200)
           if (!e.sender.isDestroyed()) e.sender.send(IPC.guideStream, reply)
@@ -847,7 +930,7 @@ export function registerIpcHandlers(): void {
    */
   ipcMain.handle(IPC.updateStatus, async () => {
     const rel = await fetchLatestRelease()
-    const published = rel.ok ? (/Build (v[^\n*]+)/.exec(rel.body)?.[1]?.trim() ?? null) : null
+    const published = rel.ok ? buildTagFromRelease({ body: rel.body, tag_name: rel.tag_name, published_at: rel.published_at }) : null
     return { ...describeUpdateStatus(__BUILD_TAG__, published), checkedAt: new Date().toISOString() }
   })
 
@@ -928,6 +1011,31 @@ export function registerIpcHandlers(): void {
   // say so; an empty fetch reads as exactly that rather than as "nothing works".
   ipcMain.handle(IPC.channelLearn, async () => {
     const videos = await fetchMyChannelVideos()
+  /**
+   * One line in the Activity Log whenever a channel read did not fully succeed.
+   *
+   * The rule is that "I could not tell" has to be distinct, visible AND logged. It was
+   * distinct and visible on screen after the first pass of this work, but it left no
+   * trace, so a user reporting "the channel tab is empty" a day later still had nothing
+   * to point at. Now the log says which of the reasons it was.
+   */
+  const logRead = (where: string, problem: { kind: string; detail?: string } | null): void => {
+    // Not every problem is a failure, and the log must not say otherwise. An empty
+    // channel means the read worked perfectly and there was nothing in it; a partial read
+    // returned real data. Filing either under "could not read the channel" would put a
+    // fault in his log for something that was not one — the same class of mistake as the
+    // red mark next to a paid key he had chosen not to use.
+    if (!problem || problem.kind === 'empty-channel') return
+    const headline =
+      problem.kind === 'partial' ? `${where}: read only part of the channel` : `${where}: could not read the channel`
+    logActivity('ai', headline, `${problem.kind}${problem.detail ? ` — ${problem.detail}` : ''}`)
+  }
+
+  ipcMain.handle(IPC.channelLearn, async () => {
+    // `problem` travels with the result so the page can say WHY it read nothing. An
+    // empty answer used to mean five different things and named none of them.
+    const { videos, problem } = await readMyChannel()
+    logRead('Your channel', problem)
     const past = videos.map((v) => ({
       title: v.title,
       publishedAt: v.publishedAt,
@@ -936,6 +1044,7 @@ export function registerIpcHandlers(): void {
       comments: v.comments
     }))
     return {
+      problem,
       videoCount: past.length,
       titleFindings: learnTitlePatterns(past),
       timing: publishTimingReport(past),
@@ -950,6 +1059,18 @@ export function registerIpcHandlers(): void {
       typeof title === 'string' ? title : '',
       videos.map((v) => ({ title: v.title, publishedAt: v.publishedAt, views: v.views }))
     )
+    // Was on the blind read, so a refused key scored the title against zero videos and
+    // reported "not enough history to tell" — a statement about the channel, when in
+    // truth nothing had been read. Same treatment as the other three.
+    const { videos, problem } = await readMyChannel()
+    logRead('Title score', problem)
+    return {
+      ...scoreTitle(
+        typeof title === 'string' ? title : '',
+        videos.map((v) => ({ title: v.title, publishedAt: v.publishedAt, views: v.views }))
+      ),
+      problem
+    }
   })
 
   // THE VIDEO IDEAS ALREADY SITTING IN THE COMMENTS. Every question returned is quoted
@@ -957,6 +1078,8 @@ export function registerIpcHandlers(): void {
   // are asking" reads well and may match nothing anybody actually wrote.
   ipcMain.handle(IPC.channelComments, async (_e, videoLimit?: number) => {
     const videos = await fetchMyChannelVideos()
+    const { videos, problem } = await readMyChannel()
+    logRead('Comment questions', problem)
     // Newest first, and only the recent ones: a question from three years ago has usually
     // been answered, and each video costs a quota unit.
     const recent = [...videos]
@@ -965,6 +1088,7 @@ export function registerIpcHandlers(): void {
     const comments = await fetchComments(recent.map((v) => v.id))
     const clusters = mineQuestions(comments)
     return { scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
+    return { problem, scanned: comments.length, videosRead: recent.length, clusters, summary: summariseQuestions(clusters, comments.length) }
   })
 
   // A SMALL STAND-IN for scrubbing. The Timeline plays the real file, and a 4K clip is
@@ -1124,6 +1248,96 @@ export function registerIpcHandlers(): void {
     return items
   })
 
+  // THE RENDER QUEUE. Batch already worked through a list, but it lived only in memory, so
+  // closing the app lost everything not yet built — and one failure at item three lost items
+  // four to ten, after the app had worked perfectly for two hours. This is written to disk
+  // after every change, can be added to while it runs, and a failure costs exactly one item.
+  const broadcastQueue = (items: import('../shared/renderQueue').QueueItem[]): void => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send(IPC.queueChanged, items)
+    }
+  }
+
+  /** Starts the runner if it is not already going. Safe to call after every add. */
+  const pumpQueue = (): void => {
+    void runQueue({
+      build: async (item, onProgress) => {
+        const job = await performVideoBuild(item.request as VideoBuildRequest, onProgress)
+        return { videoId: job.id }
+      },
+      onChange: broadcastQueue,
+      onProgress: (item, stage) => {
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+            win.webContents.send(IPC.videoProgress, `${item.title}: ${stage}`)
+          }
+        }
+      }
+    })
+  }
+
+  ipcMain.handle(IPC.queueList, () => listRenderQueue())
+
+  ipcMain.handle(IPC.queueAdd, (_e, req: VideoBuildRequest) => {
+    const items = saveRenderQueue([
+      ...listRenderQueue(),
+      {
+        id: randomUUID(),
+        title: req?.title || 'Untitled video',
+        state: 'waiting' as const,
+        addedAt: new Date().toISOString(),
+        request: req
+      }
+    ])
+    logActivity('user', 'Added a video to the render queue', req?.title)
+    broadcastQueue(items)
+    pumpQueue()
+    return items
+  })
+
+  ipcMain.handle(IPC.queueCancel, (_e, id: string) => {
+    const items = saveRenderQueue(cancelQueued(listRenderQueue(), id))
+    // Cancelling the one RENDERING has to stop the actual ffmpeg too — the queue module
+    // records intent, it does not kill processes.
+    if (currentQueued(listRenderQueue()) === null) cancelActiveFfmpeg()
+    broadcastQueue(items)
+    return items
+  })
+
+  ipcMain.handle(IPC.queueRetry, (_e, id: string) => {
+    const items = saveRenderQueue(retryQueued(listRenderQueue(), id))
+    broadcastQueue(items)
+    pumpQueue()
+    return items
+  })
+
+  ipcMain.handle(IPC.queueReorder, (_e, id: string, direction: number) => {
+    const items = saveRenderQueue(reorderQueued(listRenderQueue(), id, direction < 0 ? -1 : 1))
+    broadcastQueue(items)
+    return items
+  })
+
+  ipcMain.handle(IPC.queueClearFinished, () => {
+    const items = saveRenderQueue(clearFinishedQueued(listRenderQueue()))
+    broadcastQueue(items)
+    return items
+  })
+
+  // THE CREDIT CHECK BEFORE PUBLISHING. Not a copyright detector — only YouTube's Content
+  // ID can answer that, and pretending otherwise would be worse than silence because the
+  // user would trust it. This checks the PAPERWORK for what the app fetched itself: a
+  // licence that obliges a credit, and whether that credit actually reached the
+  // description. A missing credit on a CC-BY track is what turns a free track into a claim.
+  ipcMain.handle(IPC.copyrightCheck, (_e, videoId: string, description?: string) => {
+    const job = listVideos().find((j) => j.id === videoId)
+    if (!job) return { found: false as const, error: 'Video not found — build it again first.' }
+    // A video built before this shipped has no recorded provenance at all. "Nothing to
+    // check" is the truthful answer there — it is not a claim that the video is clear, and
+    // the report's own wording never implies one.
+    const report = checkCopyright(job.credits ?? [], typeof description === 'string' ? description : '')
+    return { found: true as const, ...report }
+  })
+
   // THE CREDIT CHECK BEFORE PUBLISHING. Not a copyright detector — only YouTube's Content
   // ID can answer that, and pretending otherwise would be worse than silence because the
   // user would trust it. This checks the PAPERWORK for what the app fetched itself: a
@@ -1143,7 +1357,21 @@ export function registerIpcHandlers(): void {
   // plus subjects it has never touched — searching only what it already covers can never
   // find a gap, it can only confirm coverage.
   ipcMain.handle(IPC.channelGaps, async () => {
-    const mine = (await fetchMyChannelVideos()).map((v) => ({ title: v.title, views: v.views, publishedAt: v.publishedAt }))
+    const read = await readMyChannel()
+    logRead('Competitor gaps', read.problem)
+    const mine = read.videos.map((v) => ({ title: v.title, views: v.views, publishedAt: v.publishedAt }))
+
+    // STOP BEFORE SPENDING 800 QUOTA UNITS ON A QUESTION THAT CANNOT BE ANSWERED.
+    // Each of the eight searches below costs 100 units of the daily 10,000 — one press of
+    // this button is 8% of the day. A "gap" is a subject other channels cover and THIS one
+    // does not, so with no videos of our own there is nothing to compare against and every
+    // result would be discarded. Worse, the commonest way to reach here with no videos is
+    // a key that was just refused, which means the whole 800 would be spent to produce an
+    // empty page. The problem notice already explains what to fix.
+    if (read.problem && !mine.length) {
+      return { ...gapReport([], []), problem: read.problem, myVideos: 0, competitorVideos: 0, queries: [] }
+    }
+
     const queries = searchQueries(mine)
     const theirs: { title: string; channelTitle: string; viewCount: number; publishedAt?: string }[] = []
     const mineTitles = new Set(mine.map((m) => m.title.toLowerCase()))
@@ -1155,7 +1383,7 @@ export function registerIpcHandlers(): void {
         if (!mineTitles.has(s.title.toLowerCase())) theirs.push(s)
       }
     }
-    return { ...gapReport(mine, theirs), myVideos: mine.length, competitorVideos: theirs.length, queries }
+    return { ...gapReport(mine, theirs), problem: read.problem, myVideos: mine.length, competitorVideos: theirs.length, queries }
   })
 
   // Proof the script BY EAR. The plan is pure and instant — what to listen for, and how
@@ -2278,6 +2506,29 @@ export function registerIpcHandlers(): void {
 
   // FREE COPYRIGHT-SAFE MUSIC (Pixabay). Every handler degrades to "no music" with a
   // readable note rather than throwing — a missing soundtrack must never break a video.
+  /**
+   * HIS ASK (2026-08-07): "it gives me multiple examples... I play, I listen... and it
+   * would tell me why." Three genuinely different full-length beds from the built-in
+   * synthesizer — offline, free, each as long as the video — with one plain sentence of
+   * reasoning apiece. He listens and clicks "Use this one"; nothing is chosen for him.
+   */
+  ipcMain.handle(IPC.musicExamples, async (_e, scriptText: string, durationSec: number) => {
+    // Full length, but bounded: a runaway duration must not synthesize for an hour.
+    const dur = Math.max(8, Math.min(Number(durationSec) || 60, 900))
+    const plan = musicExamplePlan(scriptText || '')
+    const out: { mood: string; why: string; path: string }[] = []
+    for (let i = 0; i < plan.length; i++) {
+      try {
+        const path = await renderMusic(plan[i].mood, dur, i + 1)
+        out.push({ mood: plan[i].mood, why: plan[i].why, path })
+      } catch {
+        /* one failed bed must not empty the list — the others still play */
+      }
+    }
+    logActivity('ai', `Made ${out.length} music example(s) to listen to`, plan.map((p) => p.mood).join(', '))
+    return { examples: out }
+  })
+
   ipcMain.handle(IPC.musicSuggest, async (_e, scriptText: string) => {
     // Ask the AI for the mood, but never let a slow/broken AI hold up the music: the
     // word-matching fallback is good enough and instant.
@@ -2673,6 +2924,19 @@ export function registerIpcHandlers(): void {
       filters: [
         { name: 'Video / Image', extensions: ['mp4', 'mov', 'mkv', 'webm', 'avi', 'jpg', 'jpeg', 'png', 'webp'] }
       ]
+    }
+    const res = win ? await dialog.showOpenDialog(win, dialogOptions) : await dialog.showOpenDialog(dialogOptions)
+    return res.canceled ? [] : res.filePaths
+  })
+
+  // Audio-track picker. Must NOT reuse the clips dialog: its video/image filter
+  // made selecting an mp3/wav impossible, so "+ Add audio" could never work.
+  ipcMain.handle(IPC.timelinePickAudio, async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const dialogOptions: Electron.OpenDialogOptions = {
+      title: 'Add music or voice to the timeline',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Audio', extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'opus', 'wma'] }]
     }
     const res = win ? await dialog.showOpenDialog(win, dialogOptions) : await dialog.showOpenDialog(dialogOptions)
     return res.canceled ? [] : res.filePaths

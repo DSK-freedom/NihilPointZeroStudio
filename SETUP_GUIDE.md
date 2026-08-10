@@ -65,6 +65,9 @@ build the app yourself.
 
 ## Updating later
 
+**Two ways. Pick whichever you have in front of you.**
+
+### The easy way — one double-click (needs the code folder)
 **Normally: you do nothing at all.**
 
 ### First, how to check where you stand

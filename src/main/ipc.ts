@@ -97,6 +97,9 @@ import { fetchComments, readMyChannel } from './data/youtube'
 import { resolveYouTubeChannel, verifySavedYouTubeKey, verifyYouTubeKey } from './data/youtubeKeyCheck'
 import { verifyGeminiKey, verifySavedGeminiKey } from './llm/geminiKeyCheck'
 import { caretakerStatus, clearCaretakerLog, runCaretakerPass, updateCaretakerSchedule } from './caretaker'
+import { gapReport, searchQueries } from '../shared/competitorGap'
+import { searchYouTubeSignals } from './data/youtube'
+import { fetchComments, fetchMyChannelVideos } from './data/youtube'
 import { buildCutArgs, planSilenceCut } from './video/silence'
 import { buildVideoEncoderArgs, chooseEncoderForJob } from './video/encoder'
 import { buildSpeedArgs } from './audio/speed'
@@ -1384,6 +1387,25 @@ export function registerIpcHandlers(): void {
       }
     }
     return { ...gapReport(mine, theirs), problem: read.problem, myVideos: mine.length, competitorVideos: theirs.length, queries }
+  })
+
+  // WHAT OTHER CHANNELS COVERED THAT THIS ONE HAS NOT. Searches this channel's own beats
+  // plus subjects it has never touched — searching only what it already covers can never
+  // find a gap, it can only confirm coverage.
+  ipcMain.handle(IPC.channelGaps, async () => {
+    const mine = (await fetchMyChannelVideos()).map((v) => ({ title: v.title, views: v.views, publishedAt: v.publishedAt }))
+    const queries = searchQueries(mine)
+    const theirs: { title: string; channelTitle: string; viewCount: number; publishedAt?: string }[] = []
+    const mineTitles = new Set(mine.map((m) => m.title.toLowerCase()))
+    for (const q of queries) {
+      const signals = await searchYouTubeSignals(q, 10)
+      for (const s of signals) {
+        // Our own videos come back in a topic search. Counting them as a competitor's
+        // would make every covered topic look contested and could never be a gap.
+        if (!mineTitles.has(s.title.toLowerCase())) theirs.push(s)
+      }
+    }
+    return { ...gapReport(mine, theirs), myVideos: mine.length, competitorVideos: theirs.length, queries }
   })
 
   // Proof the script BY EAR. The plan is pure and instant — what to listen for, and how
